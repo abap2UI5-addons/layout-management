@@ -3,8 +3,15 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
   CREATE PROTECTED.
 
   PUBLIC SECTION.
-    INTERFACES if_serializable_object.
     INTERFACES z2ui5_if_app.
+
+    DATA mr_tab          TYPE REF TO data.
+    DATA mr_out          TYPE REF TO data.
+    DATA mr_out_tmp      TYPE REF TO data.
+
+    DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
+    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder binds it, handed over as REF #( mv_search_value )
+    DATA mv_search_value TYPE string.
 
     TYPES:
       BEGIN OF ty_s_result,
@@ -13,12 +20,6 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
       END OF ty_s_result.
 
     DATA ms_result       TYPE ty_s_result.
-    DATA mr_tab          TYPE REF TO data.
-    DATA mr_out          TYPE REF TO data.
-    DATA mr_out_tmp      TYPE REF TO data.
-
-    DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
-    DATA mv_search_value TYPE string.
 
     CLASS-METHODS factory
       IMPORTING
@@ -94,15 +95,17 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
   METHOD render_main.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory( 
-                      )->ele( n = `FragmentDefinition` ns = `core` 
-                      )->a( n = `xmlns` v = `sap.m` 
-                      )->a( n = `xmlns:core` v = `sap.ui.core` 
-                      )->a( n = `xmlns:form` v = `sap.ui.layout.form` 
-                      )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart` 
-                      )->a( n = `xmlns:si` v = `sap.suite.ui.commons.statusindicator` 
-                      )->ele( `Dialog` 
-                      )->a( n = `title` v = title 
+    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+                      )->ele( n = `FragmentDefinition` ns = `core`
+                      )->a( n = `xmlns` v = `sap.m`
+                      )->a( n = `xmlns:core` v = `sap.ui.core`
+                      " abap2ui5lint-disable unused-namespace-declaration -- z2ui5_cl_layo_xml_builder writes controls with these prefixes into this view
+                      )->a( n = `xmlns:form` v = `sap.ui.layout.form`
+                      )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
+                      )->a( n = `xmlns:si` v = `sap.suite.ui.commons.statusindicator`
+                      " abap2ui5lint-enable unused-namespace-declaration
+                      )->ele( `Dialog`
+                      )->a( n = `title` t = title
                       )->a( n = `afterClose` v = client->_event( 'CANCEL' ) ).
 
     z2ui5_cl_layo_xml_builder=>xml_build_table( i_data         = mr_out
@@ -179,7 +182,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
         render_main( ).
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
   ENDMETHOD.
@@ -230,7 +233,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
         CREATE DATA mr_out     TYPE HANDLE new_table_desc.
         CREATE DATA mr_out_tmp TYPE HANDLE new_table_desc.
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
 
     ENDTRY.
 
@@ -276,7 +279,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
         APPEND LINES OF comp TO result.
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
   ENDMETHOD.
 

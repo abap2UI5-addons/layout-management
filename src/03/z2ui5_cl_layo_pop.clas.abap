@@ -5,6 +5,9 @@ CLASS z2ui5_cl_layo_pop DEFINITION
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
+    " abap2ui5lint-disable-next-line unbound-public-attribute -- the calling apps read it after nav_app_leave( ) to decide whether to re-render
+    DATA mv_rerender    TYPE abap_bool.
+
     TYPES:
       BEGIN OF ty_s_sorting,
         sorting TYPE string,
@@ -23,10 +26,9 @@ CLASS z2ui5_cl_layo_pop DEFINITION
              col TYPE c LENGTH 2,
            END OF ty_s_col.
 
-    DATA t_col          TYPE STANDARD TABLE OF ty_s_col.
+    DATA t_col          TYPE STANDARD TABLE OF ty_s_col WITH EMPTY KEY.
 
     DATA mo_layout      TYPE REF TO z2ui5_cl_layo_manager.
-    DATA mt_controls    TYPE z2ui5_cl_layo_manager=>ty_t_controls.
     DATA mt_layout      TYPE z2ui5_cl_layo_manager=>ty_t_positions.
 
     DATA mt_head        TYPE ty_t_layo.
@@ -35,11 +37,7 @@ CLASS z2ui5_cl_layo_pop DEFINITION
     DATA mv_def         TYPE abap_bool.
     DATA mv_usr         TYPE abap_bool.
     DATA mv_format      TYPE string.
-    DATA mv_open        TYPE abap_bool.
-    DATA mv_delete      TYPE abap_bool.
     DATA mt_sorting     TYPE ty_t_sorting.
-    DATA mv_active_line TYPE string.
-    DATA mv_rerender    TYPE abap_bool.
     DATA mv_tab         TYPE string.
 
     DATA mv_xl_label    TYPE int4.
@@ -73,6 +71,11 @@ CLASS z2ui5_cl_layo_pop DEFINITION
         VALUE(result) TYPE REF TO z2ui5_cl_layo_pop.
 
   PROTECTED SECTION.
+    DATA mt_controls    TYPE z2ui5_cl_layo_manager=>ty_t_controls.
+    DATA mv_open        TYPE abap_bool.
+    DATA mv_delete      TYPE abap_bool.
+    DATA mv_active_line TYPE string.
+
     DATA client  TYPE REF TO z2ui5_if_client.
 
     METHODS render_edit.
@@ -148,6 +151,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       init_edit( ).
 
       render_edit( ).
+      RETURN.
 
     ENDIF.
 
@@ -172,38 +176,38 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD render_edit.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory( 
-                      )->ele( n = `FragmentDefinition` ns = `core` 
-                      )->a( n = `xmlns` v = `sap.m` 
-                      )->a( n = `xmlns:core` v = `sap.ui.core` 
-                      )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
+    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+                      )->ele( n = `FragmentDefinition` ns = `core`
+                      )->a( n = `xmlns` v = `sap.m`
+                      )->a( n = `xmlns:core` v = `sap.ui.core` ).
 
-    DATA(dialog) = popup->ele( `Dialog` 
-                       )->a( n = `title` v = 'Edit Layout' 
-                       )->a( n = `contentWidth` v = '80%' 
-                       )->a( n = `contentHeight` v = '80%' 
+    DATA(dialog) = popup->ele( `Dialog`
+                       )->a( n = `title` v = 'Edit Layout'
+                       )->a( n = `contentWidth` v = '80%'
+                       )->a( n = `contentHeight` v = '80%'
                        )->a( n = `afterClose` v = client->_event( 'CLOSE' ) ).
 
     DATA(content) = render_tabstrip( dialog = dialog
                                      active = 'EDIT' ).
 
-    DATA(tab) = content->ele( `Table` 
-                    )->a( n = `growing` b = abap_true 
-                    )->a( n = `growingThreshold` v = '80' 
-                    )->a( n = `sticky` v = `ColumnHeaders` 
+    DATA(tab) = content->ele( `Table`
+                    )->a( n = `growing` b = abap_true
+                    )->a( n = `growingThreshold` v = '80'
+                    )->a( n = `sticky` v = `ColumnHeaders`
                     )->a( n = `items` v = client->_bind_edit( mt_layout ) ).
 
-    tab->ele( `headerToolbar` 
-        )->ele( `OverflowToolbar` 
-        )->tag( `ToolbarSpacer` 
-        )->tag( `SearchField` 
-        )->a( n = `width` v = `17.5rem` 
-        )->a( n = `placeholder` v = |{ z2ui5_cl_util=>rtti_get_data_element_texts( 'ROLLNAME' )-long
+    tab->ele( `headerToolbar`
+        )->ele( `OverflowToolbar`
+        )->tag( `ToolbarSpacer`
+        )->tag( `SearchField`
+        )->a( n = `width` v = `17.5rem`
+        )->a( n = `placeholder` t = |{ z2ui5_cl_util=>rtti_get_data_element_texts( 'ROLLNAME' )-long
                                        }/{
-                                         z2ui5_cl_util=>rtti_get_data_element_texts( 'NAME_FELD' )-long }| 
+                                         z2ui5_cl_util=>rtti_get_data_element_texts( 'NAME_FELD' )-long }|
         )->a( n = `liveChange` v = client->_event( val    = 'BUTTON_SEARCH'
-                                                      t_arg  = VALUE #( ( `${$source>/value}` ) )
-                                                      s_ctrl = VALUE #( check_allow_multi_req = abap_true ) ) ).
+                                                      arg    = `${$source>/value}`
+                                                      s_ctrl = VALUE #( check_queue_last = abap_true
+                                                                        check_no_busy    = abap_true ) ) ).
 
     DATA(list) = tab->ele( `ColumnListItem` ).
 
@@ -227,70 +231,70 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
       CASE control->attribute.
         WHEN 'TLABEL'.
-          DATA(col) = columns->ele( `Column` 
-                          )->a( n = `width` v = `15%` 
+          DATA(col) = columns->ele( `Column`
+                          )->a( n = `width` v = `15%`
                           )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = `Row` ).
         WHEN 'VISIBLE'.
-          col = columns->ele( `Column` 
-                    )->a( n = `width` v = `10%` 
+          col = columns->ele( `Column`
+                    )->a( n = `width` v = `10%`
                     )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = 'Visible' ).
         WHEN 'MERGE'.
-          col = columns->ele( `Column` 
-                    )->a( n = `width` v = `10%` 
+          col = columns->ele( `Column`
+                    )->a( n = `width` v = `10%`
                     )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = 'Merge' ).
         WHEN 'WIDTH'.
-          col = columns->ele( `Column` 
-                    )->a( n = `width` v = `10%` 
+          col = columns->ele( `Column`
+                    )->a( n = `width` v = `10%`
                     )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = 'Width in rem' ).
         WHEN 'SEQUENCE'.
-          col = columns->ele( `Column` 
-                    )->a( n = `width` v = `10%` 
+          col = columns->ele( `Column`
+                    )->a( n = `width` v = `10%`
                     )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = 'Sequence' ).
         WHEN 'ALTERNATIVE_TEXT'.
-          col = columns->ele( `Column` 
-                    )->a( n = `width` v = `10%` 
+          col = columns->ele( `Column`
+                    )->a( n = `width` v = `10%`
                     )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = 'Alternative Text' ).
         WHEN 'REFERENCE_FIELD'.
-          col = columns->ele( `Column` 
-                    )->a( n = `width` v = `10%` 
+          col = columns->ele( `Column`
+                    )->a( n = `width` v = `10%`
                     )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = 'Reference Field' ).
         WHEN 'SUBCOLUMN'.
-          col = columns->ele( `Column` 
-                    )->a( n = `width` v = `15%` 
+          col = columns->ele( `Column`
+                    )->a( n = `width` v = `15%`
                     )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = 'Subcolumn' ).
         WHEN 'GRID_LAYOUT'.
-          col = columns->ele( `Column` 
-                    )->a( n = `width` v = `5%` 
+          col = columns->ele( `Column`
+                    )->a( n = `width` v = `5%`
                     )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = 'Layout' ).
         WHEN 'NO_CONVEXIT'.
-          col = columns->ele( `Column` 
-                    )->a( n = `width` v = `10%` 
+          col = columns->ele( `Column`
+                    )->a( n = `width` v = `10%`
                     )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = 'No Conversion Exit' ).
         WHEN 'SORTING'.
-          col = columns->ele( `Column` 
-                    )->a( n = `width` v = `10%` 
+          col = columns->ele( `Column`
+                    )->a( n = `width` v = `10%`
                     )->ele( `header` ).
-          col->tag( `Text` 
+          col->tag( `Text`
               )->a( n = `text` v = 'Sorting' ).
       ENDCASE.
 
@@ -306,99 +310,99 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       CASE comp-name.
         WHEN 'TLABEL'.
 
-          cells->tag( `Text` 
+          cells->tag( `Text`
               )->a( n = `text` v = |\{FNAME\} { cl_abap_char_utilities=>cr_lf } \{TLABEL\} | ).
 
         WHEN 'VISIBLE' OR 'MERGE'.
 
-          cells->tag( `Switch` 
-              )->a( n = `type` v = 'AcceptReject' 
+          cells->tag( `Switch`
+              )->a( n = `type` v = 'AcceptReject'
               )->a( n = `state` v = |\{{ comp-name }\}| ).
 
         WHEN 'NO_CONVEXIT'.
 
-          cells->ele( `VBox` 
-              )->a( n = `visible` v = |\{SHOW_CONVEXIT\}| 
-              )->tag( `Switch` 
-              )->a( n = `customTextOn` v = |\{CONVEXIT\}| 
-              )->a( n = `customTextOff` v = |\{CONVEXIT\}| 
+          cells->ele( `VBox`
+              )->a( n = `visible` v = |\{SHOW_CONVEXIT\}|
+              )->tag( `Switch`
+              )->a( n = `customTextOn` v = |\{CONVEXIT\}|
+              )->a( n = `customTextOff` v = |\{CONVEXIT\}|
               )->a( n = `state` v = |\{{ comp-name }\}| ).
 
         WHEN 'WIDTH'.
 
-          cells->tag( `Input` 
-              )->a( n = `value` v = |\{{ comp-name }\}| 
-              )->a( n = `maxLength` v = `6` 
+          cells->tag( `Input`
+              )->a( n = `value` v = |\{{ comp-name }\}|
+              )->a( n = `maxLength` v = `6`
               )->a( n = `width` v = `4rem` ).
 
         WHEN 'SEQUENCE'.
 
-          cells->tag( `Input` 
-              )->a( n = `value` v = |\{{ comp-name }\}| 
-              )->a( n = `maxLength` v = `3` 
-              )->a( n = `width` v = `3rem` 
+          cells->tag( `Input`
+              )->a( n = `value` v = |\{{ comp-name }\}|
+              )->a( n = `maxLength` v = `3`
+              )->a( n = `width` v = `3rem`
               )->a( n = `type` v = `Number` ).
 
         WHEN 'ALTERNATIVE_TEXT'.
 
-          cells->tag( `Input` 
+          cells->tag( `Input`
               )->a( n = `value` v = |\{{ comp-name }\}| ).
 
         WHEN 'SUBCOLUMN'.
 
-          cells->tag( `Button` 
-              )->a( n = `text` v = |\{{ comp-name }\}| 
-              )->a( n = `icon` v = `sap-icon://add` 
-              )->a( n = `width` v = '100%' 
-              )->a( n = `press` v = client->_event( val   = 'CALL_SUBCOLUMN'
-                                                 t_arg = VALUE #( ( `${FNAME}` ) ) ) ).
+          cells->tag( `Button`
+              )->a( n = `text` v = |\{{ comp-name }\}|
+              )->a( n = `icon` v = `sap-icon://add`
+              )->a( n = `width` v = '100%'
+              )->a( n = `press` v = client->_event( val = 'CALL_SUBCOLUMN'
+                                                 arg = `${FNAME}` ) ).
 
         WHEN 'SORTING'.
 
-          cells->ele( `ComboBox` 
-              )->a( n = `selectedKey` v = |\{{ comp-name }\}| 
-              )->a( n = `items` v = client->_bind_edit( mt_sorting ) 
-              )->a( n = `width` v = '5rem' 
-              )->tag( n = `Item` ns = `core` 
-              )->a( n = `key` v = '{SORTING}' 
+          cells->ele( `ComboBox`
+              )->a( n = `selectedKey` v = |\{{ comp-name }\}|
+              )->a( n = `items` v = client->_bind_edit( mt_sorting )
+              )->a( n = `width` v = '5rem'
+              )->tag( n = `Item` ns = `core`
+              )->a( n = `key` v = '{SORTING}'
               )->a( n = `text` v = '{DESCR}' ).
 
         WHEN 'REFERENCE_FIELD'.
 
-          cells->ele( `ComboBox` 
-              )->a( n = `selectedKey` v = |\{{ comp-name }\}| 
-              )->a( n = `items` v = client->_bind_edit( mo_layout->ms_layout-t_layout ) 
-              )->a( n = `width` v = '10rem' 
-              )->tag( n = `Item` ns = `core` 
-              )->a( n = `key` v = '{FNAME}' 
+          cells->ele( `ComboBox`
+              )->a( n = `selectedKey` v = |\{{ comp-name }\}|
+              )->a( n = `items` v = client->_bind_edit( mo_layout->ms_layout-t_layout )
+              )->a( n = `width` v = '10rem'
+              )->tag( n = `Item` ns = `core`
+              )->a( n = `key` v = '{FNAME}'
               )->a( n = `text` v = '{FNAME} - {TLABEL}' ).
 
         WHEN 'GRID_LAYOUT'.
 
-          cells->tag( `Button` 
-              )->a( n = `text` v = |\{{ comp-name }\}| 
-              )->a( n = `icon` v = `sap-icon://grid` 
-              )->a( n = `width` v = '5rem' 
-              )->a( n = `press` v = client->_event( val   = 'CALL_GRIDLAYOUT'
-                                                 t_arg = VALUE #( ( `${FNAME}` ) ) ) ).
+          cells->tag( `Button`
+              )->a( n = `text` v = |\{{ comp-name }\}|
+              )->a( n = `icon` v = `sap-icon://grid`
+              )->a( n = `width` v = '5rem'
+              )->a( n = `press` v = client->_event( val = 'CALL_GRIDLAYOUT'
+                                                 arg = `${FNAME}` ) ).
 
       ENDCASE.
 
     ENDLOOP.
 
-    dialog->ele( `buttons` 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'Close' 
-        )->a( n = `icon` v = 'sap-icon://sys-cancel-2' 
-        )->a( n = `press` v = client->_event( 'CLOSE' ) 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'Okay' 
-        )->a( n = `icon` v = 'sap-icon://accept' 
-        )->a( n = `press` v = client->_event( 'EDIT_OKAY' ) 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'Save' 
-        )->a( n = `press` v = client->_event( 'EDIT_SAVE' ) 
-        )->a( n = `icon` v = 'sap-icon://save' 
+    dialog->ele( `buttons`
+        )->tag( `Button`
+        )->a( n = `text` v = 'Close'
+        )->a( n = `icon` v = 'sap-icon://sys-cancel-2'
+        )->a( n = `press` v = client->_event( 'CLOSE' )
+        )->tag( `Button`
+        )->a( n = `text` v = 'Okay'
+        )->a( n = `icon` v = 'sap-icon://accept'
+        )->a( n = `press` v = client->_event( 'EDIT_OKAY' )
+        )->tag( `Button`
+        )->a( n = `text` v = 'Save'
+        )->a( n = `press` v = client->_event( 'EDIT_SAVE' )
+        )->a( n = `icon` v = 'sap-icon://save'
         )->a( n = `type` v = 'Emphasized' ).
 
     client->popup_display( popup->stringify( ) ).
@@ -495,7 +499,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     z2ui5_cl_util=>itab_filter_by_val(
       EXPORTING
-        val    = client->get_event_arg( 1 )
+        val    = client->get_event_arg( )
         fields = VALUE #( ( `FNAME` ) ( `ROLLNAME` ) ( `TLABEL` ) )
       CHANGING
         tab    = mt_layout ).
@@ -541,97 +545,97 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     result = xml.
 
-    result->tag( `Button` 
-        )->a( n = `icon` v = 'sap-icon://action-settings' 
+    result->tag( `Button`
+        )->a( n = `icon` v = 'sap-icon://action-settings'
         )->a( n = `press` v = client->_event( layout->ms_layout-s_head-guid ) ).
 
   ENDMETHOD.
 
   METHOD render_save.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory( 
-                      )->ele( n = `FragmentDefinition` ns = `core` 
-                      )->a( n = `xmlns` v = `sap.m` 
-                      )->a( n = `xmlns:core` v = `sap.ui.core` 
+    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+                      )->ele( n = `FragmentDefinition` ns = `core`
+                      )->a( n = `xmlns` v = `sap.m`
+                      )->a( n = `xmlns:core` v = `sap.ui.core`
                       )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
 
-    DATA(dialog) = popup->ele( `Dialog` 
-                       )->a( n = `title` v = 'Save' 
-                       )->a( n = `contentWidth` v = '80%' 
+    DATA(dialog) = popup->ele( `Dialog`
+                       )->a( n = `title` v = 'Save'
+                       )->a( n = `contentWidth` v = '80%'
                        )->a( n = `afterClose` v = client->_event( 'SAVE_CLOSE' ) ).
 
-    DATA(form) = dialog->ele( `content` 
-                     )->ele( n = `SimpleForm` ns = `form` 
-                     )->a( n = `title` v = 'Layout' 
-                     )->a( n = `editable` b = abap_true 
-                     )->a( n = `labelSpanXL` v = `4` 
-                     )->a( n = `labelSpanL` v = `4` 
-                     )->a( n = `labelSpanM` v = `4` 
-                     )->a( n = `labelSpanS` v = `4` 
-                     )->a( n = `adjustLabelSpan` b = abap_false 
-                     )->a( n = `emptySpanXL` v = `0` 
-                     )->a( n = `emptySpanL` v = `0` 
-                     )->a( n = `emptySpanM` v = `0` 
-                     )->a( n = `emptySpanS` v = `0` 
-                     )->a( n = `columnsXL` v = `2` 
-                     )->a( n = `columnsL` v = `2` 
-                     )->a( n = `columnsM` v = `2` 
+    DATA(form) = dialog->ele( `content`
+                     )->ele( n = `SimpleForm` ns = `form`
+                     )->a( n = `title` v = 'Layout'
+                     )->a( n = `editable` b = abap_true
+                     )->a( n = `labelSpanXL` v = `4`
+                     )->a( n = `labelSpanL` v = `4`
+                     )->a( n = `labelSpanM` v = `4`
+                     )->a( n = `labelSpanS` v = `4`
+                     )->a( n = `adjustLabelSpan` b = abap_false
+                     )->a( n = `emptySpanXL` v = `0`
+                     )->a( n = `emptySpanL` v = `0`
+                     )->a( n = `emptySpanM` v = `0`
+                     )->a( n = `emptySpanS` v = `0`
+                     )->a( n = `columnsXL` v = `2`
+                     )->a( n = `columnsL` v = `2`
+                     )->a( n = `columnsM` v = `2`
                      )->a( n = `singleContainerFullSize` v = `true` ).
 
-    form->ele( `Toolbar` 
-        )->tag( `Title` 
+    form->ele( `Toolbar`
+        )->tag( `Title`
         )->a( n = `text` v = 'Layout' ).
 
-    form->ele( n = `content` ns = `form` 
-        )->tag( `Label` 
-        )->a( n = `text` v = 'Layout' 
-        )->tag( `Input` 
-        )->a( n = `value` v = client->_bind_edit( mv_layout ) 
-        )->a( n = `maxLength` v = '10' 
-        )->tag( `Label` 
-        )->a( n = `text` v = 'Description' 
-        )->tag( `Input` 
+    form->ele( n = `content` ns = `form`
+        )->tag( `Label`
+        )->a( n = `text` v = 'Layout'
+        )->tag( `Input`
+        )->a( n = `value` v = client->_bind_edit( mv_layout )
+        )->a( n = `maxLength` v = '10'
+        )->tag( `Label`
+        )->a( n = `text` v = 'Description'
+        )->tag( `Input`
         )->a( n = `value` v = client->_bind_edit( mv_descr ) ).
 
-    form->ele( `Toolbar` 
-        )->tag( `Title` 
+    form->ele( `Toolbar`
+        )->tag( `Title`
         )->a( n = `text` v = `Save Options` ).
 
-    form->ele( n = `content` ns = `form` 
-        )->tag( `Label` 
-        )->a( n = `text` v = 'Default Layout' 
-        )->tag( `Switch` 
-        )->a( n = `type` v = 'AcceptReject' 
-        )->a( n = `state` v = client->_bind_edit( mv_def ) 
-        )->tag( `Label` 
-        )->a( n = `text` v = 'User specific' 
-        )->tag( `Switch` 
-        )->a( n = `type` v = 'AcceptReject' 
-        )->a( n = `state` v = client->_bind_edit( mv_usr ) 
-        )->tag( `Label` 
-        )->a( n = `text` v = 'Screen Size' 
-        )->ele( `ComboBox` 
+    form->ele( n = `content` ns = `form`
+        )->tag( `Label`
+        )->a( n = `text` v = 'Default Layout'
+        )->tag( `Switch`
+        )->a( n = `type` v = 'AcceptReject'
+        )->a( n = `state` v = client->_bind_edit( mv_def )
+        )->tag( `Label`
+        )->a( n = `text` v = 'User specific'
+        )->tag( `Switch`
+        )->a( n = `type` v = 'AcceptReject'
+        )->a( n = `state` v = client->_bind_edit( mv_usr )
+        )->tag( `Label`
+        )->a( n = `text` v = 'Screen Size'
+        )->ele( `ComboBox`
         )->a( n = `selectedKey` v = client->_bind_edit( mv_format )
 *             )->item( key  = `X`
-*                         text        = `XL - Large Desktop` 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = z2ui5_cl_layo_manager=>screen_format_l 
+*                         text        = `XL - Large Desktop`
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = z2ui5_cl_layo_manager=>screen_format_l
         )->a( n = `text` v = `Large - Terminal`
 *             )->item( key  = `M`
-*                      text = `M - Tablet` 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = z2ui5_cl_layo_manager=>screen_format_s 
+*                      text = `M - Tablet`
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = z2ui5_cl_layo_manager=>screen_format_s
         )->a( n = `text` v = `Small - Handheld` ).
 
-    dialog->ele( `buttons` 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'Back' 
-        )->a( n = `icon` v = 'sap-icon://nav-back' 
-        )->a( n = `press` v = client->_event( 'SAVE_CLOSE' ) 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'Save' 
-        )->a( n = `press` v = client->_event( 'SAVE_SAVE' ) 
-        )->a( n = `type` v = 'Success' 
+    dialog->ele( `buttons`
+        )->tag( `Button`
+        )->a( n = `text` v = 'Back'
+        )->a( n = `icon` v = 'sap-icon://nav-back'
+        )->a( n = `press` v = client->_event( 'SAVE_CLOSE' )
+        )->tag( `Button`
+        )->a( n = `text` v = 'Save'
+        )->a( n = `press` v = client->_event( 'SAVE_SAVE' )
+        )->a( n = `type` v = 'Accept'
         )->a( n = `icon` v = 'sap-icon://save' ).
 
     client->popup_display( popup->stringify( ) ).
@@ -691,7 +695,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         " Save New Layout - new Guid
         TRY.
             head-guid = cl_system_uuid=>create_uuid_c32_static( ).
-          CATCH cx_root.
+          CATCH cx_root ##NO_HANDLER.
         ENDTRY.
 
       ENDIF.
@@ -783,26 +787,26 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     " selectedKey, so a tab click sends the new key back in mv_tab.
     mv_tab = active.
 
-    DATA(bar) = dialog->ele( `IconTabBar` 
-                    )->a( n = `selectedKey` v = client->_bind_edit( mv_tab ) 
-                    )->a( n = `select` v = client->_event( 'TAB_SELECT' ) 
-                    )->a( n = `stretchContentHeight` b = abap_true 
+    DATA(bar) = dialog->ele( `IconTabBar`
+                    )->a( n = `selectedKey` v = client->_bind_edit( mv_tab )
+                    )->a( n = `select` v = client->_event( 'TAB_SELECT' )
+                    )->a( n = `stretchContentHeight` b = abap_true
                     )->a( n = `expandable` b = abap_false ).
 
-    bar->ele( `items` 
-        )->ele( `IconTabFilter` 
-        )->a( n = `key` v = 'EDIT' 
-        )->a( n = `text` v = 'Edit' 
-        )->a( n = `icon` v = 'sap-icon://edit' 
-        )->end( 
-        )->ele( `IconTabFilter` 
-        )->a( n = `key` v = 'SELECT' 
-        )->a( n = `text` v = 'Select' 
-        )->a( n = `icon` v = 'sap-icon://open-folder' 
-        )->end( 
-        )->ele( `IconTabFilter` 
-        )->a( n = `key` v = 'DELETE' 
-        )->a( n = `text` v = 'Delete' 
+    bar->ele( `items`
+        )->ele( `IconTabFilter`
+        )->a( n = `key` v = 'EDIT'
+        )->a( n = `text` v = 'Edit'
+        )->a( n = `icon` v = 'sap-icon://edit'
+        )->end(
+        )->ele( `IconTabFilter`
+        )->a( n = `key` v = 'SELECT'
+        )->a( n = `text` v = 'Select'
+        )->a( n = `icon` v = 'sap-icon://open-folder'
+        )->end(
+        )->ele( `IconTabFilter`
+        )->a( n = `key` v = 'DELETE'
+        )->a( n = `text` v = 'Delete'
         )->a( n = `icon` v = 'sap-icon://delete' ).
 
     " The screen content lives in the bar-level content aggregation and is
@@ -813,58 +817,57 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD render_delete.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory( 
-                      )->ele( n = `FragmentDefinition` ns = `core` 
-                      )->a( n = `xmlns` v = `sap.m` 
-                      )->a( n = `xmlns:core` v = `sap.ui.core` 
-                      )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
+    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+                      )->ele( n = `FragmentDefinition` ns = `core`
+                      )->a( n = `xmlns` v = `sap.m`
+                      )->a( n = `xmlns:core` v = `sap.ui.core` ).
 
-    DATA(dialog) = popup->ele( `Dialog` 
-                       )->a( n = `title` v = 'Delete Layout' 
-                       )->a( n = `contentWidth` v = '80%' 
-                       )->a( n = `contentHeight` v = '80%' 
+    DATA(dialog) = popup->ele( `Dialog`
+                       )->a( n = `title` v = 'Delete Layout'
+                       )->a( n = `contentWidth` v = '80%'
+                       )->a( n = `contentHeight` v = '80%'
                        )->a( n = `afterClose` v = client->_event( 'CLOSE' ) ).
 
     DATA(content) = render_tabstrip( dialog = dialog
                                      active = 'DELETE' ).
 
-    content->ele( `Table` 
-        )->a( n = `mode` v = 'SingleSelectLeft' 
-        )->a( n = `items` v = client->_bind_edit( mt_head ) 
-        )->ele( `columns` 
-        )->ele( `Column` 
-        )->tag( `Text` 
-        )->a( n = `text` v = 'Layout' 
-        )->end( 
-        )->ele( `Column` 
-        )->tag( `Text` 
-        )->a( n = `text` v = 'Description' 
-        )->end( 
-        )->ele( `Column` 
-        )->tag( `Text` 
-        )->a( n = `text` v = 'Active' 
-        )->end( 
-        )->end( 
-        )->ele( `items` 
-        )->ele( `ColumnListItem` 
-        )->a( n = `selected` v = '{SELKZ}' 
-        )->ele( `cells` 
-        )->tag( `Text` 
-        )->a( n = `text` v = '{LAYOUT}' 
-        )->tag( `Text` 
-        )->a( n = `text` v = '{DESCR}' 
-        )->tag( `Text` 
+    content->ele( `Table`
+        )->a( n = `mode` v = 'SingleSelectLeft'
+        )->a( n = `items` v = client->_bind_edit( mt_head )
+        )->ele( `columns`
+        )->ele( `Column`
+        )->tag( `Text`
+        )->a( n = `text` v = 'Layout'
+        )->end(
+        )->ele( `Column`
+        )->tag( `Text`
+        )->a( n = `text` v = 'Description'
+        )->end(
+        )->ele( `Column`
+        )->tag( `Text`
+        )->a( n = `text` v = 'Active'
+        )->end(
+        )->end(
+        )->ele( `items`
+        )->ele( `ColumnListItem`
+        )->a( n = `selected` v = '{SELKZ}'
+        )->ele( `cells`
+        )->tag( `Text`
+        )->a( n = `text` v = '{LAYOUT}'
+        )->tag( `Text`
+        )->a( n = `text` v = '{DESCR}'
+        )->tag( `Text`
         )->a( n = `text` v = '{ACTIVE}' ).
 
-    dialog->ele( `buttons` 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'Close' 
-        )->a( n = `icon` v = 'sap-icon://sys-cancel-2' 
-        )->a( n = `press` v = client->_event( 'CLOSE' ) 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'Delete' 
-        )->a( n = `icon` v = 'sap-icon://delete' 
-        )->a( n = `press` v = client->_event( 'DELETE_SELECT' ) 
+    dialog->ele( `buttons`
+        )->tag( `Button`
+        )->a( n = `text` v = 'Close'
+        )->a( n = `icon` v = 'sap-icon://sys-cancel-2'
+        )->a( n = `press` v = client->_event( 'CLOSE' )
+        )->tag( `Button`
+        )->a( n = `text` v = 'Delete'
+        )->a( n = `icon` v = 'sap-icon://delete'
+        )->a( n = `press` v = client->_event( 'DELETE_SELECT' )
         )->a( n = `type` v = 'Reject' ).
 
     client->popup_display( popup->stringify( ) ).
@@ -873,70 +876,69 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD render_open.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory( 
-                      )->ele( n = `FragmentDefinition` ns = `core` 
-                      )->a( n = `xmlns` v = `sap.m` 
-                      )->a( n = `xmlns:core` v = `sap.ui.core` 
-                      )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
+    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+                      )->ele( n = `FragmentDefinition` ns = `core`
+                      )->a( n = `xmlns` v = `sap.m`
+                      )->a( n = `xmlns:core` v = `sap.ui.core` ).
 
-    DATA(dialog) = popup->ele( `Dialog` 
-                       )->a( n = `title` v = 'Select Layout' 
-                       )->a( n = `contentWidth` v = '80%' 
-                       )->a( n = `contentHeight` v = '80%' 
+    DATA(dialog) = popup->ele( `Dialog`
+                       )->a( n = `title` v = 'Select Layout'
+                       )->a( n = `contentWidth` v = '80%'
+                       )->a( n = `contentHeight` v = '80%'
                        )->a( n = `afterClose` v = client->_event( 'CLOSE' ) ).
 
     DATA(content) = render_tabstrip( dialog = dialog
                                      active = 'SELECT' ).
 
-    content->ele( `Table` 
-        )->a( n = `mode` v = 'SingleSelectLeft' 
-        )->a( n = `items` v = client->_bind_edit( mt_head ) 
-        )->ele( `columns` 
-        )->ele( `Column` 
-        )->tag( `Text` 
-        )->a( n = `text` v = 'Layout' 
-        )->end( 
-        )->ele( `Column` 
-        )->tag( `Text` 
-        )->a( n = `text` v = 'Active' 
-        )->end( 
-        )->ele( `Column` 
-        )->tag( `Text` 
-        )->a( n = `text` v = 'Description' 
-        )->end( 
-        )->ele( `Column` 
-        )->tag( `Text` 
-        )->a( n = `text` v = 'Screen Format' 
-        )->end( 
-        )->ele( `Column` 
-        )->tag( `Text` 
-        )->a( n = `text` v = 'Default' 
-        )->end( 
-        )->end( 
-        )->ele( `items` 
-        )->ele( `ColumnListItem` 
-        )->a( n = `selected` v = '{SELKZ}' 
-        )->ele( `cells` 
-        )->tag( `Text` 
-        )->a( n = `text` v = '{LAYOUT}' 
-        )->tag( `Text` 
-        )->a( n = `text` v = '{ACTIVE}' 
-        )->tag( `Text` 
-        )->a( n = `text` v = '{DESCR}' 
-        )->tag( `Text` 
-        )->a( n = `text` v = '{SCREEN_FORMAT}' 
-        )->tag( `Text` 
+    content->ele( `Table`
+        )->a( n = `mode` v = 'SingleSelectLeft'
+        )->a( n = `items` v = client->_bind_edit( mt_head )
+        )->ele( `columns`
+        )->ele( `Column`
+        )->tag( `Text`
+        )->a( n = `text` v = 'Layout'
+        )->end(
+        )->ele( `Column`
+        )->tag( `Text`
+        )->a( n = `text` v = 'Active'
+        )->end(
+        )->ele( `Column`
+        )->tag( `Text`
+        )->a( n = `text` v = 'Description'
+        )->end(
+        )->ele( `Column`
+        )->tag( `Text`
+        )->a( n = `text` v = 'Screen Format'
+        )->end(
+        )->ele( `Column`
+        )->tag( `Text`
+        )->a( n = `text` v = 'Default'
+        )->end(
+        )->end(
+        )->ele( `items`
+        )->ele( `ColumnListItem`
+        )->a( n = `selected` v = '{SELKZ}'
+        )->ele( `cells`
+        )->tag( `Text`
+        )->a( n = `text` v = '{LAYOUT}'
+        )->tag( `Text`
+        )->a( n = `text` v = '{ACTIVE}'
+        )->tag( `Text`
+        )->a( n = `text` v = '{DESCR}'
+        )->tag( `Text`
+        )->a( n = `text` v = '{SCREEN_FORMAT}'
+        )->tag( `Text`
         )->a( n = `text` v = '{DEF}' ).
 
-    dialog->ele( `buttons` 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'Close' 
-        )->a( n = `icon` v = 'sap-icon://sys-cancel-2' 
-        )->a( n = `press` v = client->_event( 'CLOSE' ) 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'OK' 
-        )->a( n = `icon` v = 'sap-icon://accept' 
-        )->a( n = `press` v = client->_event( 'OPEN_SELECT' ) 
+    dialog->ele( `buttons`
+        )->tag( `Button`
+        )->a( n = `text` v = 'Close'
+        )->a( n = `icon` v = 'sap-icon://sys-cancel-2'
+        )->a( n = `press` v = client->_event( 'CLOSE' )
+        )->tag( `Button`
+        )->a( n = `text` v = 'OK'
+        )->a( n = `icon` v = 'sap-icon://accept'
+        )->a( n = `press` v = client->_event( 'OPEN_SELECT' )
         )->a( n = `type` v = 'Emphasized' ).
 
     client->popup_display( popup->stringify( ) ).
@@ -1056,55 +1058,55 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD render_add_subcolumn.
 
-    DATA(lo_popup) = z2ui5_cl_ui5_view_builder=>factory( 
-                         )->ele( n = `FragmentDefinition` ns = `core` 
-                         )->a( n = `xmlns` v = `sap.m` 
-                         )->a( n = `xmlns:core` v = `sap.ui.core` 
-                         )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
+    DATA(lo_popup) = z2ui5_cl_ui5_view_builder=>factory(
+                         )->ele( n = `FragmentDefinition` ns = `core`
+                         )->a( n = `xmlns` v = `sap.m`
+                         )->a( n = `xmlns:core` v = `sap.ui.core` ).
 
-    lo_popup = lo_popup->ele( `Dialog` 
-                   )->a( n = `afterClose` v = client->_event( 'SUBCOLUMN_CANCEL' ) 
-                   )->a( n = `contentWidth` v = `50%` 
+    lo_popup = lo_popup->ele( `Dialog`
+                   )->a( n = `afterClose` v = client->_event( 'SUBCOLUMN_CANCEL' )
+                   )->a( n = `contentWidth` v = `50%`
                    )->a( n = `title` v = 'Define Subcolumns' ).
 
-    DATA(vbox) = lo_popup->ele( `VBox` 
+    DATA(vbox) = lo_popup->ele( `VBox`
                      )->a( n = `justifyContent` v = 'SpaceBetween' ).
 
-    DATA(item) = vbox->ele( `List` 
-                     )->a( n = `noData` v = `No subcolumns defined` 
-                     )->a( n = `items` v = client->_bind_edit( mo_layout->mt_sub_cols ) 
-                     )->a( n = `selectionChange` v = client->_event( 'SELCHANGE' ) 
+    DATA(item) = vbox->ele( `List`
+                     )->a( n = `noData` v = `No subcolumns defined`
+                     )->a( n = `items` v = client->_bind_edit( mo_layout->mt_sub_cols )
+                     )->a( n = `selectionChange` v = client->_event( 'SELCHANGE' )
                      )->ele( `CustomListItem` ).
 
-    item->ele( `ComboBox` 
-        )->a( n = `selectedKey` v = `{FNAME}` 
-        )->a( n = `items` v = client->_bind( mo_layout->mt_comps  ) 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = '{FNAME}' 
-        )->a( n = `text` v = '{FNAME} {TLABEL}' 
-        )->end( 
-        )->tag( `Button` 
-        )->a( n = `icon` v = 'sap-icon://decline' 
-        )->a( n = `type` v = `Transparent` 
-        )->a( n = `press` v = client->_event( val   = `SUBCOLUMN_DELETE`
-                                                t_arg = VALUE #( ( `${KEY}` ) ) ) ).
+    item->ele( `ComboBox`
+        )->a( n = `selectedKey` v = `{FNAME}`
+        )->a( n = `items` v = client->_bind( mo_layout->mt_comps  )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = '{FNAME}'
+        )->a( n = `text` v = '{FNAME} {TLABEL}'
+        )->end(
+        )->tag( `Button`
+        )->a( n = `icon` v = 'sap-icon://decline'
+        )->a( n = `tooltip` v = `Delete`
+        )->a( n = `type` v = `Transparent`
+        )->a( n = `press` v = client->_event( val = `SUBCOLUMN_DELETE`
+                                                arg = `${KEY}` ) ).
 
-    lo_popup->ele( `buttons` 
-        )->tag( `Button` 
-        )->a( n = `text` v = `Delete All` 
-        )->a( n = `icon` v = 'sap-icon://delete' 
-        )->a( n = `type` v = `Transparent` 
-        )->a( n = `press` v = client->_event( val = `SUBCOLUMN_DELETE_ALL` ) 
-        )->tag( `Button` 
-        )->a( n = `text` v = `Add Item` 
-        )->a( n = `icon` v = `sap-icon://add` 
-        )->a( n = `press` v = client->_event( val = `SUBCOLUMN_ADD` ) 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'Cancel' 
-        )->a( n = `press` v = client->_event( 'SUBCOLUMN_CANCEL' ) 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'OK' 
-        )->a( n = `press` v = client->_event( 'SUBCOLUMN_CONFIRM' ) 
+    lo_popup->ele( `buttons`
+        )->tag( `Button`
+        )->a( n = `text` v = `Delete All`
+        )->a( n = `icon` v = 'sap-icon://delete'
+        )->a( n = `type` v = `Transparent`
+        )->a( n = `press` v = client->_event( val = `SUBCOLUMN_DELETE_ALL` )
+        )->tag( `Button`
+        )->a( n = `text` v = `Add Item`
+        )->a( n = `icon` v = `sap-icon://add`
+        )->a( n = `press` v = client->_event( val = `SUBCOLUMN_ADD` )
+        )->tag( `Button`
+        )->a( n = `text` v = 'Cancel'
+        )->a( n = `press` v = client->_event( 'SUBCOLUMN_CANCEL' )
+        )->tag( `Button`
+        )->a( n = `text` v = 'OK'
+        )->a( n = `press` v = client->_event( 'SUBCOLUMN_CONFIRM' )
         )->a( n = `type` v = 'Emphasized' ).
 
     client->popup_display( lo_popup->stringify( ) ).
@@ -1327,101 +1329,101 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                      ( col = 11  )
                      ( col = 12  ) ).
 
-    DATA(lo_popup) = z2ui5_cl_ui5_view_builder=>factory( 
-                         )->ele( n = `FragmentDefinition` ns = `core` 
-                         )->a( n = `xmlns` v = `sap.m` 
-                         )->a( n = `xmlns:core` v = `sap.ui.core` 
+    DATA(lo_popup) = z2ui5_cl_ui5_view_builder=>factory(
+                         )->ele( n = `FragmentDefinition` ns = `core`
+                         )->a( n = `xmlns` v = `sap.m`
+                         )->a( n = `xmlns:core` v = `sap.ui.core`
                          )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
 
-    lo_popup = lo_popup->ele( `Dialog` 
-                   )->a( n = `afterClose` v = client->_event( 'GRIDLAYOUT_CANCEL' ) 
-                   )->a( n = `contentWidth` v = `140px` 
+    lo_popup = lo_popup->ele( `Dialog`
+                   )->a( n = `afterClose` v = client->_event( 'GRIDLAYOUT_CANCEL' )
+                   )->a( n = `contentWidth` v = `140px`
                    )->a( n = `title` v = 'Grid Layout' ).
 
-    DATA(form) = lo_popup->ele( n = `SimpleForm` ns = `form` 
-                     )->a( n = `editable` b = abap_true 
-                     )->a( n = `title` v = 'Define Label and Value Span' 
+    DATA(form) = lo_popup->ele( n = `SimpleForm` ns = `form`
+                     )->a( n = `editable` b = abap_true
+                     )->a( n = `title` v = 'Define Label and Value Span'
                      )->ele( n = `content` ns = `form` ).
 
-    form->tag( `Label` 
-        )->a( n = `text` v = 'XL' 
-        )->ele( `ComboBox` 
-        )->a( n = `selectedKey` v = client->_bind_edit( mv_xl_label ) 
-        )->a( n = `width` v = `7rem` 
-        )->a( n = `items` v = client->_bind( t_col  ) 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = '{COL}' 
+    form->tag( `Label`
+        )->a( n = `text` v = 'XL'
+        )->ele( `ComboBox`
+        )->a( n = `selectedKey` v = client->_bind_edit( mv_xl_label )
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col  )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = '{COL}'
         )->a( n = `text` v = '{COL} Label Span' ).
 
-    form->ele( `ComboBox` 
-        )->a( n = `selectedKey` v = client->_bind_edit( mv_xl_value ) 
-        )->a( n = `width` v = `7rem` 
-        )->a( n = `items` v = client->_bind( t_col  ) 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = '{COL}' 
+    form->ele( `ComboBox`
+        )->a( n = `selectedKey` v = client->_bind_edit( mv_xl_value )
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col  )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = '{COL}'
         )->a( n = `text` v = '{COL} Value Span' ).
 
-    form->tag( `Label` 
-        )->a( n = `text` v = 'L' 
-        )->ele( `ComboBox` 
-        )->a( n = `selectedKey` v = client->_bind_edit( mv_l_label ) 
-        )->a( n = `width` v = `7rem` 
-        )->a( n = `items` v = client->_bind( t_col  ) 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = '{COL}' 
+    form->tag( `Label`
+        )->a( n = `text` v = 'L'
+        )->ele( `ComboBox`
+        )->a( n = `selectedKey` v = client->_bind_edit( mv_l_label )
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col  )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = '{COL}'
         )->a( n = `text` v = '{COL} Label Span' ).
 
-    form->ele( `ComboBox` 
-        )->a( n = `selectedKey` v = client->_bind_edit( mv_l_value ) 
-        )->a( n = `width` v = `7rem` 
-        )->a( n = `items` v = client->_bind( t_col  ) 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = '{COL}' 
+    form->ele( `ComboBox`
+        )->a( n = `selectedKey` v = client->_bind_edit( mv_l_value )
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col  )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = '{COL}'
         )->a( n = `text` v = '{COL} Value Span' ).
 
-    form->tag( `Label` 
-        )->a( n = `text` v = 'M' 
-        )->ele( `ComboBox` 
-        )->a( n = `selectedKey` v = client->_bind_edit( mv_m_label ) 
-        )->a( n = `width` v = `7rem` 
-        )->a( n = `items` v = client->_bind( t_col  ) 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = '{COL}' 
+    form->tag( `Label`
+        )->a( n = `text` v = 'M'
+        )->ele( `ComboBox`
+        )->a( n = `selectedKey` v = client->_bind_edit( mv_m_label )
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col  )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = '{COL}'
         )->a( n = `text` v = '{COL} Label Span' ).
 
-    form->ele( `ComboBox` 
-        )->a( n = `selectedKey` v = client->_bind_edit( mv_m_value ) 
-        )->a( n = `width` v = `7rem` 
-        )->a( n = `items` v = client->_bind( t_col  ) 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = '{COL}' 
+    form->ele( `ComboBox`
+        )->a( n = `selectedKey` v = client->_bind_edit( mv_m_value )
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col  )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = '{COL}'
         )->a( n = `text` v = '{COL} Value Span' ).
 
-    form->tag( `Label` 
-        )->a( n = `text` v = 'S' 
-        )->ele( `ComboBox` 
-        )->a( n = `selectedKey` v = client->_bind_edit( mv_s_label ) 
-        )->a( n = `width` v = `7rem` 
-        )->a( n = `items` v = client->_bind( t_col  ) 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = '{COL}' 
+    form->tag( `Label`
+        )->a( n = `text` v = 'S'
+        )->ele( `ComboBox`
+        )->a( n = `selectedKey` v = client->_bind_edit( mv_s_label )
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col  )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = '{COL}'
         )->a( n = `text` v = '{COL} Label Span' ).
 
-    form->ele( `ComboBox` 
-        )->a( n = `selectedKey` v = client->_bind_edit( mv_s_value ) 
-        )->a( n = `width` v = `7rem` 
-        )->a( n = `items` v = client->_bind( t_col  ) 
-        )->tag( n = `Item` ns = `core` 
-        )->a( n = `key` v = '{COL}' 
+    form->ele( `ComboBox`
+        )->a( n = `selectedKey` v = client->_bind_edit( mv_s_value )
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col  )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = '{COL}'
         )->a( n = `text` v = '{COL} Value Span' ).
 
-    lo_popup->ele( `buttons` 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'Cancel' 
-        )->a( n = `press` v = client->_event( 'GRIDLAYOUT_CANCEL' ) 
-        )->tag( `Button` 
-        )->a( n = `text` v = 'OK' 
-        )->a( n = `press` v = client->_event( 'GRIDLAYOUT_CONFIRM' ) 
+    lo_popup->ele( `buttons`
+        )->tag( `Button`
+        )->a( n = `text` v = 'Cancel'
+        )->a( n = `press` v = client->_event( 'GRIDLAYOUT_CANCEL' )
+        )->tag( `Button`
+        )->a( n = `text` v = 'OK'
+        )->a( n = `press` v = client->_event( 'GRIDLAYOUT_CONFIRM' )
         )->a( n = `type` v = 'Emphasized' ).
 
     client->popup_display( lo_popup->stringify( ) ).
