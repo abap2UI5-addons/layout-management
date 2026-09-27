@@ -19,6 +19,7 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
         check_confirmed TYPE abap_bool,
       END OF ty_s_result.
 
+    " abap2ui5lint-disable-next-line unbound-public-attribute -- a popup's result is its interface to the app that called it; result( ) returns the same, PUBLIC keeps direct readers compiling
     DATA ms_result       TYPE ty_s_result.
 
     CLASS-METHODS factory
