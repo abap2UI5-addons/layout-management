@@ -13,7 +13,9 @@ CLASS z2ui5_cl_layo_sample_05 DEFINITION
       END OF ty_s_data.
     TYPES ty_t_data TYPE STANDARD TABLE OF ty_s_data WITH EMPTY KEY.
 
+    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_table( ) binds it, handed over as REF #( mt_table )
     DATA mt_table        TYPE ty_t_data.
+    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_simple_form( ) binds it, handed over as REF #( ms_struc )
     DATA ms_struc        TYPE ty_s_data.
     DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
     DATA mo_table_layout TYPE REF TO z2ui5_cl_layo_manager.
@@ -70,22 +72,24 @@ CLASS z2ui5_cl_layo_sample_05 IMPLEMENTATION.
 
   METHOD render_main.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( 
-                     )->ele( n = `View` ns = `mvc` 
-                     )->a( n = `xmlns` v = `sap.m` 
-                     )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc` 
-                     )->a( n = `xmlns:core` v = `sap.ui.core` 
-                     )->a( n = `xmlns:form` v = `sap.ui.layout.form` 
-                     )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart` 
-                     )->a( n = `xmlns:si` v = `sap.suite.ui.commons.statusindicator` 
-                     )->a( n = `displayBlock` v = `true` 
-                     )->a( n = `height` v = `100%` 
+    DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+                     )->ele( n = `View` ns = `mvc`
+                     )->a( n = `xmlns` v = `sap.m`
+                     )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc`
+                     " abap2ui5lint-disable unused-namespace-declaration -- z2ui5_cl_layo_xml_builder writes controls with these prefixes into this view
+                     )->a( n = `xmlns:core` v = `sap.ui.core`
+                     )->a( n = `xmlns:form` v = `sap.ui.layout.form`
+                     )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
+                     )->a( n = `xmlns:si` v = `sap.suite.ui.commons.statusindicator`
+                     " abap2ui5lint-enable unused-namespace-declaration
+                     )->a( n = `displayBlock` v = `true`
+                     )->a( n = `height` v = `100%`
                      )->ele( `Shell` ).
 
-    DATA(page) = view->ele( `Page` 
-                     )->a( n = `title` v = 'Layout' 
-                     )->a( n = `navButtonPress` v = client->_event( 'BACK' ) 
-                     )->a( n = `showNavButton` b = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL ) 
+    DATA(page) = view->ele( `Page`
+                     )->a( n = `title` v = 'Layout'
+                     )->a( n = `navButtonPress` v = client->_event( 'BACK' )
+                     )->a( n = `showNavButton` b = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL )
                      )->a( n = `class` v = 'sapUiContentPadding' ).
 
     z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = REF #( mt_table )
@@ -180,7 +184,7 @@ CLASS z2ui5_cl_layo_sample_05 IMPLEMENTATION.
           "  for all other changes in Layout View Model Update is enough.
           client->view_model_update( ).
         ENDIF.
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
   ENDMETHOD.
