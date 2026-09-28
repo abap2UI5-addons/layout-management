@@ -62,7 +62,11 @@ CLASS z2ui5_cl_layo_sample_02 IMPLEMENTATION.
 
   METHOD render_main.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA page TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp2 TYPE xsdboolean.
+    DATA temp1 LIKE REF TO ms_data.
+    view = z2ui5_cl_ui5_view_builder=>factory(
                      )->ele( n = `View` ns = `mvc`
                      )->a( n = `xmlns` v = `sap.m`
                      )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc`
@@ -76,13 +80,18 @@ CLASS z2ui5_cl_layo_sample_02 IMPLEMENTATION.
                      )->a( n = `height` v = `100%`
                      )->ele( `Shell` ).
 
-    DATA(page) = view->ele( `Page`
+
+
+    temp2 = boolc( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL ).
+    page = view->ele( `Page`
                      )->a( n = `title` v = 'Layout'
                      )->a( n = `navButtonPress` v = client->_event( 'BACK' )
-                     )->a( n = `showNavButton` b = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL )
+                     )->a( n = `showNavButton` b = temp2
                      )->a( n = `class` v = 'sapUiContentPadding' ).
 
-    z2ui5_cl_layo_xml_builder=>xml_build_simple_form( i_data   = REF #( ms_data )
+
+    GET REFERENCE OF ms_data INTO temp1.
+z2ui5_cl_layo_xml_builder=>xml_build_simple_form( i_data   = temp1
                                                       i_xml    = page
                                                       i_client = client
                                                       i_layout = mo_layout ).
@@ -94,7 +103,7 @@ CLASS z2ui5_cl_layo_sample_02 IMPLEMENTATION.
   METHOD z2ui5_if_app~main.
     me->client = client.
 
-    IF client->check_on_init( ).
+    IF client->check_on_init( ) IS NOT INITIAL.
       on_init( ).
     ENDIF.
 
@@ -108,43 +117,58 @@ CLASS z2ui5_cl_layo_sample_02 IMPLEMENTATION.
 
   METHOD get_data.
 
-    ms_data = VALUE #( names             = 'Viktor'
-                       icon              = VALUE #( src       = 'sap-icon://customer'
-                                                    icon_size = '2rem' )
-                       generictag        = VALUE #( text   = 'Viktor'
-                                                    status = 'Warning'
-                                                    design = 'StatusIconHidden' )
-                       progressindicator = VALUE #( percentvalue = '70'
-                                                    state        = 'Warning'  )
-                       radialmicrochart  = VALUE #( percentage            = '70'
-                                                    valuecolor            = 'Critical'
-                                                    radialmicrochart_size = 'S' )
-                       statusindicator   = VALUE #( value                = '70'
-                                                    fillcolor_error      = '100'
-                                                    fillcolor_critical   = '80'
-                                                    fillcolor_good       = '40'
-                                                    shapeid              = 'tool'
-                                                    statusindicator_size = 'Medium' ) ).
+    CLEAR ms_data.
+    ms_data-names = 'Viktor'.
+    CLEAR ms_data-icon.
+    ms_data-icon-src = 'sap-icon://customer'.
+    ms_data-icon-icon_size = '2rem'.
+    CLEAR ms_data-generictag.
+    ms_data-generictag-text = 'Viktor'.
+    ms_data-generictag-status = 'Warning'.
+    ms_data-generictag-design = 'StatusIconHidden'.
+    CLEAR ms_data-progressindicator.
+    ms_data-progressindicator-percentvalue = '70'.
+    ms_data-progressindicator-state = 'Warning'.
+    CLEAR ms_data-radialmicrochart.
+    ms_data-radialmicrochart-percentage = '70'.
+    ms_data-radialmicrochart-valuecolor = 'Critical'.
+    ms_data-radialmicrochart-radialmicrochart_size = 'S'.
+    CLEAR ms_data-statusindicator.
+    ms_data-statusindicator-value = '70'.
+    ms_data-statusindicator-fillcolor_error = '100'.
+    ms_data-statusindicator-fillcolor_critical = '80'.
+    ms_data-statusindicator-fillcolor_good = '40'.
+    ms_data-statusindicator-shapeid = 'tool'.
+    ms_data-statusindicator-statusindicator_size = 'Medium'.
 
   ENDMETHOD.
 
   METHOD init_layout.
+    DATA class TYPE abap_abstypename.
+    DATA temp2 LIKE REF TO ms_data.
+    DATA temp3 LIKE LINE OF mo_layout->ms_layout-t_layout.
+    DATA layout LIKE REF TO temp3.
 
     IF mo_layout IS BOUND.
       RETURN.
     ENDIF.
 
-    DATA(class) = cl_abap_classdescr=>get_class_name( me ).
+
+    class = cl_abap_classdescr=>get_class_name( me ).
     SHIFT class LEFT DELETING LEADING '\CLASS='.
 
-    mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>ui_simpleform
-                                                data     = REF #( ms_data )
+
+    GET REFERENCE OF ms_data INTO temp2.
+mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>ui_simpleform
+                                                data     = temp2
                                                 handle01 = class
                                                 handle02 = 'USR01'
                                                 handle03 = ''
                                                 handle04 = '' ).
 
-    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
+
+
+    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO layout.
 
       layout->grid_label_xl = '4'.
       layout->grid_label_l  = '4'.
@@ -161,12 +185,17 @@ CLASS z2ui5_cl_layo_sample_02 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_after_navigation.
+        DATA temp4 TYPE REF TO z2ui5_cl_layo_pop.
+        DATA app LIKE temp4.
 
-    CHECK client->check_on_navigated( ).
+    CHECK client->check_on_navigated( ) IS NOT INITIAL.
 
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+
+        temp4 ?= client->get_app( client->get( )-s_draft-id_prev_app ).
+
+        app = temp4.
         mo_layout = app->mo_layout.
 
         IF app->mv_rerender = abap_true.
