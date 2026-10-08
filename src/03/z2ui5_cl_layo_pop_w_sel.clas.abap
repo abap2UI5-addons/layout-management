@@ -191,6 +191,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
   METHOD confirm.
 
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <row> TYPE any.
 
     ASSIGN mr_out->* TO <tab>.
     DATA(t_arg) = client->get( )-t_event_arg.
@@ -205,7 +206,9 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
       ENDIF.
 
       IF <row_id> = row_clicked.
-        ms_result-row->* = CORRESPONDING #( <line> ).
+        ASSIGN ms_result-row->* TO <row>.
+        CLEAR <row>.
+        MOVE-CORRESPONDING <line> TO <row>.
         EXIT.
       ENDIF.
 
