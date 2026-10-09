@@ -4,18 +4,19 @@
   },
   "dependencies": [
     {
-      "url": "https://github.com/abapedia/steampunk-2305-api",
+      "url": "https://github.com/open-abap/open-abap-core",
       "folder": "/deps",
       "files": "/src/**/*.*"
     },
     {
       "url": "https://github.com/abap2UI5/abap2UI5",
+      "branch": "702",
       "folder": "/abap2UI5",
       "files": "/src/**/*.*"
     }
   ],
   "syntax": {
-    "version": "v750",
+    "version": "v702",
     "errorNamespace": "."
   },
   "rules": {
@@ -25,15 +26,12 @@
     "check_include": true,
     "check_syntax": true,
     "global_class": true,
-    "definitions_top": false,
+    "definitions_top": true,
     "implement_methods": true,
     "method_implemented_twice": true,
     "parser_error": true,
     "superclass_final": true,
     "unknown_types": true,
-    "xml_consistency": true,
-    "exporting": true,
-    "omit_parameter_name": true,
-    "prefix_is_current_class": true
+    "xml_consistency": true
   }
 }

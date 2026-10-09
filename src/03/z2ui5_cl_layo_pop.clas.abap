@@ -13,20 +13,21 @@ CLASS z2ui5_cl_layo_pop DEFINITION
         sorting TYPE string,
         descr   TYPE string,
       END OF ty_s_sorting.
-    TYPES ty_t_sorting TYPE STANDARD TABLE OF ty_s_sorting WITH EMPTY KEY.
+    TYPES ty_t_sorting TYPE STANDARD TABLE OF ty_s_sorting WITH DEFAULT KEY.
 
     TYPES BEGIN OF ty_s_layo.
             INCLUDE TYPE z2ui5_t_11.
     TYPES   selkz  TYPE abap_bool.
     TYPES   active TYPE c LENGTH 1.
     TYPES END OF ty_s_layo.
-    TYPES ty_t_layo TYPE STANDARD TABLE OF ty_s_layo WITH EMPTY KEY.
+    TYPES ty_t_layo TYPE STANDARD TABLE OF ty_s_layo WITH DEFAULT KEY.
 
     TYPES: BEGIN OF ty_s_col,
              col TYPE c LENGTH 2,
            END OF ty_s_col.
 
-    DATA t_col          TYPE STANDARD TABLE OF ty_s_col WITH EMPTY KEY.
+    TYPES temp1_0c842a14a6 TYPE STANDARD TABLE OF ty_s_col WITH DEFAULT KEY.
+DATA t_col          TYPE temp1_0c842a14a6.
 
     DATA mo_layout      TYPE REF TO z2ui5_cl_layo_manager.
     DATA mt_layout      TYPE z2ui5_cl_layo_manager=>ty_t_positions.
@@ -144,7 +145,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     me->client = client.
 
-    IF client->check_on_init( ).
+    IF client->check_on_init( ) IS NOT INITIAL.
 
       on_init( ).
 
@@ -162,13 +163,25 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_init.
+      DATA temp1 TYPE z2ui5_cl_layo_pop=>ty_t_sorting.
+      DATA temp2 LIKE LINE OF temp1.
 
     IF mt_controls IS INITIAL.
       mt_controls = z2ui5_cl_layo_manager=>get_controls( ).
 
-      mt_sorting = VALUE #( ( sorting = 'ASCENDING' descr = 'Ascending'  )
-                            ( sorting = 'DESCENDING' descr = 'Descending'  )
-                            ( sorting = `` descr = ``  ) ).
+
+      CLEAR temp1.
+
+      temp2-sorting = 'ASCENDING'.
+      temp2-descr = 'Ascending'.
+      INSERT temp2 INTO TABLE temp1.
+      temp2-sorting = 'DESCENDING'.
+      temp2-descr = 'Descending'.
+      INSERT temp2 INTO TABLE temp1.
+      temp2-sorting = ``.
+      temp2-descr = ``.
+      INSERT temp2 INTO TABLE temp1.
+      mt_sorting = temp1.
 
     ENDIF.
 
@@ -176,26 +189,47 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD render_edit.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+    DATA popup TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA dialog TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA content TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA tab TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp3 TYPE z2ui5_if_client=>ty_s_event_control.
+    DATA list TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA cells TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA columns TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA t_layout LIKE mo_layout->ms_layout-t_layout.
+    DATA lt_comp TYPE abap_component_tab.
+    DATA temp4 LIKE LINE OF mt_controls.
+    DATA control LIKE REF TO temp4.
+      DATA comp TYPE abap_componentdescr.
+          DATA col TYPE REF TO z2ui5_cl_ui5_view_builder.
+    popup = z2ui5_cl_ui5_view_builder=>factory(
                       )->ele( n = `FragmentDefinition` ns = `core`
                       )->a( n = `xmlns` v = `sap.m`
                       )->a( n = `xmlns:core` v = `sap.ui.core` ).
 
-    DATA(dialog) = popup->ele( `Dialog`
+
+    dialog = popup->ele( `Dialog`
                        )->a( n = `title` v = 'Edit Layout'
                        )->a( n = `contentWidth` v = '80%'
                        )->a( n = `contentHeight` v = '80%'
                        )->a( n = `afterClose` v = client->_event( 'CLOSE' ) ).
 
-    DATA(content) = render_tabstrip( dialog = dialog
+
+    content = render_tabstrip( dialog = dialog
                                      active = 'EDIT' ).
 
-    DATA(tab) = content->ele( `Table`
+
+    tab = content->ele( `Table`
                     )->a( n = `growing` b = abap_true
                     )->a( n = `growingThreshold` v = '80'
                     )->a( n = `sticky` v = `ColumnHeaders`
                     )->a( n = `items` v = client->_bind_edit( mt_layout ) ).
 
+
+    CLEAR temp3.
+    temp3-check_queue_last = abap_true.
+    temp3-check_no_busy = abap_true.
     tab->ele( `headerToolbar`
         )->ele( `OverflowToolbar`
         )->tag( `ToolbarSpacer`
@@ -206,32 +240,40 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                                          z2ui5_cl_util=>rtti_get_data_element_texts( 'NAME_FELD' )-long }|
         )->a( n = `liveChange` v = client->_event( val    = 'BUTTON_SEARCH'
                                                       arg    = `${$source>/value}`
-                                                      s_ctrl = VALUE #( check_queue_last = abap_true
-                                                                        check_no_busy    = abap_true ) ) ).
+                                                      s_ctrl = temp3 ) ).
 
-    DATA(list) = tab->ele( `ColumnListItem` ).
 
-    DATA(cells) = list->ele( `cells` ).
+    list = tab->ele( `ColumnListItem` ).
 
-    DATA(columns) = tab->ele( `columns` ).
 
-    DATA(t_layout) = mo_layout->ms_layout-t_layout.
+    cells = list->ele( `cells` ).
+
+
+    columns = tab->ele( `columns` ).
+
+
+    t_layout = mo_layout->ms_layout-t_layout.
 
     SORT t_layout BY visible DESCENDING
                      fname ASCENDING.
 
-    DATA(lt_comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( t_layout ).
 
-    LOOP AT mt_controls REFERENCE INTO DATA(control) WHERE control = mo_layout->ms_layout-s_head-control.
+    lt_comp = z2ui5_cl_util=>rtti_get_t_attri_by_any( t_layout ).
 
-      READ TABLE lt_comp INTO DATA(comp) WITH KEY name = control->attribute.
+
+
+    LOOP AT mt_controls REFERENCE INTO control WHERE control = mo_layout->ms_layout-s_head-control.
+
+
+      READ TABLE lt_comp INTO comp WITH KEY name = control->attribute.
       IF sy-subrc <> 0.
         CONTINUE.
       ENDIF.
 
       CASE control->attribute.
         WHEN 'TLABEL'.
-          DATA(col) = columns->ele( `Column`
+
+          col = columns->ele( `Column`
                           )->a( n = `width` v = `15%`
                           )->ele( `header` ).
           col->tag( `Text`
@@ -494,13 +536,19 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD search.
+    DATA temp5 TYPE string_table.
 
     mt_layout = mo_layout->ms_layout-t_layout.
 
+
+    CLEAR temp5.
+    INSERT `FNAME` INTO TABLE temp5.
+    INSERT `ROLLNAME` INTO TABLE temp5.
+    INSERT `TLABEL` INTO TABLE temp5.
     z2ui5_cl_util=>itab_filter_by_val(
       EXPORTING
         val    = client->get_event_arg( )
-        fields = VALUE #( ( `FNAME` ) ( `ROLLNAME` ) ( `TLABEL` ) )
+        fields = temp5
       CHANGING
         tab    = mt_layout ).
 
@@ -510,7 +558,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD edit_okay.
 
-    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
+    DATA temp7 LIKE LINE OF mo_layout->ms_layout-t_layout.
+    DATA layout LIKE REF TO temp7.
+    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO layout.
       layout->tlabel           = mo_layout->set_text( layout->* ).
       layout->alternative_text = to_upper( layout->alternative_text ).
       layout->width            = check_width_unit( layout->width ).
@@ -528,7 +578,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD factory.
 
-    result = NEW #( ).
+    CREATE OBJECT result.
 
     result->mo_layout = layout.
 
@@ -553,18 +603,23 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD render_save.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+    DATA popup TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA dialog TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA form TYPE REF TO z2ui5_cl_ui5_view_builder.
+    popup = z2ui5_cl_ui5_view_builder=>factory(
                       )->ele( n = `FragmentDefinition` ns = `core`
                       )->a( n = `xmlns` v = `sap.m`
                       )->a( n = `xmlns:core` v = `sap.ui.core`
                       )->a( n = `xmlns:form` v = `sap.ui.layout.form` ).
 
-    DATA(dialog) = popup->ele( `Dialog`
+
+    dialog = popup->ele( `Dialog`
                        )->a( n = `title` v = 'Save'
                        )->a( n = `contentWidth` v = '80%'
                        )->a( n = `afterClose` v = client->_event( 'SAVE_CLOSE' ) ).
 
-    DATA(form) = dialog->ele( `content`
+
+    form = dialog->ele( `content`
                      )->ele( n = `SimpleForm` ns = `form`
                      )->a( n = `title` v = 'Layout'
                      )->a( n = `editable` b = abap_true
@@ -645,7 +700,25 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   METHOD save_layout.
 
     DATA position  TYPE z2ui5_t_12.
-    DATA positions TYPE STANDARD TABLE OF z2ui5_t_12 WITH EMPTY KEY.
+    TYPES temp2 TYPE STANDARD TABLE OF z2ui5_t_12 WITH DEFAULT KEY.
+DATA positions TYPE temp2.
+      DATA user LIKE sy-uname.
+    DATA temp8 TYPE z2ui5_t_11.
+    DATA head LIKE temp8.
+DATA BEGIN OF head_db.
+DATA guid TYPE z2ui5_t_11-guid.
+DATA layout TYPE z2ui5_t_11-layout.
+DATA control TYPE z2ui5_t_11-control.
+DATA handle01 TYPE z2ui5_t_11-handle01.
+DATA handle02 TYPE z2ui5_t_11-handle02.
+DATA handle03 TYPE z2ui5_t_11-handle03.
+DATA handle04 TYPE z2ui5_t_11-handle04.
+DATA END OF head_db.
+    DATA temp9 LIKE LINE OF mo_layout->ms_layout-t_layout.
+    DATA r_layout LIKE REF TO temp9.
+      DATA temp10 LIKE sy-subrc.
+      DATA layout LIKE LINE OF mo_layout->ms_layout-t_layout.
+        DATA temp11 LIKE sy-subrc.
 
     IF mv_layout IS INITIAL.
       client->message_toast_display( 'Layout name missing.' ).
@@ -653,31 +726,37 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     ENDIF.
 
     IF mv_usr = abap_true.
-      DATA(user) = sy-uname.
+
+      user = sy-uname.
     ENDIF.
 
-    DATA(head) = VALUE z2ui5_t_11( guid          = mo_layout->ms_layout-s_head-guid
-                                   layout        = mv_layout
-                                   control       = mo_layout->ms_layout-s_head-control
-                                   handle01      = mo_layout->ms_layout-s_head-handle01
-                                   handle02      = mo_layout->ms_layout-s_head-handle02
-                                   handle03      = mo_layout->ms_layout-s_head-handle03
-                                   handle04      = mo_layout->ms_layout-s_head-handle04
-                                   screen_format = mv_format
-                                   descr         = mv_descr
-                                   def           = mv_def
-                                   uname         = user ).
 
-    SELECT SINGLE guid,
-                  layout,
-                  control,
-                  handle01,
-                  handle02,
-                  handle03,
+    CLEAR temp8.
+    temp8-guid = mo_layout->ms_layout-s_head-guid.
+    temp8-layout = mv_layout.
+    temp8-control = mo_layout->ms_layout-s_head-control.
+    temp8-handle01 = mo_layout->ms_layout-s_head-handle01.
+    temp8-handle02 = mo_layout->ms_layout-s_head-handle02.
+    temp8-handle03 = mo_layout->ms_layout-s_head-handle03.
+    temp8-handle04 = mo_layout->ms_layout-s_head-handle04.
+    temp8-screen_format = mv_format.
+    temp8-descr = mv_descr.
+    temp8-def = mv_def.
+    temp8-uname = user.
+
+    head = temp8.
+
+
+    SELECT SINGLE guid
+                  layout
+                  control
+                  handle01
+                  handle02
+                  handle03
                   handle04
-      FROM z2ui5_t_11
-      WHERE guid = @head-guid
-      INTO @DATA(head_db).
+      FROM z2ui5_t_11 INTO head_db
+      WHERE guid = head-guid
+      .
 
     IF sy-subrc = 0.
 
@@ -702,7 +781,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     ENDIF.
 
-    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(r_layout).
+
+
+    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO r_layout.
       r_layout->guid = head-guid.
 
       MOVE-CORRESPONDING r_layout->* TO position.
@@ -714,13 +795,20 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      IF line_exists( mo_layout->ms_layout-t_layout[ reference_field = r_layout->fname ] ).
+
+      READ TABLE mo_layout->ms_layout-t_layout WITH KEY reference_field = r_layout->fname TRANSPORTING NO FIELDS.
+      temp10 = sy-subrc.
+      IF temp10 = 0.
         APPEND position TO positions.
         CONTINUE.
       ENDIF.
 
-      LOOP AT mo_layout->ms_layout-t_layout INTO DATA(layout) WHERE t_sub_col IS NOT INITIAL.
-        IF line_exists( layout-t_sub_col[ fname = r_layout->fname ] ).
+
+      LOOP AT mo_layout->ms_layout-t_layout INTO layout WHERE t_sub_col IS NOT INITIAL.
+
+        READ TABLE layout-t_sub_col WITH KEY fname = r_layout->fname TRANSPORTING NO FIELDS.
+        temp11 = sy-subrc.
+        IF temp11 = 0.
           APPEND position TO positions.
           EXIT.
         ENDIF.
@@ -731,17 +819,17 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     " Persist head and positions in a single LUW. Do not rely on the
     " array-MODIFY sy-subrc for the commit decision: it is 4 for an empty
     " position table, which would silently skip the COMMIT.
-    MODIFY z2ui5_t_11 FROM @head.
+    MODIFY z2ui5_t_11 FROM head.
     IF sy-subrc <> 0.
       ROLLBACK WORK.
       client->message_toast_display( 'Layout could not be saved.' ).
       RETURN.
     ENDIF.
 
-    DELETE FROM z2ui5_t_12 WHERE guid = @head-guid.
+    DELETE FROM z2ui5_t_12 WHERE guid = head-guid.
 
     IF positions IS NOT INITIAL.
-      MODIFY z2ui5_t_12 FROM TABLE @positions.
+      MODIFY z2ui5_t_12 FROM TABLE positions.
       IF sy-subrc <> 0.
         ROLLBACK WORK.
         client->message_toast_display( 'Layout could not be saved.' ).
@@ -753,15 +841,15 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     " same scope. Saving a non-default layout must not touch the current
     " default - otherwise auto-loading silently stops working.
     IF head-def = abap_true.
-      UPDATE z2ui5_t_11 SET def = @abap_false WHERE control       = @head-control
-                                                AND handle01      = @head-handle01
-                                                AND handle02      = @head-handle02
-                                                AND handle03      = @head-handle03
-                                                AND handle04      = @head-handle04
-                                                AND screen_format = @head-screen_format
-                                                AND uname         = @head-uname
-                                                AND def           = @abap_true
-                                                AND guid         <> @head-guid.
+      UPDATE z2ui5_t_11 SET def = abap_false WHERE control       = head-control
+                                                AND handle01      = head-handle01
+                                                AND handle02      = head-handle02
+                                                AND handle03      = head-handle03
+                                                AND handle04      = head-handle04
+                                                AND screen_format = head-screen_format
+                                                AND uname         = head-uname
+                                                AND def           = abap_true
+                                                AND guid         <> head-guid.
     ENDIF.
 
     COMMIT WORK AND WAIT.
@@ -782,12 +870,14 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD render_tabstrip.
+    DATA bar TYPE REF TO z2ui5_cl_ui5_view_builder.
 
     " Remember the active tab - it is two-way bound to the IconTabBar
     " selectedKey, so a tab click sends the new key back in mv_tab.
     mv_tab = active.
 
-    DATA(bar) = dialog->ele( `IconTabBar`
+
+    bar = dialog->ele( `IconTabBar`
                     )->a( n = `selectedKey` v = client->_bind_edit( mv_tab )
                     )->a( n = `select` v = client->_event( 'TAB_SELECT' )
                     )->a( n = `stretchContentHeight` b = abap_true
@@ -817,18 +907,23 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD render_delete.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+    DATA popup TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA dialog TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA content TYPE REF TO z2ui5_cl_ui5_view_builder.
+    popup = z2ui5_cl_ui5_view_builder=>factory(
                       )->ele( n = `FragmentDefinition` ns = `core`
                       )->a( n = `xmlns` v = `sap.m`
                       )->a( n = `xmlns:core` v = `sap.ui.core` ).
 
-    DATA(dialog) = popup->ele( `Dialog`
+
+    dialog = popup->ele( `Dialog`
                        )->a( n = `title` v = 'Delete Layout'
                        )->a( n = `contentWidth` v = '80%'
                        )->a( n = `contentHeight` v = '80%'
                        )->a( n = `afterClose` v = client->_event( 'CLOSE' ) ).
 
-    DATA(content) = render_tabstrip( dialog = dialog
+
+    content = render_tabstrip( dialog = dialog
                                      active = 'DELETE' ).
 
     content->ele( `Table`
@@ -876,18 +971,23 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD render_open.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+    DATA popup TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA dialog TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA content TYPE REF TO z2ui5_cl_ui5_view_builder.
+    popup = z2ui5_cl_ui5_view_builder=>factory(
                       )->ele( n = `FragmentDefinition` ns = `core`
                       )->a( n = `xmlns` v = `sap.m`
                       )->a( n = `xmlns:core` v = `sap.ui.core` ).
 
-    DATA(dialog) = popup->ele( `Dialog`
+
+    dialog = popup->ele( `Dialog`
                        )->a( n = `title` v = 'Select Layout'
                        )->a( n = `contentWidth` v = '80%'
                        )->a( n = `contentHeight` v = '80%'
                        )->a( n = `afterClose` v = client->_event( 'CLOSE' ) ).
 
-    DATA(content) = render_tabstrip( dialog = dialog
+
+    content = render_tabstrip( dialog = dialog
                                      active = 'SELECT' ).
 
     content->ele( `Table`
@@ -947,7 +1047,15 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD get_selected_layout.
 
-    result = VALUE #( mt_head[ selkz = abap_true ] OPTIONAL ).
+    DATA temp12 TYPE z2ui5_cl_layo_pop=>ty_s_layo.
+    DATA temp13 TYPE z2ui5_cl_layo_pop=>ty_s_layo.
+    CLEAR temp12.
+
+    READ TABLE mt_head INTO temp13 WITH KEY selkz = abap_true.
+    IF sy-subrc = 0.
+      temp12 = temp13.
+    ENDIF.
+    result = temp12.
 
   ENDMETHOD.
 
@@ -959,6 +1067,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_layouts.
+    FIELD-SYMBOLS <temp14> TYPE z2ui5_cl_layo_pop=>ty_s_layo.
+DATA head LIKE REF TO <temp14>.
+      FIELD-SYMBOLS <temp15> TYPE z2ui5_cl_layo_pop=>ty_s_layo.
 
     mt_head = mo_layout->select_layouts( control  = mo_layout->ms_layout-s_head-control
                                          handle01 = mo_layout->ms_layout-s_head-handle01
@@ -970,26 +1081,40 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA(head) = REF #( mt_head[ guid = mo_layout->ms_layout-s_head-guid ] OPTIONAL ).
+
+    READ TABLE mt_head WITH KEY guid = mo_layout->ms_layout-s_head-guid ASSIGNING <temp14>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp14> INTO head.
     IF head IS BOUND.
       head->selkz  = abap_true.
       head->active = abap_true.
       RETURN.
     ELSE.
-      head = REF #( mt_head[ 1 ] OPTIONAL ).
+
+      READ TABLE mt_head INDEX 1 ASSIGNING <temp15>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+GET REFERENCE OF <temp15> INTO head.
       head->selkz = abap_true.
     ENDIF.
 
   ENDMETHOD.
 
   METHOD init_edit.
+    DATA temp1 TYPE xsdboolean.
 
     mv_layout = mo_layout->ms_layout-s_head-layout.
     mv_descr  = mo_layout->ms_layout-s_head-descr.
     mv_def    = mo_layout->ms_layout-s_head-def.
     mv_format = mo_layout->ms_layout-s_head-screen_format.
 
-    mv_usr    = xsdbool( mo_layout->ms_layout-s_head-uname IS NOT INITIAL ).
+
+    temp1 = boolc( mo_layout->ms_layout-s_head-uname IS NOT INITIAL ).
+    mv_usr    = temp1.
 
   ENDMETHOD.
 
@@ -1010,6 +1135,8 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD delete_selected_layout.
+    DATA head_deleted TYPE abap_bool.
+    DATA temp2 TYPE xsdboolean.
 
     " Nothing selected - guid initial would delete unrelated blank-guid rows.
     IF head-guid IS INITIAL.
@@ -1017,13 +1144,16 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DELETE FROM z2ui5_t_11 WHERE guid = @head-guid.
+    DELETE FROM z2ui5_t_11 WHERE guid = head-guid.
     " Base the outcome on the header delete. The old code only checked the
     " sy-subrc of the position delete, so a layout without position rows
     " (e.g. all columns hidden) was never committed and reappeared.
-    DATA(head_deleted) = xsdbool( sy-subrc = 0 ).
 
-    DELETE FROM z2ui5_t_12 WHERE guid = @head-guid.
+
+    temp2 = boolc( sy-subrc = 0 ).
+    head_deleted = temp2.
+
+    DELETE FROM z2ui5_t_12 WHERE guid = head-guid.
 
     IF head_deleted = abap_false.
       client->message_toast_display( 'Layout could not be deleted.' ).
@@ -1058,7 +1188,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD render_add_subcolumn.
 
-    DATA(lo_popup) = z2ui5_cl_ui5_view_builder=>factory(
+    DATA lo_popup TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA vbox TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA item TYPE REF TO z2ui5_cl_ui5_view_builder.
+    lo_popup = z2ui5_cl_ui5_view_builder=>factory(
                          )->ele( n = `FragmentDefinition` ns = `core`
                          )->a( n = `xmlns` v = `sap.m`
                          )->a( n = `xmlns:core` v = `sap.ui.core` ).
@@ -1068,10 +1201,12 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                    )->a( n = `contentWidth` v = `50%`
                    )->a( n = `title` v = 'Define Subcolumns' ).
 
-    DATA(vbox) = lo_popup->ele( `VBox`
+
+    vbox = lo_popup->ele( `VBox`
                      )->a( n = `justifyContent` v = 'SpaceBetween' ).
 
-    DATA(item) = vbox->ele( `List`
+
+    item = vbox->ele( `List`
                      )->a( n = `noData` v = `No subcolumns defined`
                      )->a( n = `items` v = client->_bind_edit( mo_layout->mt_sub_cols )
                      )->a( n = `selectionChange` v = client->_event( 'SELCHANGE' )
@@ -1114,15 +1249,35 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_event_subcolumns.
+        DATA arg TYPE string_table.
+        DATA temp16 TYPE string.
+        DATA temp17 TYPE string.
+        DATA layout TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions.
+        DATA temp18 LIKE LINE OF mo_layout->mt_sub_cols.
+        DATA line LIKE REF TO temp18.
+        DATA temp19 TYPE z2ui5_cl_layo_manager=>ty_s_sub_columns.
+        DATA lt_event TYPE string_table.
+        FIELD-SYMBOLS <temp20> LIKE LINE OF lt_event.
+        DATA temp21 LIKE sy-tabix.
+        DATA temp22 TYPE z2ui5_cl_layo_manager=>ty_t_sub_columns.
 
     CASE client->get( )-event.
 
       WHEN 'CALL_SUBCOLUMN'.
 
-        DATA(arg) = client->get( )-t_event_arg.
-        mv_active_line = VALUE #( arg[ 1 ] OPTIONAL ).
 
-        READ TABLE mt_layout REFERENCE INTO DATA(layout) WITH KEY fname = mv_active_line.
+        arg = client->get( )-t_event_arg.
+
+        CLEAR temp16.
+
+        READ TABLE arg INTO temp17 INDEX 1.
+        IF sy-subrc = 0.
+          temp16 = temp17.
+        ENDIF.
+        mv_active_line = temp16.
+
+
+        READ TABLE mt_layout REFERENCE INTO layout WITH KEY fname = mv_active_line.
         IF sy-subrc <> 0.
           RETURN.
         ENDIF.
@@ -1141,7 +1296,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
         CLEAR layout->subcolumn.
 
-        LOOP AT mo_layout->mt_sub_cols REFERENCE INTO DATA(line).
+
+
+        LOOP AT mo_layout->mt_sub_cols REFERENCE INTO line.
           layout->subcolumn = |{ layout->subcolumn } { line->fname }|.
         ENDLOOP.
         SHIFT layout->subcolumn LEFT DELETING LEADING space.
@@ -1165,16 +1322,30 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         render_edit( ).
 
       WHEN `SUBCOLUMN_ADD`.
-        INSERT VALUE #( key = z2ui5_cl_util=>uuid_get_c32( ) ) INTO TABLE mo_layout->mt_sub_cols.
+
+        CLEAR temp19.
+        temp19-key = z2ui5_cl_util=>uuid_get_c32( ).
+        INSERT temp19 INTO TABLE mo_layout->mt_sub_cols.
         client->popup_model_update( ).
 
       WHEN `SUBCOLUMN_DELETE`.
-        DATA(lt_event) = client->get( )-t_event_arg.
-        DELETE mo_layout->mt_sub_cols WHERE key = lt_event[ 1 ].
+
+        lt_event = client->get( )-t_event_arg.
+
+
+        temp21 = sy-tabix.
+        READ TABLE lt_event INDEX 1 ASSIGNING <temp20>.
+        sy-tabix = temp21.
+        IF sy-subrc <> 0.
+          ASSERT 1 = 0.
+        ENDIF.
+        DELETE mo_layout->mt_sub_cols WHERE key = <temp20>.
         client->popup_model_update( ).
 
       WHEN `SUBCOLUMN_DELETE_ALL`.
-        mo_layout->mt_sub_cols = VALUE #( ).
+
+        CLEAR temp22.
+        mo_layout->mt_sub_cols = temp22.
         client->popup_model_update( ).
 
     ENDCASE.
@@ -1182,13 +1353,17 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD check_rerender_necessary.
+    DATA layout LIKE LINE OF mo_layout->ms_layout-t_layout.
+      DATA layout_tmp TYPE z2ui5_cl_layo_manager=>ty_s_positions.
 
     CLEAR mv_rerender.
 
     " Sequence and SubCols need rerendering
-    LOOP AT mo_layout->ms_layout-t_layout INTO DATA(layout).
 
-      READ TABLE mo_layout->ms_layout_tmp-t_layout INTO DATA(layout_tmp)
+    LOOP AT mo_layout->ms_layout-t_layout INTO layout.
+
+
+      READ TABLE mo_layout->ms_layout_tmp-t_layout INTO layout_tmp
            WITH KEY guid     = layout-guid
                     pos_guid = layout-pos_guid.
 
@@ -1237,15 +1412,28 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_event_gridlayout.
+        DATA arg TYPE string_table.
+        DATA temp23 TYPE string.
+        DATA temp24 TYPE string.
+        DATA layout TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions.
 
     CASE client->get( )-event.
 
       WHEN 'CALL_GRIDLAYOUT'.
 
-        DATA(arg) = client->get( )-t_event_arg.
-        mv_active_line = VALUE #( arg[ 1 ] OPTIONAL ).
 
-        READ TABLE mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout) WITH KEY fname = mv_active_line.
+        arg = client->get( )-t_event_arg.
+
+        CLEAR temp23.
+
+        READ TABLE arg INTO temp24 INDEX 1.
+        IF sy-subrc = 0.
+          temp23 = temp24.
+        ENDIF.
+        mv_active_line = temp23.
+
+
+        READ TABLE mo_layout->ms_layout-t_layout REFERENCE INTO layout WITH KEY fname = mv_active_line.
         IF sy-subrc <> 0.
           RETURN.
         ENDIF.
@@ -1316,20 +1504,40 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD render_add_gridlayout.
 
-    t_col = VALUE #( ( col = 1  )
-                     ( col = 2  )
-                     ( col = 3  )
-                     ( col = 4  )
-                     ( col = 5  )
-                     ( col = 6  )
-                     ( col = 7  )
-                     ( col = 8  )
-                     ( col = 9  )
-                     ( col = 10  )
-                     ( col = 11  )
-                     ( col = 12  ) ).
+    DATA temp25 LIKE t_col.
+    DATA temp26 LIKE LINE OF temp25.
+    DATA lo_popup TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA form TYPE REF TO z2ui5_cl_ui5_view_builder.
+    CLEAR temp25.
 
-    DATA(lo_popup) = z2ui5_cl_ui5_view_builder=>factory(
+    temp26-col = 1.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 2.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 3.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 4.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 5.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 6.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 7.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 8.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 9.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 10.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 11.
+    INSERT temp26 INTO TABLE temp25.
+    temp26-col = 12.
+    INSERT temp26 INTO TABLE temp25.
+    t_col = temp25.
+
+
+    lo_popup = z2ui5_cl_ui5_view_builder=>factory(
                          )->ele( n = `FragmentDefinition` ns = `core`
                          )->a( n = `xmlns` v = `sap.m`
                          )->a( n = `xmlns:core` v = `sap.ui.core`
@@ -1340,7 +1548,8 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                    )->a( n = `contentWidth` v = `140px`
                    )->a( n = `title` v = 'Grid Layout' ).
 
-    DATA(form) = lo_popup->ele( n = `SimpleForm` ns = `form`
+
+    form = lo_popup->ele( n = `SimpleForm` ns = `form`
                      )->a( n = `editable` b = abap_true
                      )->a( n = `title` v = 'Define Label and Value Span'
                      )->ele( n = `content` ns = `form` ).
@@ -1432,9 +1641,22 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD update_values.
 
-    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(line).
+    DATA temp27 LIKE LINE OF mo_layout->ms_layout-t_layout.
+    DATA line LIKE REF TO temp27.
+      DATA temp28 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+      DATA temp29 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+      DATA layout LIKE temp28.
+    LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO line.
 
-      DATA(layout) = VALUE #( mt_layout[ pos_guid = line->pos_guid ] OPTIONAL ).
+
+      CLEAR temp28.
+
+      READ TABLE mt_layout INTO temp29 WITH KEY pos_guid = line->pos_guid.
+      IF sy-subrc = 0.
+        temp28 = temp29.
+      ENDIF.
+
+      layout = temp28.
       IF layout IS NOT INITIAL.
         line->* = layout.
       ENDIF.

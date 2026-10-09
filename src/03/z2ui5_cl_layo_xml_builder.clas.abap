@@ -120,12 +120,28 @@ ENDCLASS.
 CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD xml_build_simple_form.
+    DATA form TYPE REF TO z2ui5_cl_ui5_view_builder.
+    FIELD-SYMBOLS <data> TYPE data.
+    DATA temp1 LIKE LINE OF i_layout->ms_layout-t_layout.
+    DATA layout LIKE REF TO temp1.
+      DATA lv_index LIKE sy-tabix.
+      FIELD-SYMBOLS <value> TYPE any.
+      DATA grid_layout TYPE z2ui5_cl_layo_xml_builder=>ty_s_grid_layout.
+      DATA line LIKE form.
+      DATA label TYPE REF TO z2ui5_cl_ui5_view_builder.
+        DATA hbox TYPE REF TO z2ui5_cl_ui5_view_builder.
+        DATA input TYPE REF TO z2ui5_cl_ui5_view_builder.
+        FIELD-SYMBOLS <ref_value> TYPE any.
+        FIELD-SYMBOLS <temp2> TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+DATA ref_field LIKE REF TO <temp2>.
+        DATA ref_input TYPE REF TO z2ui5_cl_ui5_view_builder.
 
     z2ui5_cl_layo_pop=>render_layout_function( client = i_client
                                                xml    = i_xml
                                                layout = i_layout ).
 
-    DATA(form) = i_xml->ele( n = `SimpleForm` ns = `form`
+
+    form = i_xml->ele( n = `SimpleForm` ns = `form`
                      )->a( n = `title` v = i_title
                      )->a( n = `editable` b = abap_true
                      )->a( n = `layout` v = `ResponsiveGridLayout`
@@ -144,22 +160,30 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                      )->a( n = `singleContainerFullSize` b = abap_false
                      )->ele( n = `content` ns = `form` ).
 
-    ASSIGN i_data->* TO FIELD-SYMBOL(<data>).
 
-    LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
+    ASSIGN i_data->* TO <data>.
 
-      DATA(lv_index) = sy-tabix.
 
-      ASSIGN COMPONENT layout->fname OF STRUCTURE <data> TO FIELD-SYMBOL(<value>).
+
+    LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO layout.
+
+
+      lv_index = sy-tabix.
+
+
+      ASSIGN COMPONENT layout->fname OF STRUCTURE <data> TO <value>.
       IF <value> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
 
-      DATA(grid_layout) = get_grid_layout( layout ).
 
-      DATA(line) = form.
+      grid_layout = get_grid_layout( layout ).
 
-      DATA(label) = line->ele( `Label`
+
+      line = form.
+
+
+      label = line->ele( `Label`
                         )->a( n = `wrapping` b = abap_false
                         )->a( n = `text` v = i_client->_bind( val       = layout->tlabel
                                                              tab       = i_layout->ms_layout-t_layout
@@ -171,7 +195,8 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       IF layout->rollname CP `*_XML_S_ICON`.
 
-        DATA(hbox) = line->ele( `HBox`
+
+        hbox = line->ele( `HBox`
                          )->a( n = `renderType` v = `Bare`
                          )->a( n = `visible` v = i_client->_bind( val       = layout->visible
                                                                tab       = i_layout->ms_layout-t_layout
@@ -251,7 +276,8 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       ELSE.
 
-        DATA(input) = line->ele( `Input`
+
+        input = line->ele( `Input`
                           )->a( n = `visible` v = i_client->_bind( val       = layout->visible
                                                                    tab       = i_layout->ms_layout-t_layout
                                                                    tab_index = lv_index )
@@ -270,17 +296,25 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       IF layout->reference_field IS NOT INITIAL.
 
-        ASSIGN COMPONENT layout->reference_field OF STRUCTURE <data> TO FIELD-SYMBOL(<ref_value>).
+
+        ASSIGN COMPONENT layout->reference_field OF STRUCTURE <data> TO <ref_value>.
         IF <ref_value> IS NOT ASSIGNED.
           CONTINUE.
         ENDIF.
 
-        DATA(ref_field) = REF #( i_layout->ms_layout-t_layout[ fname = layout->reference_field ] OPTIONAL ).
+
+        READ TABLE i_layout->ms_layout-t_layout WITH KEY fname = layout->reference_field ASSIGNING <temp2>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp2> INTO ref_field.
         IF ref_field IS INITIAL.
           CONTINUE.
         ENDIF.
 
-        DATA(ref_input) = line->ele( `Input`
+
+        ref_input = line->ele( `Input`
                               )->a( n = `visible` v = i_client->_bind( val       = layout->visible
                                                                        tab       = i_layout->ms_layout-t_layout
                                                                        tab_index = lv_index )
@@ -298,18 +332,32 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_grid_layout.
+      DATA label_xl TYPE string.
+      DATA label_l TYPE string.
+      DATA label_m TYPE string.
+      DATA label_s TYPE string.
+      DATA ref_size TYPE i.
+      DATA ref_size_s TYPE i.
+      DATA value_xl TYPE string.
+      DATA value_l TYPE string.
+      DATA value_m TYPE string.
+      DATA value_s TYPE string.
 
     IF layout->grid_label_xl > 0.
-      DATA(label_xl) = |XL{ layout->grid_label_xl }|.
+
+      label_xl = |XL{ layout->grid_label_xl }|.
     ENDIF.
     IF layout->grid_label_l > 0.
-      DATA(label_l) = |L{ layout->grid_label_l }|.
+
+      label_l = |L{ layout->grid_label_l }|.
     ENDIF.
     IF layout->grid_label_m > 0.
-      DATA(label_m) = |M{ layout->grid_label_m }|.
+
+      label_m = |M{ layout->grid_label_m }|.
     ENDIF.
     IF layout->grid_label_s > 0.
-      DATA(label_s) = |S{ layout->grid_label_s }|.
+
+      label_s = |S{ layout->grid_label_s }|.
     ENDIF.
 
     IF label_xl IS NOT INITIAL.
@@ -327,24 +375,30 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     IF layout->reference_field IS NOT INITIAL.
 
-      DATA(ref_size) = 1.
+
+      ref_size = 1.
       " the reference field occupies two columns on the S breakpoint (S2)
-      DATA(ref_size_s) = 2.
+
+      ref_size_s = 2.
       result-ref_field = |XL1 L1 M1 S2|.
 
     ENDIF.
 
     IF layout->grid_value_xl > 0.
-      DATA(value_xl) = |XL{ layout->grid_value_xl - ref_size }|.
+
+      value_xl = |XL{ layout->grid_value_xl - ref_size }|.
     ENDIF.
     IF layout->grid_value_l > 0.
-      DATA(value_l) = |L{ layout->grid_value_l - ref_size }|.
+
+      value_l = |L{ layout->grid_value_l - ref_size }|.
     ENDIF.
     IF layout->grid_value_m > 0.
-      DATA(value_m) = |M{ layout->grid_value_m - ref_size }|.
+
+      value_m = |M{ layout->grid_value_m - ref_size }|.
     ENDIF.
     IF layout->grid_value_s > 0.
-      DATA(value_s) = |S{ layout->grid_value_s - ref_size_s }|.
+
+      value_s = |S{ layout->grid_value_s - ref_size_s }|.
     ENDIF.
 
     IF value_xl IS NOT INITIAL.
@@ -376,17 +430,53 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD xml_build_table.
 
-    ASSIGN i_data->* TO FIELD-SYMBOL(<tab>).
+    FIELD-SYMBOLS <tab> TYPE data.
+    DATA temp3 TYPE string.
+    DATA temp1 TYPE string.
+    DATA table TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA toolbar TYPE REF TO z2ui5_cl_ui5_view_builder.
+      FIELD-SYMBOLS <search> TYPE data.
+    DATA columns TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp4 LIKE LINE OF i_layout->ms_layout-t_layout.
+    DATA layout LIKE REF TO temp4.
+      DATA lv_index LIKE sy-tabix.
+    DATA temp5 TYPE string_table.
+    DATA temp2 TYPE string.
+    DATA temp6 TYPE string.
+    DATA temp7 TYPE string.
+    DATA column_list_item TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA cells TYPE REF TO z2ui5_cl_ui5_view_builder.
+          DATA sub_col TYPE string.
+          DATA index TYPE i.
+          DATA subcol LIKE LINE OF layout->t_sub_col.
+            DATA line TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+              DATA column TYPE string.
+              DATA ref TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    ASSIGN i_data->* TO <tab>.
 
-    DATA(table) = i_xml->ele( `Table`
-                      )->a( n = `growing` v = COND #( WHEN i_growingthreshold = space THEN abap_false ELSE abap_true  )
+
+    IF i_growingthreshold = space.
+      temp3 = abap_false.
+    ELSE.
+      temp3 = abap_true.
+    ENDIF.
+
+    IF i_sel_mode = space.
+      temp1 = `None`.
+    ELSE.
+      temp1 = i_sel_mode.
+    ENDIF.
+
+    table = i_xml->ele( `Table`
+                      )->a( n = `growing` v = temp3
                       )->a( n = `growingThreshold` v = i_growingthreshold
                       )->a( n = `width` v = 'auto'
-                      )->a( n = `mode` v = COND #( WHEN i_sel_mode = space THEN `None` ELSE i_sel_mode  )
+                      )->a( n = `mode` v = temp1
                       )->a( n = `items` v = i_client->_bind_edit( <tab> )
                       )->a( n = `selectionChange` v = i_client->_event( 'SELECTION_CHANGE' ) ).
 
-    DATA(toolbar) = table->ele( `headerToolbar`
+
+    toolbar = table->ele( `headerToolbar`
                         )->ele( `OverflowToolbar` ).
 
     IF i_headertext IS NOT INITIAL.
@@ -399,7 +489,8 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     IF i_search_value IS SUPPLIED.
 
-      ASSIGN i_search_value->* TO FIELD-SYMBOL(<search>).
+
+      ASSIGN i_search_value->* TO <search>.
 
       toolbar->tag( `SearchField`
           )->a( n = `value` v = i_client->_bind_edit( <search> )
@@ -413,10 +504,14 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                                xml    = toolbar
                                                layout = i_layout ).
 
-    DATA(columns) = table->ele( `columns` ).
 
-    LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
-      DATA(lv_index) = sy-tabix.
+    columns = table->ele( `columns` ).
+
+
+
+    LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO layout.
+
+      lv_index = sy-tabix.
 
       columns->ele( `Column`
           )->a( n = `visible` v = i_client->_bind( val       = layout->visible
@@ -433,21 +528,40 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     ENDLOOP.
 
-    DATA(column_list_item) = columns->end(
+
+    CLEAR temp5.
+
+    IF i_col_bind_to = space.
+      temp2 = ``.
+    ELSE.
+      temp2 = |$\{{ i_col_bind_to }\}|.
+    ENDIF.
+    INSERT temp2 INTO TABLE temp5.
+
+    IF i_sel_bind_to = space.
+      temp6 = ``.
+    ELSE.
+      temp6 = |\{{ i_sel_bind_to }\}|.
+    ENDIF.
+
+    IF i_col_type = space.
+      temp7 = `Inactive`.
+    ELSE.
+      temp7 = i_col_type.
+    ENDIF.
+
+    column_list_item = columns->end(
                                  )->ele( `items`
                                  )->ele( `ColumnListItem`
                                  )->a( n = `vAlign` v = 'Middle'
-                                 )->a( n = `selected` v = COND #( WHEN i_sel_bind_to = space
-                                                              THEN ``
-                                                              ELSE |\{{ i_sel_bind_to }\}| )
-                                 )->a( n = `type` v = COND #( WHEN i_col_type = space THEN `Inactive` ELSE i_col_type  )
+                                 )->a( n = `selected` v = temp6
+                                 )->a( n = `type` v = temp7
                                  )->a( n = `press` v = i_client->_event(
                                                val   = 'ROW_SELECT'
-                                               t_arg = VALUE #( ( COND #( WHEN i_col_bind_to = space
-                                                                          THEN ``
-                                                                          ELSE |$\{{ i_col_bind_to }\}| )  ) ) ) ).
+                                               t_arg = temp5 ) ).
 
-    DATA(cells) = column_list_item->ele( `cells` ).
+
+    cells = column_list_item->ele( `cells` ).
 
     LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO layout.
 
@@ -487,20 +601,26 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
         IF layout->t_sub_col IS NOT INITIAL.
 
-          DATA(sub_col) = ``.
-          DATA(index) = 0.
 
-          LOOP AT layout->t_sub_col INTO DATA(subcol).
+          sub_col = ``.
+
+          index = 0.
+
+
+          LOOP AT layout->t_sub_col INTO subcol.
 
             index = index + 1.
 
-            READ TABLE i_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
+
+            READ TABLE i_layout->ms_layout-t_layout INTO line WITH KEY fname = subcol-fname.
 
             IF line-reference_field IS INITIAL.
-              DATA(column) = |{ line-tlabel }: { table_value_formatter( line ) }|.
+
+              column = |{ line-tlabel }: { table_value_formatter( line ) }|.
             ELSE.
 
-              READ TABLE i_layout->ms_layout-t_layout INTO DATA(ref) WITH KEY fname = line-reference_field.
+
+              READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = line-reference_field.
 
               column = |{ line-tlabel }: { table_value_formatter( line ) } { table_value_formatter( ref ) }|.
             ENDIF.
@@ -557,6 +677,11 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD xml_build_icon.
+      FIELD-SYMBOLS <data> TYPE data.
+      DATA temp7 TYPE string.
+FIELD-SYMBOLS <src> TYPE any.
+      DATA temp8 TYPE string.
+FIELD-SYMBOLS <size> TYPE any.
 
     IF i_data IS NOT SUPPLIED. " Table case
 
@@ -566,14 +691,21 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     ELSE.
 
-      ASSIGN i_data->* TO FIELD-SYMBOL(<data>).
 
-      ASSIGN COMPONENT |{ i_layout->fname }-SRC| OF STRUCTURE <data> TO FIELD-SYMBOL(<src>).
+      ASSIGN i_data->* TO <data>.
+
+
+      temp7 = |{ i_layout->fname }-SRC|.
+
+ASSIGN COMPONENT temp7 OF STRUCTURE <data> TO <src>.
       IF <src> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
 
-      ASSIGN COMPONENT |{ i_layout->fname }-ICON_SIZE| OF STRUCTURE <data> TO FIELD-SYMBOL(<size>).
+
+      temp8 = |{ i_layout->fname }-ICON_SIZE|.
+
+ASSIGN COMPONENT temp8 OF STRUCTURE <data> TO <size>.
       IF <size> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
@@ -589,6 +721,15 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD xml_build_radial_microchart.
+      FIELD-SYMBOLS <data> TYPE data.
+      DATA temp9 TYPE string.
+FIELD-SYMBOLS <size> TYPE any.
+      DATA temp10 TYPE string.
+FIELD-SYMBOLS <percentage> TYPE any.
+      DATA temp11 TYPE string.
+FIELD-SYMBOLS <valuecolor> TYPE any.
+      DATA temp12 TYPE string.
+FIELD-SYMBOLS <hideonnodata> TYPE any.
 
     IF i_data IS NOT SUPPLIED. " Table case
 
@@ -600,22 +741,35 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     ELSE.
 
-      ASSIGN i_data->* TO FIELD-SYMBOL(<data>).
 
-      ASSIGN COMPONENT |{ i_layout->fname }-RADIALMICROCHART_SIZE| OF STRUCTURE <data> TO FIELD-SYMBOL(<size>).
+      ASSIGN i_data->* TO <data>.
+
+
+      temp9 = |{ i_layout->fname }-RADIALMICROCHART_SIZE|.
+
+ASSIGN COMPONENT temp9 OF STRUCTURE <data> TO <size>.
       IF <size> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
 
-      ASSIGN COMPONENT |{ i_layout->fname }-PERCENTAGE| OF STRUCTURE <data> TO FIELD-SYMBOL(<percentage>).
+
+      temp10 = |{ i_layout->fname }-PERCENTAGE|.
+
+ASSIGN COMPONENT temp10 OF STRUCTURE <data> TO <percentage>.
       IF <percentage> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
-      ASSIGN COMPONENT |{ i_layout->fname }-VALUECOLOR| OF STRUCTURE <data> TO FIELD-SYMBOL(<valuecolor>).
+
+      temp11 = |{ i_layout->fname }-VALUECOLOR|.
+
+ASSIGN COMPONENT temp11 OF STRUCTURE <data> TO <valuecolor>.
       IF <valuecolor> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
-      ASSIGN COMPONENT |{ i_layout->fname }-HIDEONNODATA| OF STRUCTURE <data> TO FIELD-SYMBOL(<hideonnodata>).
+
+      temp12 = |{ i_layout->fname }-HIDEONNODATA|.
+
+ASSIGN COMPONENT temp12 OF STRUCTURE <data> TO <hideonnodata>.
       IF <hideonnodata> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
@@ -636,6 +790,15 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD xml_build_progress_indicator.
+      FIELD-SYMBOLS <data> TYPE data.
+      DATA temp13 TYPE string.
+FIELD-SYMBOLS <percentvalue> TYPE any.
+      DATA temp14 TYPE string.
+FIELD-SYMBOLS <displayvalue> TYPE any.
+      DATA temp15 TYPE string.
+FIELD-SYMBOLS <showvalue> TYPE any.
+      DATA temp16 TYPE string.
+FIELD-SYMBOLS <state> TYPE any.
 
     IF i_data IS NOT SUPPLIED. " Table case
 
@@ -648,22 +811,35 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     ELSE.
 
-      ASSIGN i_data->* TO FIELD-SYMBOL(<data>).
 
-      ASSIGN COMPONENT |{ i_layout->fname }-PERCENTVALUE| OF STRUCTURE <data> TO FIELD-SYMBOL(<percentvalue>).
+      ASSIGN i_data->* TO <data>.
+
+
+      temp13 = |{ i_layout->fname }-PERCENTVALUE|.
+
+ASSIGN COMPONENT temp13 OF STRUCTURE <data> TO <percentvalue>.
       IF <percentvalue> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
 
-      ASSIGN COMPONENT |{ i_layout->fname }-DISPLAYVALUE| OF STRUCTURE <data> TO FIELD-SYMBOL(<displayvalue>).
+
+      temp14 = |{ i_layout->fname }-DISPLAYVALUE|.
+
+ASSIGN COMPONENT temp14 OF STRUCTURE <data> TO <displayvalue>.
       IF <displayvalue> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
-      ASSIGN COMPONENT |{ i_layout->fname }-SHOWVALUE| OF STRUCTURE <data> TO FIELD-SYMBOL(<showvalue>).
+
+      temp15 = |{ i_layout->fname }-SHOWVALUE|.
+
+ASSIGN COMPONENT temp15 OF STRUCTURE <data> TO <showvalue>.
       IF <showvalue> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
-      ASSIGN COMPONENT |{ i_layout->fname }-STATE| OF STRUCTURE <data> TO FIELD-SYMBOL(<state>).
+
+      temp16 = |{ i_layout->fname }-STATE|.
+
+ASSIGN COMPONENT temp16 OF STRUCTURE <data> TO <state>.
       IF <state> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
@@ -687,15 +863,34 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD xml_build_status_indicator.
+      DATA status_indicator TYPE REF TO z2ui5_cl_ui5_view_builder.
+      DATA thresholds TYPE REF TO z2ui5_cl_ui5_view_builder.
+      FIELD-SYMBOLS <data> TYPE data.
+      DATA temp17 TYPE string.
+FIELD-SYMBOLS <value> TYPE any.
+      DATA temp18 TYPE string.
+FIELD-SYMBOLS <class> TYPE any.
+      DATA temp19 TYPE string.
+FIELD-SYMBOLS <size> TYPE any.
+      DATA temp20 TYPE string.
+FIELD-SYMBOLS <fillcolor_good> TYPE any.
+      DATA temp21 TYPE string.
+FIELD-SYMBOLS <fillcolor_critical> TYPE any.
+      DATA temp22 TYPE string.
+FIELD-SYMBOLS <fillcolor_error> TYPE any.
+      DATA temp23 TYPE string.
+FIELD-SYMBOLS <shapeid> TYPE any.
 
     IF i_data IS NOT SUPPLIED. " We want to build a Table!
 
-      DATA(status_indicator) = i_xml->ele( n = `StatusIndicator` ns = `si`
+
+      status_indicator = i_xml->ele( n = `StatusIndicator` ns = `si`
                                    )->a( n = `class` v = |\{{ i_layout->fname }/CLASS\}|
                                    )->a( n = `size` v = |\{{ i_layout->fname }/STATUSINDICATOR_SIZE\}|
                                    )->a( n = `value` v = |\{{ i_layout->fname }/VALUE\}| ).
 
-      DATA(thresholds) = status_indicator->ele( n = `propertyThresholds` ns = `si` ).
+
+      thresholds = status_indicator->ele( n = `propertyThresholds` ns = `si` ).
 
       thresholds->ele( n = `PropertyThreshold` ns = `si`
           )->a( n = `fillColor` v = 'Good'
@@ -715,19 +910,29 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     ELSE.
 
-      ASSIGN i_data->* TO FIELD-SYMBOL(<data>).
 
-      ASSIGN COMPONENT |{ i_layout->fname }-VALUE| OF STRUCTURE <data> TO FIELD-SYMBOL(<value>).
+      ASSIGN i_data->* TO <data>.
+
+
+      temp17 = |{ i_layout->fname }-VALUE|.
+
+ASSIGN COMPONENT temp17 OF STRUCTURE <data> TO <value>.
       IF <value> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
 
-      ASSIGN COMPONENT |{ i_layout->fname }-CLASS| OF STRUCTURE <data> TO FIELD-SYMBOL(<class>).
+
+      temp18 = |{ i_layout->fname }-CLASS|.
+
+ASSIGN COMPONENT temp18 OF STRUCTURE <data> TO <class>.
       IF <class> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
 
-      ASSIGN COMPONENT |{ i_layout->fname }-STATUSINDICATOR_SIZE| OF STRUCTURE <data> TO FIELD-SYMBOL(<size>).
+
+      temp19 = |{ i_layout->fname }-STATUSINDICATOR_SIZE|.
+
+ASSIGN COMPONENT temp19 OF STRUCTURE <data> TO <size>.
       IF <size> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
@@ -740,19 +945,31 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       thresholds = status_indicator->ele( n = `propertyThresholds` ns = `si` ).
 
-      ASSIGN COMPONENT |{ i_layout->fname }-FILLCOLOR_GOOD| OF STRUCTURE <data> TO FIELD-SYMBOL(<fillcolor_good>).
+
+      temp20 = |{ i_layout->fname }-FILLCOLOR_GOOD|.
+
+ASSIGN COMPONENT temp20 OF STRUCTURE <data> TO <fillcolor_good>.
       IF <fillcolor_good> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
-      ASSIGN COMPONENT |{ i_layout->fname }-FILLCOLOR_CRITICAL| OF STRUCTURE <data> TO FIELD-SYMBOL(<fillcolor_critical>).
+
+      temp21 = |{ i_layout->fname }-FILLCOLOR_CRITICAL|.
+
+ASSIGN COMPONENT temp21 OF STRUCTURE <data> TO <fillcolor_critical>.
       IF <fillcolor_critical> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
-      ASSIGN COMPONENT |{ i_layout->fname }-FILLCOLOR_ERROR| OF STRUCTURE <data> TO FIELD-SYMBOL(<fillcolor_error>).
+
+      temp22 = |{ i_layout->fname }-FILLCOLOR_ERROR|.
+
+ASSIGN COMPONENT temp22 OF STRUCTURE <data> TO <fillcolor_error>.
       IF <fillcolor_error> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
-      ASSIGN COMPONENT |{ i_layout->fname }-SHAPEID| OF STRUCTURE <data> TO FIELD-SYMBOL(<shapeid>).
+
+      temp23 = |{ i_layout->fname }-SHAPEID|.
+
+ASSIGN COMPONENT temp23 OF STRUCTURE <data> TO <shapeid>.
       IF <shapeid> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
@@ -780,6 +997,13 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD xml_build_generic_tag.
+      FIELD-SYMBOLS <data> TYPE data.
+      DATA temp24 TYPE string.
+FIELD-SYMBOLS <text> TYPE any.
+      DATA temp25 TYPE string.
+FIELD-SYMBOLS <design> TYPE any.
+      DATA temp26 TYPE string.
+FIELD-SYMBOLS <status> TYPE any.
 
     IF i_data IS NOT SUPPLIED. " Table case
 
@@ -790,18 +1014,28 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     ELSE.
 
-      ASSIGN i_data->* TO FIELD-SYMBOL(<data>).
 
-      ASSIGN COMPONENT |{ i_layout->fname }-TEXT| OF STRUCTURE <data> TO FIELD-SYMBOL(<text>).
+      ASSIGN i_data->* TO <data>.
+
+
+      temp24 = |{ i_layout->fname }-TEXT|.
+
+ASSIGN COMPONENT temp24 OF STRUCTURE <data> TO <text>.
       IF <text> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
 
-      ASSIGN COMPONENT |{ i_layout->fname }-DESIGN| OF STRUCTURE <data> TO FIELD-SYMBOL(<design>).
+
+      temp25 = |{ i_layout->fname }-DESIGN|.
+
+ASSIGN COMPONENT temp25 OF STRUCTURE <data> TO <design>.
       IF <design> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
-      ASSIGN COMPONENT |{ i_layout->fname }-STATUS| OF STRUCTURE <data> TO FIELD-SYMBOL(<status>).
+
+      temp26 = |{ i_layout->fname }-STATUS|.
+
+ASSIGN COMPONENT temp26 OF STRUCTURE <data> TO <status>.
       IF <status> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
