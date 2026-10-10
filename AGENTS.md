@@ -43,14 +43,17 @@ returned value instead.
 
 ## Validation
 
-Run `npx abaplint` before considering changes complete (config `abaplint.jsonc`,
-0 issues expected). CI:
+Run `npm run check` before considering changes complete: it runs the same
+abaplint, abap2UI5-linter and rename steps as CI, and all of them must pass.
+CI:
 
-* `ABAP_STANDARD` / `ABAP_CLOUD` — lint against Standard ABAP and ABAP Cloud
-* `ABAP_702` — lint the downported `702` branch; `npm run downport` /
-  `auto_downport` produce it (`abaplint --fix` against `.github/abaplint/abap_702.jsonc`)
-* `renaming` (`rename_test.yaml`) — namespace-rename check
-* `build_rename` — manual workflow that pushes a namespace-renamed branch
-  `rename_<name>` for a parallel install
+* `abap-standard` / `abap-cloud` — lint against Standard ABAP
+  (`abaplint.jsonc`) and ABAP Cloud (`.github/abaplint/abap_cloud.jsonc`)
+* `check-abap2ui5` — the abap2UI5-linter over the app classes and their
+  views (`abap2ui5lint.jsonc`)
+* `publish-702` / `abap-702` — `publish-702` writes the downported `702`
+  branch on every push to `main` (`npm run auto_downport`: `abaplint --fix`
+  against `.github/abaplint/abap_702.jsonc`), and `abap-702` lints it
+* `check-rename` — namespace-rename check (`.github/abaplint/rename.json`)
 
 All `.abap`/`.xml`/config files are LF-only (`.gitattributes` enforces it).
