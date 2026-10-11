@@ -681,16 +681,13 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     IF sy-subrc = 0.
 
-      " found entry.
-      IF     head_db-layout   = head-layout
-         AND head_db-control  = head-control
-         AND head_db-handle01 = head-handle01
-         AND head_db-handle02 = head-handle02
-         AND head_db-handle03 = head-handle03
-         AND head_db-handle04 = head-handle04.
-        " Save Changes
-
-      ELSE.
+      " found entry - the same keys save the changes, other keys a new layout
+      IF NOT (     head_db-layout   = head-layout
+               AND head_db-control  = head-control
+               AND head_db-handle01 = head-handle01
+               AND head_db-handle02 = head-handle02
+               AND head_db-handle03 = head-handle03
+               AND head_db-handle04 = head-handle04 ).
 
         " Save New Layout - new Guid
         TRY.
@@ -1264,12 +1261,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
       WHEN `GRIDLAYOUT_CONFIRM`.
 
-        IF    check_grid_sum( mv_xl_label + mv_xl_value ) = abap_true
-           OR check_grid_sum( mv_l_label + mv_l_value )  = abap_true
-           OR check_grid_sum( mv_m_label + mv_m_value )  = abap_true
-           OR check_grid_sum( mv_s_label + mv_s_value )  = abap_true.
-
-        ELSE.
+        IF NOT (    check_grid_sum( mv_xl_label + mv_xl_value ) = abap_true
+                 OR check_grid_sum( mv_l_label + mv_l_value )  = abap_true
+                 OR check_grid_sum( mv_m_label + mv_m_value )  = abap_true
+                 OR check_grid_sum( mv_s_label + mv_s_value )  = abap_true ).
 
           READ TABLE mo_layout->ms_layout-t_layout REFERENCE INTO layout WITH KEY fname = mv_active_line.
           IF sy-subrc <> 0.

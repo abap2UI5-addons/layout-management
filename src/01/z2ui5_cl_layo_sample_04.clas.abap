@@ -98,7 +98,7 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
 
   METHOD get_data.
 
-    SELECT SINGLE * FROM z2ui5_t_11 INTO @ms_data.
+    SELECT SINGLE * FROM z2ui5_t_11 INTO @ms_data. "#EC CI_NOORDER
 
   ENDMETHOD.
 

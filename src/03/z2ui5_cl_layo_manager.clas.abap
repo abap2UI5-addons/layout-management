@@ -420,7 +420,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                   uname
       FROM z2ui5_t_11
       WHERE guid = @layout_guid
-      INTO @DATA(head) ##SUBRC_OK.
+      INTO @DATA(head).
 
     IF sy-subrc <> 0.
       RETURN.
@@ -451,7 +451,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
         TRY.
             layout->pos_guid = cl_system_uuid=>create_uuid_c32_static( ).
-          CATCH cx_root.
+          CATCH cx_root ##NO_HANDLER.
         ENDTRY.
 
         layout->* = default_grid_layout( layout->* ).
@@ -480,7 +480,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     LOOP AT t_comp INTO DATA(comp).
       IF comp-type->type_kind = cl_abap_elemdescr=>typekind_oref.
-        DELETE t_comp.
+        DELETE t_comp INDEX sy-tabix.
       ENDIF.
     ENDLOOP.
 
@@ -545,7 +545,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
       TRY.
           DATA(guid) = cl_system_uuid=>create_uuid_c32_static( ).
-        CATCH cx_root.
+        CATCH cx_root ##NO_HANDLER.
       ENDTRY.
 
       " Default Layout
@@ -590,7 +590,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     TRY.
         DATA(pos_guid) = cl_system_uuid=>create_uuid_c32_static( ).
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
     " Default only 10 rows
