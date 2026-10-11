@@ -19,7 +19,6 @@
     "src/03/z2ui5_cl_layo_pop.clas.abap|collection-bound-to-property|sap.m.ComboBox|selectedKey|/MV_XL_LABEL": 1,
     "src/03/z2ui5_cl_layo_pop.clas.abap|collection-bound-to-property|sap.m.ComboBox|selectedKey|/MV_XL_VALUE": 1,
     "src/03/z2ui5_cl_layo_pop.clas.abap|duplicate-aggregation|sap.ui.layout.form.SimpleForm|content|": 1,
-    "src/03/z2ui5_cl_layo_pop.clas.abap|member-too-new|sap.m.List|noData|": 1,
     "src/03/z2ui5_cl_layo_pop.clas.abap|non-released-api||src/01|z2ui5_t_11": 1,
     "src/03/z2ui5_cl_layo_pop.clas.abap|non-released-api||src/01|z2ui5_t_12": 1,
     "src/03/z2ui5_cl_layo_pop.clas.abap|non-released-api||src/99/01|z2ui5_cl_util": 1,

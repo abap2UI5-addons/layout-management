@@ -1069,7 +1069,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                      )->a( n = `justifyContent` v = 'SpaceBetween' ).
 
     DATA(item) = vbox->ele( `List`
-                     )->a( n = `noData` v = `No subcolumns defined`
+                     )->a( n = `noDataText` v = `No subcolumns defined`
                      )->a( n = `items` v = client->_bind_edit( mo_layout->mt_sub_cols )
                      )->a( n = `selectionChange` v = client->_event( 'SELCHANGE' )
                      )->ele( `CustomListItem` ).
