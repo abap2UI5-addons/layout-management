@@ -429,7 +429,7 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                                           tab       = i_layout->ms_layout-t_layout
                                                           tab_index = lv_index )
           )->tag( `Text`
-          )->a( n = `text` v = layout->tlabel ).
+          )->a( n = `text` t = layout->tlabel ).
 
     ENDLOOP.
 
