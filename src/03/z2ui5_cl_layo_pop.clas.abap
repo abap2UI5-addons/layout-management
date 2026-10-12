@@ -674,20 +674,26 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                   handle01,
                   handle02,
                   handle03,
-                  handle04
+                  handle04,
+                  uname
       FROM z2ui5_t_11
       WHERE guid = @head-guid
       INTO @DATA(head_db).
 
     IF sy-subrc = 0.
 
-      " found entry - the same keys save the changes, other keys a new layout
+      " found entry - the same keys save the changes, other keys a new layout.
+      " A layout never changes hands: another user's personal layout, or a
+      " shared layout saved as user specific, is saved as a new layout of
+      " its own (a copy under the same name) and the original stays as it is
       IF NOT (     head_db-layout   = head-layout
                AND head_db-control  = head-control
                AND head_db-handle01 = head-handle01
                AND head_db-handle02 = head-handle02
                AND head_db-handle03 = head-handle03
-               AND head_db-handle04 = head-handle04 ).
+               AND head_db-handle04 = head-handle04 )
+          OR ( head_db-uname IS NOT INITIAL AND head_db-uname <> sy-uname )
+          OR ( head_db-uname IS INITIAL AND head-uname IS NOT INITIAL ).
 
         " Save New Layout - new Guid
         TRY.
@@ -1014,7 +1020,29 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DELETE FROM z2ui5_t_11 WHERE guid = @head-guid.
+    " The owner comes from the database, not from the bound list the
+    " browser sends back. Only the user's own layouts can be deleted: a
+    " shared layout (no user) belongs to every user of the table, and this
+    " addon has no administrator role that could decide for all of them.
+    SELECT SINGLE uname
+      FROM z2ui5_t_11
+      WHERE guid = @head-guid
+      INTO @DATA(owner).
+    IF sy-subrc <> 0.
+      client->message_toast_display( 'Layout could not be deleted.' ).
+      RETURN.
+    ENDIF.
+    IF owner IS INITIAL.
+      client->message_toast_display( 'A shared layout is used by every user and cannot be deleted here.' ).
+      RETURN.
+    ENDIF.
+    IF owner <> sy-uname.
+      client->message_toast_display( 'Only the user who saved this layout can delete it.' ).
+      RETURN.
+    ENDIF.
+
+    DELETE FROM z2ui5_t_11 WHERE guid = @head-guid
+                             AND uname = @sy-uname.
     " Base the outcome on the header delete. The old code only checked the
     " sy-subrc of the position delete, so a layout without position rows
     " (e.g. all columns hidden) was never committed and reappeared.

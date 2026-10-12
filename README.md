@@ -149,6 +149,13 @@ above with the namespaces of the view.
 
 This library persists layout variants to its own database tables and has no authorization check of its own for who may create, edit or read layouts. Add your own checks if that matters in your scenario.
 
+Ownership of the variants:
+
+* A layout saved with **User specific** belongs to the user who saved it; one saved without it is **shared** and is offered to every user.
+* The layout popup lists the user's own layouts and the shared ones - never another user's personal layout.
+* Saving never takes a layout away from anybody: saving another user's layout, or saving a shared layout as user specific, stores a new layout of the user's own under the same name and leaves the original as it was. A shared layout saved again as shared is updated for everybody.
+* Users can delete only their own layouts. Shared layouts have no owner and cannot be deleted from the popup; remove them in table `z2ui5_t_11` (and their positions in `z2ui5_t_12`).
+
 ## Development
 
 ```bash
