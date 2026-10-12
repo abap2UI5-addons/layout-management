@@ -288,6 +288,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           AND handle02 = @handle02
           AND handle03 = @handle03
           AND handle04 = @handle04
+          " the user's own layouts and the shared ones (no user) - never
+          " another user's personal layout
+          AND ( uname = @sy-uname OR uname = @space )
         INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
 
     ENDIF.
