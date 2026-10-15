@@ -111,12 +111,56 @@ ENDMETHOD.
 The samples below are complete apps, `z2ui5_cl_layo_sample_03` is the table
 above with the namespaces of the view.
 
+### Any view - the generic mode
+
+For a view that is neither a table nor a form, the generic mode personalizes
+the controls of the view itself: the user hides them, moves them inside the
+aggregation they sit in (the buttons of a toolbar, the inputs of a box) and
+renames them. Register the controls by their `id`, build the view as usual
+and pass the finished XML through `xml_apply_layout( )`:
+
+```abap
+" in check_on_init( ) - once
+mo_layout = z2ui5_cl_layo_manager=>factory_generic( handle01 = `ZCL_MY_APP`
+                                                    handle02 = `MAIN_VIEW` ).
+mo_layout->register( id = `inpName` label = `Name` ).
+mo_layout->register( id = `btnSave` label = `Save` ).
+mo_layout->register( id = `lstNotes` label = `Notes` label_attr = `headerText` ).
+
+" in the view - the settings button, then the layout applied to the XML
+z2ui5_cl_layo_pop=>render_layout_function( xml    = header
+                                           client = client
+                                           layout = mo_layout ).
+...
+client->view_display( z2ui5_cl_layo_xml_builder=>xml_apply_layout( i_xml    = view->stringify( )
+                                                                     i_layout = mo_layout ) ).
+```
+
+- A hidden control gets `visible="false"`; a `Label` directly in front of it
+  whose `labelFor` names it is hidden, moved and renamed with it.
+- Reordering stays inside the parent aggregation: the registered controls
+  swap the places they occupy there, every other child keeps its position,
+  nothing moves into another container.
+- A renamed control gets its text written into `text`, `title`, `header`,
+  `headerText`, `label` or `placeholder` - whichever it has - or into the
+  attribute named with `label_attr`.
+- `register_by_xml( xml = ... prefix = ... )` registers every control of a
+  view whose id starts with the prefix, with the label the view carries.
+- Navigation back from the popup, events and variants work as for a table
+  (`z2ui5_cl_layo_sample_06`). The tables and forms of the other modes are
+  unchanged and can sit in the same view.
+
+The XML handling is `z2ui5_cl_layo_xml_tree` - no dependency on the framework
+or the database, covered by ABAP Unit tests.
+
 ## Features
 
 * **Generic Output** - Universal table and form rendering
 * **Layout Customization** - Flexible customization of table and form outputs
+* **Any View** - Hide, reorder within the parent aggregation and relabel the controls of any view built with the view builder (generic mode)
 * **Variant Persistence** - Save layout variants to database
 * **Auto-Loading** - Load default layouts automatically at startup
+* **Authorization Hook** - Shared layouts and deletions are decided by `z2ui5_if_layo_auth`, with a safe default
 
 ## Samples
 
@@ -127,6 +171,7 @@ above with the namespaces of the view.
 | `z2ui5_cl_layo_sample_03` | Table from a database table |
 | `z2ui5_cl_layo_sample_04` | Simple form from a database record |
 | `z2ui5_cl_layo_sample_05` | Table and form with two layouts on one page |
+| `z2ui5_cl_layo_sample_06` | Generic mode: a page with a panel of inputs, a toolbar and a list, personalized by control id |
 
 ## Demo
 
@@ -147,14 +192,69 @@ above with the namespaces of the view.
 
 ## Security
 
-This library persists layout variants to its own database tables and has no authorization check of its own for who may create, edit or read layouts. Add your own checks if that matters in your scenario.
+This library persists layout variants to its own database tables. Who may
+write what is decided in one place, the interface `z2ui5_if_layo_auth`.
 
 Ownership of the variants:
 
 * A layout saved with **User specific** belongs to the user who saved it; one saved without it is **shared** and is offered to every user.
 * The layout popup lists the user's own layouts and the shared ones - never another user's personal layout.
 * Saving never takes a layout away from anybody: saving another user's layout, or saving a shared layout as user specific, stores a new layout of the user's own under the same name and leaves the original as it was. A shared layout saved again as shared is updated for everybody.
-* Users can delete only their own layouts. Shared layouts have no owner and cannot be deleted from the popup; remove them in table `z2ui5_t_11` (and their positions in `z2ui5_t_12`).
+
+### Authorization concept
+
+Before every write the popup asks `z2ui5_cl_layo_auth=>check( action = ... head = ... )`
+with one of three actions of `z2ui5_if_layo_auth=>cs_action`:
+
+| Action | Asked when | Shipped default |
+|---|---|---|
+| `SAVE_OWN` | a user specific layout is saved (`head-uname` = the user) | allowed |
+| `SAVE_SHARED` | a shared layout is saved, new or updated (`head-uname` empty) | **denied** |
+| `DELETE` | a layout is deleted - `head` is read from the database, `uname` is its owner | allowed for the owner only, shared layouts never |
+
+The decision goes to, in this order:
+
+1. an instance set with `z2ui5_cl_layo_auth=>set_instance( )` - for tests, or
+   for an installation that wants to choose the class itself;
+2. the one class in the system that implements `z2ui5_if_layo_auth` - found
+   by its interface, the way abap2UI5 finds its user exit (the first by name
+   if there are several, so keep it to one);
+3. `z2ui5_cl_layo_auth` itself, the default above.
+
+A denial ends in a message toast and nothing is written. Without an
+implementation the save popup starts on **User specific**, so the first save
+of every user just works.
+
+The addon ships no authorization object on purpose: an `AUTHORITY-CHECK`
+against an object that does not exist in the customer system is always
+refused, and the right object differs per installation. To let key users
+maintain shared layouts, implement the interface with your own object:
+
+```abap
+CLASS zcl_my_layo_auth DEFINITION PUBLIC FINAL CREATE PUBLIC.
+  PUBLIC SECTION.
+    INTERFACES z2ui5_if_layo_auth.
+ENDCLASS.
+
+CLASS zcl_my_layo_auth IMPLEMENTATION.
+  METHOD z2ui5_if_layo_auth~check_authorized.
+    CASE action.
+      WHEN z2ui5_if_layo_auth=>cs_action-save_own.
+        result = xsdbool( head-uname = sy-uname ).
+      WHEN z2ui5_if_layo_auth=>cs_action-save_shared
+        OR z2ui5_if_layo_auth=>cs_action-delete.
+        " head-handle01 .. 04 say which app and table the layout belongs to
+        AUTHORITY-CHECK OBJECT 'Z_LAYOUT' ID 'ACTVT' FIELD '02'.
+        result = xsdbool( sy-subrc = 0 OR ( action = z2ui5_if_layo_auth=>cs_action-delete
+                                            AND head-uname = sy-uname ) ).
+    ENDCASE.
+  ENDMETHOD.
+ENDCLASS.
+```
+
+Shared layouts written before an implementation existed, or by another tool,
+stay in table `z2ui5_t_11` (positions in `z2ui5_t_12`) and can be removed
+there.
 
 ## Development
 
