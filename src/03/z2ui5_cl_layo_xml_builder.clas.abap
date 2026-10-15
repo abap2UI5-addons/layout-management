@@ -25,6 +25,21 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
         i_layout TYPE REF TO z2ui5_cl_layo_manager
         i_title  TYPE string OPTIONAL.
 
+    "! The generic mode: the view XML with the layout applied. i_layout comes
+    "! from z2ui5_cl_layo_manager=&gt;factory_generic( ) with the controls
+    "! registered; the controls the layout hides get visible="false" (a Label
+    "! pointing at them with labelFor too), the registered controls are
+    "! reordered inside their parent aggregation, renamed controls get their
+    "! label and width written. Everything else in the view stays as it is:
+    "!   client-&gt;view_display( z2ui5_cl_layo_xml_builder=&gt;xml_apply_layout( i_xml    = view-&gt;stringify( )
+    "!                                                                      i_layout = mo_layout ) ).
+    CLASS-METHODS xml_apply_layout
+      IMPORTING
+        i_xml         TYPE string
+        i_layout      TYPE REF TO z2ui5_cl_layo_manager
+      RETURNING
+        VALUE(result) TYPE string.
+
   PROTECTED SECTION.
 
   PRIVATE SECTION.
@@ -118,6 +133,20 @@ ENDCLASS.
 
 
 CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
+
+  METHOD xml_apply_layout.
+
+    IF i_layout IS NOT BOUND.
+      result = i_xml.
+      RETURN.
+    ENDIF.
+
+    i_layout->prepare( ).
+
+    result = z2ui5_cl_layo_xml_tree=>apply( xml    = i_xml
+                                            t_slot = i_layout->get_slots( ) ).
+
+  ENDMETHOD.
 
   METHOD xml_build_simple_form.
 

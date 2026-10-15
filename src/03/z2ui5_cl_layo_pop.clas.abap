@@ -511,9 +511,13 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   METHOD edit_okay.
 
     LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
-      layout->tlabel           = mo_layout->set_text( layout->* ).
-      layout->alternative_text = to_upper( layout->alternative_text ).
-      layout->width            = check_width_unit( layout->width ).
+      " the alternative text is a data element name for a table or form, a
+      " label as typed in the generic mode
+      IF mo_layout->ms_layout-s_head-control <> z2ui5_cl_layo_manager=>generic.
+        layout->alternative_text = to_upper( layout->alternative_text ).
+        layout->width            = check_width_unit( layout->width ).
+      ENDIF.
+      layout->tlabel = mo_layout->text_of( layout->* ).
     ENDLOOP.
 
     mo_layout->ms_layout-t_layout = mo_layout->sort_by_sequence( mo_layout->ms_layout-t_layout ).
@@ -544,6 +548,11 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   METHOD render_layout_function.
 
     result = xml.
+
+    " the generic mode loads its default variant on the first use - before
+    " the button takes the guid, or it would fire the guid of a layout that
+    " the default has replaced by then
+    layout->prepare( ).
 
     result->tag( `Button`
         )->a( n = `icon` v = 'sap-icon://action-settings'
@@ -668,6 +677,23 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                                    def           = mv_def
                                    uname         = user ).
 
+    " A shared layout (no user) is offered to, and loaded as default by,
+    " every user of the app: saving one needs an authorization the addon
+    " cannot decide itself - z2ui5_if_layo_auth does, and without an
+    " implementation in the system the shipped default denies it
+    DATA(action) = COND string( WHEN head-uname IS INITIAL
+                                THEN z2ui5_if_layo_auth=>cs_action-save_shared
+                                ELSE z2ui5_if_layo_auth=>cs_action-save_own ).
+    IF z2ui5_cl_layo_auth=>check( action = action
+                                  head   = head ) = abap_false.
+      IF head-uname IS INITIAL.
+        client->message_toast_display( 'You are not authorized to save a layout for all users - save it as user specific.' ).
+      ELSE.
+        client->message_toast_display( 'You are not authorized to save this layout.' ).
+      ENDIF.
+      RETURN.
+    ENDIF.
+
     SELECT SINGLE guid,
                   layout,
                   control,
@@ -709,10 +735,16 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       r_layout->guid = head-guid.
 
       MOVE-CORRESPONDING r_layout->* TO position.
-      position-width = check_width_unit( position-width ).
+      " the generic mode keeps the width as typed (a CSS size), like edit_okay( )
+      IF mo_layout->ms_layout-s_head-control <> z2ui5_cl_layo_manager=>generic.
+        position-width = check_width_unit( position-width ).
+      ENDIF.
 
-      " only visible/ref_fields/SubCols should be saved.
-      IF r_layout->visible = abap_true.
+      " only visible/ref_fields/SubCols should be saved - in the generic
+      " mode every position is: a control missing from a saved layout is one
+      " registered since, and is shown
+      IF r_layout->visible = abap_true
+          OR mo_layout->ms_layout-s_head-control = z2ui5_cl_layo_manager=>generic.
         APPEND position TO positions.
         CONTINUE.
       ENDIF.
@@ -957,7 +989,8 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   METHOD set_selected_layout.
 
     mo_layout = z2ui5_cl_layo_manager=>factory_by_guid( layout_guid = head-guid
-                                                        t_comps     = mo_layout->ms_layout-t_layout ).
+                                                        t_comps     = mo_layout->ms_layout-t_layout
+                                                        t_slots     = mo_layout->mt_slots ).
 
   ENDMETHOD.
 
@@ -994,6 +1027,17 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     mv_usr    = xsdbool( mo_layout->ms_layout-s_head-uname IS NOT INITIAL ).
 
+    " without the authorization for a shared layout the switch starts on
+    " user specific - otherwise every first save would be refused
+    IF mv_usr = abap_false.
+      DATA(head) = mo_layout->ms_layout-s_head.
+      CLEAR head-uname.
+      IF z2ui5_cl_layo_auth=>check( action = z2ui5_if_layo_auth=>cs_action-save_shared
+                                    head   = head ) = abap_false.
+        mv_usr = abap_true.
+      ENDIF.
+    ENDIF.
+
   ENDMETHOD.
 
   METHOD on_event_layout.
@@ -1020,29 +1064,34 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    " The owner comes from the database, not from the bound list the
-    " browser sends back. Only the user's own layouts can be deleted: a
-    " shared layout (no user) belongs to every user of the table, and this
-    " addon has no administrator role that could decide for all of them.
-    SELECT SINGLE uname
-      FROM z2ui5_t_11
+    " The head - owner and handles - comes from the database, not from the
+    " bound list the browser sends back. Whether the user may delete it is
+    " z2ui5_if_layo_auth's decision: the shipped default allows a user to
+    " delete his own layouts and nothing else; an implementation in the
+    " system may let an administrator remove shared layouts as well
+    SELECT SINGLE * FROM z2ui5_t_11
       WHERE guid = @head-guid
-      INTO @DATA(owner).
+      INTO @DATA(head_db).
     IF sy-subrc <> 0.
       client->message_toast_display( 'Layout could not be deleted.' ).
       RETURN.
     ENDIF.
-    IF owner IS INITIAL.
-      client->message_toast_display( 'A shared layout is used by every user and cannot be deleted here.' ).
-      RETURN.
-    ENDIF.
-    IF owner <> sy-uname.
-      client->message_toast_display( 'Only the user who saved this layout can delete it.' ).
+    DATA(owner) = head_db-uname.
+
+    IF z2ui5_cl_layo_auth=>check( action = z2ui5_if_layo_auth=>cs_action-delete
+                                  head   = head_db ) = abap_false.
+      IF owner IS INITIAL.
+        client->message_toast_display( 'A shared layout is used by every user and cannot be deleted here.' ).
+      ELSEIF owner <> sy-uname.
+        client->message_toast_display( 'Only the user who saved this layout can delete it.' ).
+      ELSE.
+        client->message_toast_display( 'You are not authorized to delete this layout.' ).
+      ENDIF.
       RETURN.
     ENDIF.
 
     DELETE FROM z2ui5_t_11 WHERE guid = @head-guid
-                             AND uname = @sy-uname.
+                             AND uname = @owner.
     " Base the outcome on the header delete. The old code only checked the
     " sy-subrc of the position delete, so a layout without position rows
     " (e.g. all columns hidden) was never committed and reappeared.
@@ -1224,6 +1273,14 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       IF layout-alternative_text <> layout_tmp-alternative_text.
         mv_rerender = abap_true.
         RETURN.
+      ENDIF.
+
+      " the generic mode binds nothing - every change is written into the view
+      IF mo_layout->ms_layout-s_head-control = z2ui5_cl_layo_manager=>generic.
+        IF layout-visible <> layout_tmp-visible OR layout-width <> layout_tmp-width.
+          mv_rerender = abap_true.
+          RETURN.
+        ENDIF.
       ENDIF.
 
       IF layout-sequence <> layout_tmp-sequence.

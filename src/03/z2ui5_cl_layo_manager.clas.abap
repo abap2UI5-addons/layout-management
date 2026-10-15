@@ -23,6 +23,9 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     CLASS-DATA ui_table      TYPE control VALUE 'UI.TABLE' ##NO_TEXT.
     CLASS-DATA m_table       TYPE control VALUE 'M.TABLE' ##NO_TEXT.
     CLASS-DATA ui_simpleform TYPE control VALUE 'UI.SIMPLEFORM' ##NO_TEXT.
+    "! the generic mode: a layout of registered control ids applied to the
+    "! XML of any view - see factory_generic( ) and register( )
+    CLASS-DATA generic       TYPE control VALUE 'GENERIC' ##NO_TEXT.
     CLASS-DATA others        TYPE control VALUE '' ##NO_TEXT.
 
     TYPES ty_s_head TYPE z2ui5_t_11.
@@ -52,11 +55,23 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         t_layout TYPE ty_t_positions,
       END OF ty_s_layout.
 
+    TYPES:
+      "! a control the app registered for the generic mode: its id in the view,
+      "! the label the user sees for it, and the attribute that carries the label
+      BEGIN OF ty_s_slot,
+        id         TYPE string,
+        label      TYPE string,
+        label_attr TYPE string,
+      END OF ty_s_slot.
+    TYPES ty_t_slot TYPE STANDARD TABLE OF ty_s_slot WITH EMPTY KEY.
+
     DATA ms_layout     TYPE ty_s_layout.
     DATA ms_layout_tmp TYPE ty_s_layout.
     DATA mt_comps      TYPE ty_t_positions.
     DATA mt_sub_cols   TYPE ty_t_sub_columns.
     DATA mr_data       TYPE REF TO data.
+    "! the registered controls of the generic mode, in registration order
+    DATA mt_slots      TYPE ty_t_slot.
 
     CLASS-METHODS factory
       IMPORTING
@@ -70,12 +85,74 @@ CLASS z2ui5_cl_layo_manager DEFINITION
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
 
+    "! a layout from the database by its guid, over the components (or the
+    "! registered slots of the generic mode, passed as t_slots) of the
+    "! current layout
     CLASS-METHODS factory_by_guid
       IMPORTING
         layout_guid   TYPE clike
         t_comps       TYPE ty_t_positions
+        t_slots       TYPE ty_t_slot OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
+
+    "! The generic mode: a layout for ANY view. Register the controls the user
+    "! may personalize with register( ) or register_by_xml( ), then let
+    "! z2ui5_cl_layo_xml_builder=&gt;xml_apply_layout( ) apply the layout to the
+    "! XML the app's view builder produced - visibility, order within the
+    "! parent aggregation, label and width. The default variant is loaded on
+    "! the first apply, like for a table.
+    CLASS-METHODS factory_generic
+      IMPORTING
+        handle01      TYPE clike OPTIONAL
+        handle02      TYPE clike OPTIONAL
+        handle03      TYPE clike OPTIONAL
+        handle04      TYPE clike OPTIONAL
+        !format       TYPE clike OPTIONAL
+      RETURNING
+        VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
+
+    "! register one control of the view for the generic mode (ids up to 30
+    "! characters - the length of the position key). The label is what the
+    "! user sees in the popup and what is written back into the view when
+    "! the user renames the control; label_attr names the attribute that
+    "! carries it when the default (text, title, header, headerText, label,
+    "! placeholder - whichever the control has) is not the right one
+    METHODS register
+      IMPORTING
+        !id           TYPE clike
+        !label        TYPE clike OPTIONAL
+        label_attr    TYPE clike OPTIONAL
+      RETURNING
+        VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
+
+    "! register every control of the view XML whose id starts with the prefix
+    "! (all ids without one), with the label the view carries for it
+    METHODS register_by_xml
+      IMPORTING
+        !xml          TYPE string
+        !prefix       TYPE clike OPTIONAL
+      RETURNING
+        VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
+
+    "! merges the registered slots with the default variant of the database -
+    "! called by render_layout_function( ) and xml_apply_layout( ), needed by
+    "! hand only to read the layout before either
+    METHODS prepare.
+
+    "! the current layout as the slots the generic application takes, in
+    "! display order
+    METHODS get_slots
+      RETURNING
+        VALUE(result) TYPE z2ui5_cl_layo_xml_tree=>ty_t_slot.
+
+    "! the label of one position: set_text( ) for the data-bound modes, the
+    "! alternative text or the registered label in the generic mode
+    METHODS text_of
+      IMPORTING
+        !layout       TYPE ty_s_positions
+      RETURNING
+        VALUE(result) TYPE string.
 
     CLASS-METHODS select_layouts
       IMPORTING
@@ -155,6 +232,16 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         VALUE(result) TYPE ty_s_positions.
 
   PRIVATE SECTION.
+    "! set by register( ), cleared by prepare( )
+    DATA mv_slots_dirty TYPE abap_bool.
+
+    METHODS build_slot_position
+      IMPORTING
+        slot          TYPE ty_s_slot
+        guid          TYPE sysuuid_c32
+      RETURNING
+        VALUE(result) TYPE ty_s_positions.
+
     CLASS-METHODS create_layout_obj
       IMPORTING
         layout_guid   TYPE clike       OPTIONAL
@@ -235,7 +322,195 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                       ( control =  ui_simpleform index = 4 attribute = 'ALTERNATIVE_TEXT' )
                       ( control =  ui_simpleform index = 5 attribute = 'REFERENCE_FIELD' )
                       ( control =  ui_simpleform index = 6 attribute = 'GRID_LAYOUT' )
-                      ( control =  ui_simpleform index = 7 attribute = 'NO_CONVEXIT' ) ).
+                      ( control =  ui_simpleform index = 7 attribute = 'NO_CONVEXIT' )
+                      ( control =  generic       index = 1 attribute = 'TLABEL' )
+                      ( control =  generic       index = 2 attribute = 'VISIBLE' )
+                      ( control =  generic       index = 3 attribute = 'SEQUENCE' )
+                      ( control =  generic       index = 4 attribute = 'ALTERNATIVE_TEXT' )
+                      ( control =  generic       index = 5 attribute = 'WIDTH' ) ).
+  ENDMETHOD.
+
+  METHOD factory_generic.
+
+    result = NEW #( ).
+
+    TRY.
+        result->ms_layout-s_head-guid = cl_system_uuid=>create_uuid_c32_static( ).
+      CATCH cx_root ##NO_HANDLER.
+    ENDTRY.
+
+    result->ms_layout-s_head-layout        = 'DEFAULT'.
+    result->ms_layout-s_head-control       = generic.
+    result->ms_layout-s_head-descr         = |{ handle04 } - { handle03 } - { format }|.
+    result->ms_layout-s_head-def           = abap_true.
+    result->ms_layout-s_head-handle01      = handle01.
+    result->ms_layout-s_head-handle02      = handle02.
+    result->ms_layout-s_head-handle03      = handle03.
+    result->ms_layout-s_head-handle04      = handle04.
+    result->ms_layout-s_head-screen_format = format.
+
+    result->mv_slots_dirty = abap_true.
+
+  ENDMETHOD.
+
+  METHOD register.
+
+    DATA lv_id TYPE string.
+
+    result = me.
+
+    lv_id = id.
+    IF lv_id IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = lv_id. "#EC CI_SORTSEQ
+    IF sy-subrc <> 0.
+      APPEND VALUE #( id = lv_id ) TO mt_slots.
+      READ TABLE mt_slots REFERENCE INTO lr_slot INDEX lines( mt_slots ).
+    ENDIF.
+
+    IF label IS NOT INITIAL.
+      lr_slot->label = label.
+    ENDIF.
+    IF lr_slot->label IS INITIAL.
+      lr_slot->label = lv_id.
+    ENDIF.
+    IF label_attr IS NOT INITIAL.
+      lr_slot->label_attr = label_attr.
+    ENDIF.
+
+    mv_slots_dirty = abap_true.
+
+  ENDMETHOD.
+
+  METHOD register_by_xml.
+
+    DATA lv_prefix TYPE string.
+
+    result = me.
+
+    lv_prefix = prefix.
+    DATA(lt_id) = z2ui5_cl_layo_xml_tree=>scan_ids( xml    = xml
+                                                    prefix = lv_prefix ).
+
+    LOOP AT lt_id REFERENCE INTO DATA(lr_id).
+      register( id         = lr_id->id
+                label      = lr_id->label
+                label_attr = lr_id->label_attr ).
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD prepare.
+
+    DATA lt_layout TYPE ty_t_positions.
+    DATA ls_layout TYPE ty_s_positions.
+    DATA lv_guid   TYPE sysuuid_c32.
+
+    IF ms_layout-s_head-control <> generic OR mv_slots_dirty = abap_false.
+      RETURN.
+    ENDIF.
+    mv_slots_dirty = abap_false.
+
+    DATA(lt_head) = select_layouts( control  = ms_layout-s_head-control
+                                    handle01 = ms_layout-s_head-handle01
+                                    handle02 = ms_layout-s_head-handle02
+                                    handle03 = ms_layout-s_head-handle03
+                                    handle04 = ms_layout-s_head-handle04 ).
+
+    DATA(ls_def) = get_default_layout( handle04    = ms_layout-s_head-handle04
+                                       handle03    = ms_layout-s_head-handle03
+                                       handle02    = ms_layout-s_head-handle02
+                                       handle01    = ms_layout-s_head-handle01
+                                       layout_guid = ``
+                                       format      = ms_layout-s_head-screen_format
+                                       head        = lt_head ).
+
+    IF ls_def-layout IS NOT INITIAL.
+      ms_layout-s_head = ls_def.
+      DATA(lt_pos) = select_layout_components( ls_def-guid ).
+    ENDIF.
+    lv_guid = ms_layout-s_head-guid.
+
+    LOOP AT mt_slots REFERENCE INTO DATA(lr_slot).
+
+      READ TABLE lt_pos INTO DATA(ls_pos) WITH KEY fname = lr_slot->id. "#EC CI_SORTSEQ
+      IF sy-subrc = 0.
+        " a saved position - a control registered since the save is new and visible
+        CLEAR ls_layout.
+        MOVE-CORRESPONDING ls_pos TO ls_layout.
+      ELSE.
+        ls_layout = build_slot_position( slot = lr_slot->*
+                                         guid = lv_guid ).
+      ENDIF.
+      ls_layout-tlabel = text_of( ls_layout ).
+      APPEND ls_layout TO lt_layout.
+
+    ENDLOOP.
+
+    ms_layout-t_layout = sort_by_sequence( lt_layout ).
+
+  ENDMETHOD.
+
+  METHOD build_slot_position.
+
+    result-fname   = slot-id.
+    result-guid    = guid.
+    result-visible = abap_true.
+
+    TRY.
+        result-pos_guid = cl_system_uuid=>create_uuid_c32_static( ).
+      CATCH cx_root ##NO_HANDLER.
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD get_slots.
+
+    DATA ls_slot TYPE z2ui5_cl_layo_xml_tree=>ty_s_slot.
+
+    LOOP AT ms_layout-t_layout REFERENCE INTO DATA(lr_layout).
+      CLEAR ls_slot.
+      ls_slot-id      = lr_layout->fname.
+      ls_slot-visible = lr_layout->visible.
+      ls_slot-width   = lr_layout->width.
+      " the label is written into the view only when the user renamed the control
+      IF lr_layout->alternative_text IS NOT INITIAL.
+        ls_slot-label = lr_layout->tlabel.
+      ENDIF.
+      READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = ls_slot-id. "#EC CI_SORTSEQ
+      IF sy-subrc = 0.
+        ls_slot-label_attr = lr_slot->label_attr.
+      ENDIF.
+      APPEND ls_slot TO result.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD text_of.
+
+    DATA lv_id TYPE string.
+
+    IF ms_layout-s_head-control <> generic.
+      result = set_text( layout ).
+      RETURN.
+    ENDIF.
+
+    IF layout-alternative_text IS NOT INITIAL.
+      result = layout-alternative_text.
+      RETURN.
+    ENDIF.
+
+    lv_id = layout-fname.
+    READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = lv_id. "#EC CI_SORTSEQ
+    IF sy-subrc = 0.
+      result = lr_slot->label.
+    ENDIF.
+    IF result IS INITIAL.
+      result = lv_id.
+    ENDIF.
+
   ENDMETHOD.
 
   METHOD factory.
@@ -408,6 +683,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     result = NEW #( ).
 
     result->ms_layout-t_layout = t_comps.
+    result->mt_slots           = t_slots.
 
     " Select Layout Heads
     SELECT SINGLE guid,
@@ -429,11 +705,12 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA(t_pos) = select_layout_components( layout_guid ).
+    " the head first: text_of( ) decides by the control. No early return on
+    " an empty position table - a saved layout without positions is one
+    " with every component hidden, not a missing one
+    result->ms_layout-s_head = CORRESPONDING #( head ).
 
-    IF t_pos IS INITIAL.
-      RETURN.
-    ENDIF.
+    DATA(t_pos) = select_layout_components( layout_guid ).
 
     LOOP AT result->ms_layout-t_layout REFERENCE INTO DATA(layout).
 
@@ -459,14 +736,19 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
         layout->* = default_grid_layout( layout->* ).
 
+        " the generic mode saves every position, hidden ones included - a
+        " control without one was registered after the save and is shown
+        IF result->ms_layout-s_head-control = generic.
+          layout->visible = abap_true.
+        ENDIF.
+
       ENDIF.
 
       layout->guid   = layout_guid.
-      layout->tlabel = set_text( layout->* ).
+      layout->tlabel = result->text_of( layout->* ).
 
     ENDLOOP.
 
-    result->ms_layout-s_head   = CORRESPONDING #( head ).
     result->ms_layout-t_layout = sort_by_sequence( result->ms_layout-t_layout ).
     result->ms_layout-t_layout = set_sub_columns( result->ms_layout-t_layout ).
 
@@ -670,6 +952,11 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
 
+    " the generic mode has no data to sort
+    IF mr_data IS NOT BOUND.
+      RETURN.
+    ENDIF.
+
     ASSIGN mr_data->* TO <table>.
 
     IF <table> IS NOT ASSIGNED.
@@ -717,6 +1004,10 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
 
     CHECK mv_sel_mode <> space.
+
+    IF mr_data IS NOT BOUND.
+      RETURN.
+    ENDIF.
 
     ASSIGN mr_data->* TO <table>.
 
@@ -772,6 +1063,10 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD data_conversion.
 
     FIELD-SYMBOLS <tab> TYPE ANY TABLE.
+
+    IF mr_data IS NOT BOUND.
+      RETURN.
+    ENDIF.
 
     ASSIGN mr_data->* TO FIELD-SYMBOL(<any>).
 
