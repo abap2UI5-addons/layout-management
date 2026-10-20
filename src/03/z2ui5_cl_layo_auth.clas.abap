@@ -91,7 +91,7 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
     ENDIF.
 
     IF gi_instance IS NOT BOUND.
-      gi_instance = NEW z2ui5_cl_layo_auth( ).
+      CREATE OBJECT gi_instance TYPE z2ui5_cl_layo_auth.
     ENDIF.
 
     result = gi_instance.
@@ -117,6 +117,8 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
     DATA lv_intf    TYPE string.
     DATA lv_shipped TYPE string.
     DATA lt_class   TYPE z2ui5_cl_util=>ty_t_classes.
+        DATA temp1 TYPE string.
+        DATA temp2 TYPE z2ui5_cl_util=>ty_s_class_descr.
 
     TRY.
         lv_intf    = type_name_of( li_auth ).
@@ -127,7 +129,14 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
 
         " reproducible when a system carries more than one: the first by name
         SORT lt_class BY classname.
-        result = VALUE #( lt_class[ 1 ]-classname OPTIONAL ).
+
+        CLEAR temp1.
+
+        READ TABLE lt_class INTO temp2 INDEX 1.
+        IF sy-subrc = 0.
+          temp1 = temp2-classname.
+        ENDIF.
+        result = temp1.
 
       CATCH cx_root ##NO_HANDLER.
         " no repository access, no implementation: the default applies
@@ -147,17 +156,23 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD z2ui5_if_layo_auth~check_authorized.
+        DATA temp1 TYPE xsdboolean.
+        DATA temp2 TYPE xsdboolean.
 
     " the default: a user owns his layouts and nothing else. Shared layouts
     " belong to every user of the app, so saving one needs a decision the
     " addon cannot make - a class implementing z2ui5_if_layo_auth makes it
     CASE action.
       WHEN z2ui5_if_layo_auth=>cs_action-save_own.
-        result = xsdbool( head-uname = sy-uname ).
+
+        temp1 = boolc( head-uname = sy-uname ).
+        result = temp1.
       WHEN z2ui5_if_layo_auth=>cs_action-save_shared.
         result = abap_false.
       WHEN z2ui5_if_layo_auth=>cs_action-delete.
-        result = xsdbool( head-uname IS NOT INITIAL AND head-uname = sy-uname ).
+
+        temp2 = boolc( head-uname IS NOT INITIAL AND head-uname = sy-uname ).
+        result = temp2.
       WHEN OTHERS.
         result = abap_false.
     ENDCASE.
