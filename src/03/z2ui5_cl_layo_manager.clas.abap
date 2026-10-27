@@ -18,7 +18,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         active    TYPE abap_bool,
         index     TYPE int4,
       END OF ty_s_controls.
-    TYPES ty_t_controls TYPE STANDARD TABLE OF ty_s_controls WITH EMPTY KEY.
+    TYPES ty_t_controls TYPE STANDARD TABLE OF ty_s_controls WITH DEFAULT KEY.
 
     CLASS-DATA ui_table      TYPE control VALUE 'UI.TABLE' ##NO_TEXT.
     CLASS-DATA m_table       TYPE control VALUE 'M.TABLE' ##NO_TEXT.
@@ -29,14 +29,14 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     CLASS-DATA others        TYPE control VALUE '' ##NO_TEXT.
 
     TYPES ty_s_head TYPE z2ui5_t_11.
-    TYPES ty_t_head TYPE STANDARD TABLE OF ty_s_head WITH EMPTY KEY.
+    TYPES ty_t_head TYPE STANDARD TABLE OF ty_s_head WITH DEFAULT KEY.
 
     TYPES:
       BEGIN OF ty_s_sub_columns,
         key   TYPE string,
         fname TYPE string,
       END OF ty_s_sub_columns.
-    TYPES ty_t_sub_columns TYPE STANDARD TABLE OF ty_s_sub_columns WITH EMPTY KEY.
+    TYPES ty_t_sub_columns TYPE STANDARD TABLE OF ty_s_sub_columns WITH DEFAULT KEY.
 
     TYPES  BEGIN OF ty_s_positions.
              INCLUDE TYPE z2ui5_t_12.
@@ -47,7 +47,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
              show_convexit     TYPE abap_bool,
              convexit          TYPE string,
            END OF ty_s_positions.
-    TYPES ty_t_positions TYPE STANDARD TABLE OF ty_s_positions WITH EMPTY KEY.
+    TYPES ty_t_positions TYPE STANDARD TABLE OF ty_s_positions WITH DEFAULT KEY.
 
     TYPES:
       BEGIN OF ty_s_layout,
@@ -63,7 +63,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         label      TYPE string,
         label_attr TYPE string,
       END OF ty_s_slot.
-    TYPES ty_t_slot TYPE STANDARD TABLE OF ty_s_slot WITH EMPTY KEY.
+    TYPES ty_t_slot TYPE STANDARD TABLE OF ty_s_slot WITH DEFAULT KEY.
 
     DATA ms_layout     TYPE ty_s_layout.
     DATA ms_layout_tmp TYPE ty_s_layout.
@@ -295,44 +295,137 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
   METHOD get_controls.
 
-    result = VALUE #( active = abap_true
-                      ( control =  m_table       index = 1 attribute = 'TLABEL' )
-                      ( control =  m_table       index = 2 attribute = 'VISIBLE' )
-                      ( control =  m_table       index = 3 attribute = 'MERGE' )
-                      ( control =  m_table       index = 4 attribute = 'WIDTH' )
-                      ( control =  m_table       index = 5 attribute = 'ALTERNATIVE_TEXT' )
-                      ( control =  m_table       index = 6 attribute = 'SEQUENCE' )
-                      ( control =  m_table       index = 7 attribute = 'SUBCOLUMN' )
-                      ( control =  m_table       index = 8 attribute = 'REFERENCE_FIELD' )
-                      ( control =  m_table       index = 9 attribute = 'SORTING' )
-                      ( control =  m_table       index = 10 attribute = 'NO_CONVEXIT' )
-                      ( control =  ui_table      index = 1 attribute = 'TLABEL' )
-                      ( control =  ui_table      index = 2 attribute = 'VISIBLE' )
-                      ( control =  ui_table      index = 3 attribute = 'ALTERNATIVE_TEXT' )
-                      ( control =  ui_table      index = 5 attribute = 'WIDTH' )
-                      ( control =  others        index = 1 attribute = 'TLABEL' )
-                      ( control =  others        index = 2 attribute = 'VISIBLE' )
-                      ( control =  others        index = 3 attribute = 'SEQUENCE' )
-                      ( control =  others        index = 4 attribute = 'ALTERNATIVE_TEXT' )
-*                      ( control =  others        index = 5 attribute = 'REFERENCE_FIELD' )
-*                      ( control =  others        index = 6 attribute = 'WIDTH' )
-                      ( control =  ui_simpleform index = 1 attribute = 'TLABEL' )
-                      ( control =  ui_simpleform index = 2 attribute = 'VISIBLE' )
-                      ( control =  ui_simpleform index = 3 attribute = 'SEQUENCE' )
-                      ( control =  ui_simpleform index = 4 attribute = 'ALTERNATIVE_TEXT' )
-                      ( control =  ui_simpleform index = 5 attribute = 'REFERENCE_FIELD' )
-                      ( control =  ui_simpleform index = 6 attribute = 'GRID_LAYOUT' )
-                      ( control =  ui_simpleform index = 7 attribute = 'NO_CONVEXIT' )
-                      ( control =  generic       index = 1 attribute = 'TLABEL' )
-                      ( control =  generic       index = 2 attribute = 'VISIBLE' )
-                      ( control =  generic       index = 3 attribute = 'SEQUENCE' )
-                      ( control =  generic       index = 4 attribute = 'ALTERNATIVE_TEXT' )
-                      ( control =  generic       index = 5 attribute = 'WIDTH' ) ).
+    DATA temp1 TYPE z2ui5_cl_layo_manager=>ty_t_controls.
+    DATA temp2 LIKE LINE OF temp1.
+    CLEAR temp1.
+
+    temp2-active = abap_true.
+    temp2-control = m_table.
+    temp2-index = 1.
+    temp2-attribute = 'TLABEL'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = m_table.
+    temp2-index = 2.
+    temp2-attribute = 'VISIBLE'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = m_table.
+    temp2-index = 3.
+    temp2-attribute = 'MERGE'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = m_table.
+    temp2-index = 4.
+    temp2-attribute = 'WIDTH'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = m_table.
+    temp2-index = 5.
+    temp2-attribute = 'ALTERNATIVE_TEXT'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = m_table.
+    temp2-index = 6.
+    temp2-attribute = 'SEQUENCE'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = m_table.
+    temp2-index = 7.
+    temp2-attribute = 'SUBCOLUMN'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = m_table.
+    temp2-index = 8.
+    temp2-attribute = 'REFERENCE_FIELD'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = m_table.
+    temp2-index = 9.
+    temp2-attribute = 'SORTING'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = m_table.
+    temp2-index = 10.
+    temp2-attribute = 'NO_CONVEXIT'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_table.
+    temp2-index = 1.
+    temp2-attribute = 'TLABEL'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_table.
+    temp2-index = 2.
+    temp2-attribute = 'VISIBLE'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_table.
+    temp2-index = 3.
+    temp2-attribute = 'ALTERNATIVE_TEXT'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_table.
+    temp2-index = 5.
+    temp2-attribute = 'WIDTH'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = others.
+    temp2-index = 1.
+    temp2-attribute = 'TLABEL'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = others.
+    temp2-index = 2.
+    temp2-attribute = 'VISIBLE'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = others.
+    temp2-index = 3.
+    temp2-attribute = 'SEQUENCE'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = others.
+    temp2-index = 4.
+    temp2-attribute = 'ALTERNATIVE_TEXT'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_simpleform.
+    temp2-index = 1.
+    temp2-attribute = 'TLABEL'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_simpleform.
+    temp2-index = 2.
+    temp2-attribute = 'VISIBLE'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_simpleform.
+    temp2-index = 3.
+    temp2-attribute = 'SEQUENCE'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_simpleform.
+    temp2-index = 4.
+    temp2-attribute = 'ALTERNATIVE_TEXT'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_simpleform.
+    temp2-index = 5.
+    temp2-attribute = 'REFERENCE_FIELD'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_simpleform.
+    temp2-index = 6.
+    temp2-attribute = 'GRID_LAYOUT'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = ui_simpleform.
+    temp2-index = 7.
+    temp2-attribute = 'NO_CONVEXIT'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = generic.
+    temp2-index = 1.
+    temp2-attribute = 'TLABEL'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = generic.
+    temp2-index = 2.
+    temp2-attribute = 'VISIBLE'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = generic.
+    temp2-index = 3.
+    temp2-attribute = 'SEQUENCE'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = generic.
+    temp2-index = 4.
+    temp2-attribute = 'ALTERNATIVE_TEXT'.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-control = generic.
+    temp2-index = 5.
+    temp2-attribute = 'WIDTH'.
+    INSERT temp2 INTO TABLE temp1.
+    result = temp1.
   ENDMETHOD.
 
   METHOD factory_generic.
 
-    result = NEW #( ).
+    CREATE OBJECT result.
 
     TRY.
         result->ms_layout-s_head-guid = cl_system_uuid=>create_uuid_c32_static( ).
@@ -356,6 +449,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD register.
 
     DATA lv_id TYPE string.
+    DATA lr_slot TYPE REF TO z2ui5_cl_layo_manager=>ty_s_slot.
+      DATA temp3 TYPE z2ui5_cl_layo_manager=>ty_s_slot.
 
     result = me.
 
@@ -364,9 +459,13 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = lv_id. "#EC CI_SORTSEQ
+
+    READ TABLE mt_slots REFERENCE INTO lr_slot WITH KEY id = lv_id. "#EC CI_SORTSEQ
     IF sy-subrc <> 0.
-      APPEND VALUE #( id = lv_id ) TO mt_slots.
+
+      CLEAR temp3.
+      temp3-id = lv_id.
+      APPEND temp3 TO mt_slots.
       READ TABLE mt_slots REFERENCE INTO lr_slot INDEX lines( mt_slots ).
     ENDIF.
 
@@ -387,14 +486,20 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD register_by_xml.
 
     DATA lv_prefix TYPE string.
+    DATA lt_id TYPE z2ui5_cl_layo_xml_tree=>ty_t_id.
+    DATA temp4 LIKE LINE OF lt_id.
+    DATA lr_id LIKE REF TO temp4.
 
     result = me.
 
     lv_prefix = prefix.
-    DATA(lt_id) = z2ui5_cl_layo_xml_tree=>scan_ids( xml    = xml
+
+    lt_id = z2ui5_cl_layo_xml_tree=>scan_ids( xml    = xml
                                                     prefix = lv_prefix ).
 
-    LOOP AT lt_id REFERENCE INTO DATA(lr_id).
+
+
+    LOOP AT lt_id REFERENCE INTO lr_id.
       register( id         = lr_id->id
                 label      = lr_id->label
                 label_attr = lr_id->label_attr ).
@@ -407,19 +512,27 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     DATA lt_layout TYPE ty_t_positions.
     DATA ls_layout TYPE ty_s_positions.
     DATA lv_guid   TYPE sysuuid_c32.
+    DATA lt_head TYPE z2ui5_cl_layo_manager=>ty_t_head.
+    DATA ls_def TYPE z2ui5_t_11.
+      DATA lt_pos TYPE z2ui5_cl_layo_manager=>ty_t_positions.
+    DATA temp5 LIKE LINE OF mt_slots.
+    DATA lr_slot LIKE REF TO temp5.
+      DATA ls_pos TYPE z2ui5_cl_layo_manager=>ty_s_positions.
 
     IF ms_layout-s_head-control <> generic OR mv_slots_dirty = abap_false.
       RETURN.
     ENDIF.
     mv_slots_dirty = abap_false.
 
-    DATA(lt_head) = select_layouts( control  = ms_layout-s_head-control
+
+    lt_head = select_layouts( control  = ms_layout-s_head-control
                                     handle01 = ms_layout-s_head-handle01
                                     handle02 = ms_layout-s_head-handle02
                                     handle03 = ms_layout-s_head-handle03
                                     handle04 = ms_layout-s_head-handle04 ).
 
-    DATA(ls_def) = get_default_layout( handle04    = ms_layout-s_head-handle04
+
+    ls_def = get_default_layout( handle04    = ms_layout-s_head-handle04
                                        handle03    = ms_layout-s_head-handle03
                                        handle02    = ms_layout-s_head-handle02
                                        handle01    = ms_layout-s_head-handle01
@@ -429,13 +542,17 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     IF ls_def-layout IS NOT INITIAL.
       ms_layout-s_head = ls_def.
-      DATA(lt_pos) = select_layout_components( ls_def-guid ).
+
+      lt_pos = select_layout_components( ls_def-guid ).
     ENDIF.
     lv_guid = ms_layout-s_head-guid.
 
-    LOOP AT mt_slots REFERENCE INTO DATA(lr_slot).
 
-      READ TABLE lt_pos INTO DATA(ls_pos) WITH KEY fname = lr_slot->id. "#EC CI_SORTSEQ
+
+    LOOP AT mt_slots REFERENCE INTO lr_slot.
+
+
+      READ TABLE lt_pos INTO ls_pos WITH KEY fname = lr_slot->id. "#EC CI_SORTSEQ
       IF sy-subrc = 0.
         " a saved position - a control registered since the save is new and visible
         CLEAR ls_layout.
@@ -470,7 +587,10 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     DATA ls_slot TYPE z2ui5_cl_layo_xml_tree=>ty_s_slot.
 
-    LOOP AT ms_layout-t_layout REFERENCE INTO DATA(lr_layout).
+    DATA temp6 LIKE LINE OF ms_layout-t_layout.
+    DATA lr_layout LIKE REF TO temp6.
+      DATA lr_slot TYPE REF TO z2ui5_cl_layo_manager=>ty_s_slot.
+    LOOP AT ms_layout-t_layout REFERENCE INTO lr_layout.
       CLEAR ls_slot.
       ls_slot-id      = lr_layout->fname.
       ls_slot-visible = lr_layout->visible.
@@ -479,7 +599,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       IF lr_layout->alternative_text IS NOT INITIAL.
         ls_slot-label = lr_layout->tlabel.
       ENDIF.
-      READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = ls_slot-id. "#EC CI_SORTSEQ
+
+      READ TABLE mt_slots REFERENCE INTO lr_slot WITH KEY id = ls_slot-id. "#EC CI_SORTSEQ
       IF sy-subrc = 0.
         ls_slot-label_attr = lr_slot->label_attr.
       ENDIF.
@@ -491,6 +612,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD text_of.
 
     DATA lv_id TYPE string.
+    DATA lr_slot TYPE REF TO z2ui5_cl_layo_manager=>ty_s_slot.
 
     IF ms_layout-s_head-control <> generic.
       result = set_text( layout ).
@@ -503,7 +625,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     ENDIF.
 
     lv_id = layout-fname.
-    READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = lv_id. "#EC CI_SORTSEQ
+
+    READ TABLE mt_slots REFERENCE INTO lr_slot WITH KEY id = lv_id. "#EC CI_SORTSEQ
     IF sy-subrc = 0.
       result = lr_slot->label.
     ENDIF.
@@ -526,52 +649,56 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD select_layouts.
+    DATA temp7 LIKE LINE OF result.
+    DATA line LIKE REF TO temp7.
 
     IF layout_guid IS NOT INITIAL.
 
-      SELECT guid,
-             layout,
-             control,
-             handle01,
-             handle02,
-             handle03,
-             handle04,
-             screen_format,
-             descr,
-             def,
+      SELECT guid
+             layout
+             control
+             handle01
+             handle02
+             handle03
+             handle04
+             screen_format
+             descr
+             def
              uname
-        FROM z2ui5_t_11
-        WHERE guid = @layout_guid
-        INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
+        FROM z2ui5_t_11 INTO CORRESPONDING FIELDS OF TABLE result
+        WHERE guid = layout_guid
+         ##SUBRC_OK.
 
     ELSE.
 
-      SELECT guid,
-             layout,
-             control,
-             handle01,
-             handle02,
-             handle03,
-             handle04,
-             screen_format,
-             descr,
-             def,
+      SELECT guid
+             layout
+             control
+             handle01
+             handle02
+             handle03
+             handle04
+             screen_format
+             descr
+             def
              uname
-        FROM z2ui5_t_11
-        WHERE control  = @control
-          AND handle01 = @handle01
-          AND handle02 = @handle02
-          AND handle03 = @handle03
-          AND handle04 = @handle04
+        FROM z2ui5_t_11 INTO CORRESPONDING FIELDS OF TABLE result
+        WHERE control  = control
+          AND handle01 = handle01
+          AND handle02 = handle02
+          AND handle03 = handle03
+          AND handle04 = handle04
           " the user's own layouts and the shared ones (no user) - never
           " another user's personal layout
-          AND ( uname = @sy-uname OR uname = @space )
-        INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
+          AND ( uname = sy-uname OR uname = space )
+         ##SUBRC_OK.
 
     ENDIF.
 
     " FALLBACK - Screen format was added later! We are changing an empty format to L.
-    LOOP AT result REFERENCE INTO DATA(line) WHERE screen_format IS INITIAL.
+
+
+    LOOP AT result REFERENCE INTO line WHERE screen_format IS INITIAL.
       line->screen_format = screen_format_l.
     ENDLOOP.
 
@@ -579,32 +706,32 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
   METHOD select_layout_components.
 
-    SELECT guid,
-           pos_guid,
-           fname,
-           rollname,
-           visible,
-           merge,
-           halign,
-           importance,
-           width,
-           sequence,
-           alternative_text,
-           reference_field,
-           subcolumn,
-           grid_label_xl,
-           grid_value_xl,
-           grid_label_l,
-           grid_value_l,
-           grid_label_m,
-           grid_value_m,
-           grid_label_s,
-           grid_value_s,
-           no_convexit,
+    SELECT guid
+           pos_guid
+           fname
+           rollname
+           visible
+           merge
+           halign
+           importance
+           width
+           sequence
+           alternative_text
+           reference_field
+           subcolumn
+           grid_label_xl
+           grid_value_xl
+           grid_label_l
+           grid_value_l
+           grid_label_m
+           grid_value_m
+           grid_label_s
+           grid_value_s
+           no_convexit
            sorting
-      FROM z2ui5_t_12
-      WHERE guid = @layout_guid
-      INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
+      FROM z2ui5_t_12 INTO CORRESPONDING FIELDS OF TABLE result
+      WHERE guid = layout_guid
+       ##SUBRC_OK.
 
   ENDMETHOD.
 
@@ -629,15 +756,20 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD sort_by_sequence.
 
     " First all with a sequence, then the rest
-    DATA(tab) = pos.
+    DATA tab LIKE pos.
+    DATA index TYPE i.
+      DATA line LIKE LINE OF tab.
+    tab = pos.
 
-    DATA(index) = 0.
+
+    index = 0.
 
     DO 999 TIMES.
 
       index = index + 1.
 
-      LOOP AT tab INTO DATA(line) WHERE sequence = index.
+
+      LOOP AT tab INTO line WHERE sequence = index.
         APPEND line TO result.
       ENDLOOP.
       " delete after the loop: deleting inside LOOP AT ... WHERE skips the
@@ -651,15 +783,32 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD set_sub_columns.
+    DATA temp8 LIKE LINE OF result.
+    DATA line LIKE REF TO temp8.
+      DATA tab TYPE STANDARD TABLE OF string WITH DEFAULT KEY.
+      DATA temp9 TYPE z2ui5_cl_layo_manager=>ty_t_sub_columns.
+      DATA t LIKE LINE OF tab.
+        DATA temp10 LIKE LINE OF temp9.
 
     result = layout.
 
-    LOOP AT result REFERENCE INTO DATA(line) WHERE subcolumn IS NOT INITIAL.
 
-      SPLIT line->subcolumn AT ` ` INTO TABLE DATA(tab).
 
-      line->t_sub_col = VALUE #( FOR t IN tab
-                                 ( key = z2ui5_cl_util=>uuid_get_c32( ) fname = t ) ).
+    LOOP AT result REFERENCE INTO line WHERE subcolumn IS NOT INITIAL.
+
+
+      SPLIT line->subcolumn AT ` ` INTO TABLE tab.
+
+
+      CLEAR temp9.
+
+      LOOP AT tab INTO t.
+
+        temp10-key = z2ui5_cl_util=>uuid_get_c32( ).
+        temp10-fname = t.
+        INSERT temp10 INTO TABLE temp9.
+      ENDLOOP.
+      line->t_sub_col = temp9.
 
     ENDLOOP.
 
@@ -667,7 +816,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
   METHOD choose_layout.
 
-    DATA(layouts) = select_layouts( control  = control
+    DATA layouts TYPE z2ui5_cl_layo_manager=>ty_t_head.
+    layouts = select_layouts( control  = control
                                     handle01 = handle01
                                     handle02 = handle02
                                     handle03 = handle03
@@ -679,27 +829,50 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD factory_by_guid.
+DATA BEGIN OF head.
+DATA guid TYPE z2ui5_t_11-guid.
+DATA layout TYPE z2ui5_t_11-layout.
+DATA control TYPE z2ui5_t_11-control.
+DATA handle01 TYPE z2ui5_t_11-handle01.
+DATA handle02 TYPE z2ui5_t_11-handle02.
+DATA handle03 TYPE z2ui5_t_11-handle03.
+DATA handle04 TYPE z2ui5_t_11-handle04.
+DATA screen_format TYPE z2ui5_t_11-screen_format.
+DATA descr TYPE z2ui5_t_11-descr.
+DATA def TYPE z2ui5_t_11-def.
+DATA uname TYPE z2ui5_t_11-uname.
+DATA END OF head.
+    DATA t_pos TYPE z2ui5_cl_layo_manager=>ty_t_positions.
+    DATA temp11 LIKE LINE OF result->ms_layout-t_layout.
+    DATA layout LIKE REF TO temp11.
+      DATA temp12 LIKE sy-subrc.
+        DATA temp13 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+        DATA temp14 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+        DATA pos LIKE temp13.
+        DATA fname LIKE layout->fname.
+        DATA rollname LIKE layout->rollname.
 
-    result = NEW #( ).
+    CREATE OBJECT result.
 
     result->ms_layout-t_layout = t_comps.
     result->mt_slots           = t_slots.
 
     " Select Layout Heads
-    SELECT SINGLE guid,
-                  layout,
-                  control,
-                  handle01,
-                  handle02,
-                  handle03,
-                  handle04,
-                  screen_format,
-                  descr,
-                  def,
+
+    SELECT SINGLE guid
+                  layout
+                  control
+                  handle01
+                  handle02
+                  handle03
+                  handle04
+                  screen_format
+                  descr
+                  def
                   uname
-      FROM z2ui5_t_11
-      WHERE guid = @layout_guid
-      INTO @DATA(head).
+      FROM z2ui5_t_11 INTO head
+      WHERE guid = layout_guid
+      .
 
     IF sy-subrc <> 0.
       RETURN.
@@ -708,21 +881,37 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     " the head first: text_of( ) decides by the control. No early return on
     " an empty position table - a saved layout without positions is one
     " with every component hidden, not a missing one
-    result->ms_layout-s_head = CORRESPONDING #( head ).
+    MOVE-CORRESPONDING head TO result->ms_layout-s_head.
 
-    DATA(t_pos) = select_layout_components( layout_guid ).
 
-    LOOP AT result->ms_layout-t_layout REFERENCE INTO DATA(layout).
+    t_pos = select_layout_components( layout_guid ).
 
-      IF line_exists( t_pos[ fname = layout->fname ] ).
 
-        DATA(pos) = VALUE #( t_pos[ fname = layout->fname ] OPTIONAL ).
+
+    LOOP AT result->ms_layout-t_layout REFERENCE INTO layout.
+
+
+      READ TABLE t_pos WITH KEY fname = layout->fname TRANSPORTING NO FIELDS.
+      temp12 = sy-subrc.
+      IF temp12 = 0.
+
+
+        CLEAR temp13.
+
+        READ TABLE t_pos INTO temp14 WITH KEY fname = layout->fname.
+        IF sy-subrc = 0.
+          temp13 = temp14.
+        ENDIF.
+
+        pos = temp13.
         MOVE-CORRESPONDING pos TO layout->*.
 
       ELSE.
 
-        DATA(fname) = layout->fname.
-        DATA(rollname) = layout->rollname.
+
+        fname = layout->fname.
+
+        rollname = layout->rollname.
 
         CLEAR layout->*.
 
@@ -755,29 +944,48 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD create_layout_obj.
+    DATA t_comp TYPE abap_component_tab.
+    DATA comp LIKE LINE OF t_comp.
+    DATA head TYPE z2ui5_cl_layo_manager=>ty_t_head.
+    DATA def TYPE z2ui5_t_11.
+      DATA t_pos TYPE z2ui5_cl_layo_manager=>ty_t_positions.
+      DATA temp15 LIKE LINE OF t_comp.
+      DATA r_comp LIKE REF TO temp15.
+        DATA temp16 LIKE sy-subrc.
+          FIELD-SYMBOLS <temp17> TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+DATA pos LIKE REF TO <temp17>.
+          DATA temp18 LIKE sy-subrc.
+          DATA temp19 TYPE ty_s_positions.
+          DATA layout LIKE temp19.
+          DATA guid TYPE sysuuid_c32.
+      DATA index TYPE i.
 
-    result = NEW #( ).
+    CREATE OBJECT result.
 
     " Save Ref for Sorting and Conversions
     result->mr_data = data.
 
-    DATA(t_comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( data ).
 
-    LOOP AT t_comp INTO DATA(comp).
+    t_comp = z2ui5_cl_util=>rtti_get_t_attri_by_any( data ).
+
+
+    LOOP AT t_comp INTO comp.
       IF comp-type->type_kind = cl_abap_elemdescr=>typekind_oref.
         DELETE t_comp INDEX sy-tabix.
       ENDIF.
     ENDLOOP.
 
     " Select Layout Heads
-    DATA(head) = select_layouts( layout_guid = layout_guid
+
+    head = select_layouts( layout_guid = layout_guid
                                  control     = control
                                  handle01    = handle01
                                  handle02    = handle02
                                  handle03    = handle03
                                  handle04    = handle04 ).
 
-    DATA(def) = get_default_layout( handle04    = handle04
+
+    def = get_default_layout( handle04    = handle04
                                     handle03    = handle03
                                     handle02    = handle02
                                     handle01    = handle01
@@ -787,12 +995,18 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     IF def-layout IS NOT INITIAL.
 
-      DATA(t_pos) = select_layout_components( def-guid ).
+
+      t_pos = select_layout_components( def-guid ).
 
       " Structure was changed - Field Added
-      LOOP AT t_comp REFERENCE INTO DATA(r_comp).
 
-        IF NOT line_exists( t_pos[ fname = r_comp->name ] ).
+
+      LOOP AT t_comp REFERENCE INTO r_comp.
+
+
+        READ TABLE t_pos WITH KEY fname = r_comp->name TRANSPORTING NO FIELDS.
+        temp16 = sy-subrc.
+        IF NOT temp16 = 0.
 
           APPEND build_default_positions( comp  = r_comp
                                           guid  = def-guid
@@ -800,16 +1014,28 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
         ELSE.
 
-          DATA(pos) = REF #( t_pos[ fname = r_comp->name ] OPTIONAL ).
+
+          READ TABLE t_pos WITH KEY fname = r_comp->name ASSIGNING <temp17>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp17> INTO pos.
 
           " Structure was changed - Field no longer exists
-          IF NOT line_exists( t_comp[ name = pos->fname ] ).
+
+          READ TABLE t_comp WITH KEY name = pos->fname TRANSPORTING NO FIELDS.
+          temp18 = sy-subrc.
+          IF NOT temp18 = 0.
             CONTINUE.
           ENDIF.
 
-          DATA(layout) = VALUE ty_s_positions( ).
 
-          layout = CORRESPONDING #( pos->* ).
+          CLEAR temp19.
+
+          layout = temp19.
+
+          MOVE-CORRESPONDING pos->* TO layout.
           layout-rollname = r_comp->type->get_relative_name( ).
           layout-tlabel   = set_text( layout ).
 
@@ -822,19 +1048,21 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
       ENDLOOP.
 
-      result->ms_layout-s_head   = CORRESPONDING #( def ).
+      MOVE-CORRESPONDING def TO result->ms_layout-s_head.
       result->ms_layout-t_layout = sort_by_sequence( result->ms_layout-t_layout ).
       result->ms_layout-t_layout = set_sub_columns( result->ms_layout-t_layout ).
 
     ELSE.
 
       TRY.
-          DATA(guid) = cl_system_uuid=>create_uuid_c32_static( ).
+
+          guid = cl_system_uuid=>create_uuid_c32_static( ).
         CATCH cx_root ##NO_HANDLER.
       ENDTRY.
 
       " Default Layout
-      DATA(index) = 0.
+
+      index = 0.
 
       LOOP AT t_comp REFERENCE INTO r_comp.
 
@@ -862,6 +1090,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD build_default_positions.
+        DATA pos_guid TYPE sysuuid_c32.
 
     result-fname    = comp->name.
     result-rollname = comp->type->get_relative_name( ).
@@ -874,7 +1103,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                                   type   = comp->type ).
 
     TRY.
-        DATA(pos_guid) = cl_system_uuid=>create_uuid_c32_static( ).
+
+        pos_guid = cl_system_uuid=>create_uuid_c32_static( ).
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
@@ -914,19 +1144,24 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_default_layout.
+    DATA temp20 TYPE z2ui5_t_11.
+    DATA temp21 TYPE z2ui5_t_11.
+    DATA temp22 TYPE z2ui5_t_11.
+    DATA temp23 TYPE z2ui5_t_11.
 
     IF head IS INITIAL OR layout_guid IS NOT INITIAL.
       RETURN.
     ENDIF.
 
     " Default all Handles + User and Format
-    result = VALUE #( head[ handle01      = handle01
-                            handle02      = handle02
-                            handle03      = handle03
-                            handle04      = handle04
-                            screen_format = format
-                            def           = abap_true
-                            uname         = sy-uname ] OPTIONAL ).
+
+    CLEAR temp20.
+
+    READ TABLE head INTO temp21 WITH KEY handle01 = handle01 handle02 = handle02 handle03 = handle03 handle04 = handle04 screen_format = format def = abap_true uname = sy-uname.
+    IF sy-subrc = 0.
+      temp20 = temp21.
+    ENDIF.
+    result = temp20.
 
     IF result IS NOT INITIAL.
       RETURN.
@@ -934,13 +1169,14 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     " Fall back to a global default (blank user) - never another user's
     " personal default
-    result = VALUE #( head[ handle01      = handle01
-                            handle02      = handle02
-                            handle03      = handle03
-                            handle04      = handle04
-                            screen_format = format
-                            def           = abap_true
-                            uname         = space ] OPTIONAL ).
+
+    CLEAR temp22.
+
+    READ TABLE head INTO temp23 WITH KEY handle01 = handle01 handle02 = handle02 handle03 = handle03 handle04 = handle04 screen_format = format def = abap_true uname = space.
+    IF sy-subrc = 0.
+      temp22 = temp23.
+    ENDIF.
+    result = temp22.
 
     IF result IS NOT INITIAL.
       RETURN.
@@ -951,6 +1187,16 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD sort.
 
     FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
+      DATA temp24 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+      DATA temp25 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+      DATA selkz LIKE temp24.
+        DATA temp26 TYPE abap_sortorder_tab.
+        DATA temp27 LIKE LINE OF temp26.
+        DATA sortorder LIKE temp26.
+    DATA temp28 TYPE abap_sortorder_tab.
+    DATA layout LIKE LINE OF ms_layout-t_layout.
+      DATA temp29 LIKE LINE OF temp28.
+      DATA temp1 LIKE temp29-descending.
 
     " the generic mode has no data to sort
     IF mr_data IS NOT BOUND.
@@ -968,21 +1214,48 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     ENDIF.
 
     IF no_selkz_sort = abap_false.
-      DATA(selkz) = VALUE #( ms_layout-t_layout[ fname = 'SELKZ' ] OPTIONAL ).
+
+      CLEAR temp24.
+
+      READ TABLE ms_layout-t_layout INTO temp25 WITH KEY fname = 'SELKZ'.
+      IF sy-subrc = 0.
+        temp24 = temp25.
+      ENDIF.
+
+      selkz = temp24.
 
       IF selkz-sorting = space.
 
-        DATA(sortorder) = VALUE abap_sortorder_tab( ( descending = abap_true
-                                                      name       = 'SELKZ'
-                                                      astext     = abap_true ) ).
+
+        CLEAR temp26.
+
+        temp27-descending = abap_true.
+        temp27-name = 'SELKZ'.
+        temp27-astext = abap_true.
+        INSERT temp27 INTO TABLE temp26.
+
+        sortorder = temp26.
 
       ENDIF.
     ENDIF.
 
-    sortorder = VALUE abap_sortorder_tab( BASE sortorder
-                                          FOR layout IN ms_layout-t_layout  WHERE ( sorting <> space )
-                                          ( descending = COND #( WHEN layout-sorting = 'DESCENDING' THEN abap_true )
-                                            name       = layout-fname ) ).
+
+    CLEAR temp28.
+    temp28 = sortorder.
+
+    LOOP AT ms_layout-t_layout INTO layout WHERE sorting <> space.
+
+
+      IF layout-sorting = 'DESCENDING'.
+        temp1 = abap_true.
+      ELSE.
+        CLEAR temp1.
+      ENDIF.
+      temp29-descending = temp1.
+      temp29-name = layout-fname.
+      INSERT temp29 INTO TABLE temp28.
+    ENDLOOP.
+    sortorder = temp28.
 
     IF sortorder IS INITIAL.
       RETURN.
@@ -1002,6 +1275,13 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD set_selkz.
 
     FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
+    DATA temp30 TYPE string.
+    DATA temp31 TYPE string.
+    DATA id LIKE temp30.
+    FIELD-SYMBOLS <row> TYPE ANY.
+      FIELD-SYMBOLS <id> TYPE any.
+      FIELD-SYMBOLS <selkz> TYPE any.
+        DATA temp32 TYPE abap_bool.
 
     CHECK mv_sel_mode <> space.
 
@@ -1019,25 +1299,42 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA(id) = VALUE #( t_event_arg[ 1 ] OPTIONAL ).
 
-    LOOP AT <table> ASSIGNING FIELD-SYMBOL(<row>).
+    CLEAR temp30.
+
+    READ TABLE t_event_arg INTO temp31 INDEX 1.
+    IF sy-subrc = 0.
+      temp30 = temp31.
+    ENDIF.
+
+    id = temp30.
+
+
+    LOOP AT <table> ASSIGNING <row>.
 
       " check sy-subrc instead of IS ASSIGNED - a field symbol stays
       " assigned from the previous loop iteration
-      ASSIGN COMPONENT mv_sel_key_field OF STRUCTURE <row> TO FIELD-SYMBOL(<id>).
+
+      ASSIGN COMPONENT mv_sel_key_field OF STRUCTURE <row> TO <id>.
 
       IF sy-subrc <> 0.
         CONTINUE.
       ENDIF.
 
-      ASSIGN COMPONENT mv_sel_field OF STRUCTURE <row> TO FIELD-SYMBOL(<selkz>).
+
+      ASSIGN COMPONENT mv_sel_field OF STRUCTURE <row> TO <selkz>.
       IF sy-subrc <> 0.
         CONTINUE.
       ENDIF.
 
       IF <id> = id.
-        <selkz> = COND #( WHEN <selkz> = abap_true THEN abap_false ELSE abap_true ).
+
+        IF <selkz> = abap_true.
+          temp32 = abap_false.
+        ELSE.
+          temp32 = abap_true.
+        ENDIF.
+        <selkz> = temp32.
 
         IF mv_sel_mode = `M`.
           EXIT.
@@ -1063,12 +1360,26 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD data_conversion.
 
     FIELD-SYMBOLS <tab> TYPE ANY TABLE.
+    FIELD-SYMBOLS <any> TYPE data.
+    DATA layout LIKE LINE OF ms_layout-t_layout.
+        DATA temp33 LIKE sy-subrc.
+        DATA temp34 LIKE sy-subrc.
+          DATA ref LIKE abap_true.
+        DATA tmp LIKE LINE OF ms_layout-t_layout.
+          DATA temp35 LIKE sy-subrc.
+          DATA temp36 LIKE sy-subrc.
+          DATA sub LIKE LINE OF tmp-t_sub_col.
+            DATA temp37 LIKE sy-subrc.
+            DATA temp38 LIKE sy-subrc.
+          FIELD-SYMBOLS <line> TYPE ANY.
+            FIELD-SYMBOLS <value> TYPE any.
 
     IF mr_data IS NOT BOUND.
       RETURN.
     ENDIF.
 
-    ASSIGN mr_data->* TO FIELD-SYMBOL(<any>).
+
+    ASSIGN mr_data->* TO <any>.
 
     IF <any> IS NOT ASSIGNED.
       RETURN.
@@ -1078,28 +1389,48 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    LOOP AT ms_layout-t_layout INTO DATA(layout)
+
+    LOOP AT ms_layout-t_layout INTO layout
          WHERE     no_convexit  = abap_false
                AND convexit    <> space.
 
       IF layout-visible = abap_false.
 
         " is this a reference field?
-        IF line_exists( ms_layout-t_layout[ reference_field = layout-fname
-                                            visible         = abap_true ] ).
-          DATA(ref) = abap_true.
+
+
+        temp34 = sy-subrc.
+        READ TABLE ms_layout-t_layout WITH KEY reference_field = layout-fname visible = abap_true TRANSPORTING NO FIELDS.
+        temp33 = sy-subrc.
+        sy-subrc = temp34.
+        IF temp33 = 0.
+
+          ref = abap_true.
         ENDIF.
 
-        LOOP AT ms_layout-t_layout INTO DATA(tmp) WHERE t_sub_col IS NOT INITIAL AND visible = abap_true.
 
-          IF line_exists( tmp-t_sub_col[ fname = layout-fname ] ).
+        LOOP AT ms_layout-t_layout INTO tmp WHERE t_sub_col IS NOT INITIAL AND visible = abap_true.
+
+
+
+          temp36 = sy-subrc.
+          READ TABLE tmp-t_sub_col WITH KEY fname = layout-fname TRANSPORTING NO FIELDS.
+          temp35 = sy-subrc.
+          sy-subrc = temp36.
+          IF temp35 = 0.
             ref = abap_true.
           ENDIF.
 
-          LOOP AT tmp-t_sub_col INTO DATA(sub).
 
-            IF line_exists( ms_layout-t_layout[ fname           = sub-fname
-                                                reference_field = layout-fname ] ).
+          LOOP AT tmp-t_sub_col INTO sub.
+
+
+
+            temp38 = sy-subrc.
+            READ TABLE ms_layout-t_layout WITH KEY fname = sub-fname reference_field = layout-fname TRANSPORTING NO FIELDS.
+            temp37 = sy-subrc.
+            sy-subrc = temp38.
+            IF temp37 = 0.
               ref = abap_true.
             ENDIF.
           ENDLOOP.
@@ -1122,9 +1453,11 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
             CONTINUE.
           ENDIF.
 
-          LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-            ASSIGN COMPONENT layout-fname OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
+          LOOP AT <tab> ASSIGNING <line>.
+
+
+            ASSIGN COMPONENT layout-fname OF STRUCTURE <line> TO <value>.
             IF sy-subrc <> 0.
               CONTINUE.
             ENDIF.
@@ -1169,6 +1502,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     DATA s_obj  TYPE REF TO data.
 
     FIELD-SYMBOLS <t_obj> TYPE STANDARD TABLE.
+        FIELD-SYMBOLS <obj> TYPE data.
+        FIELD-SYMBOLS <conv> TYPE any.
 
     result = layout.
 
@@ -1179,7 +1514,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
         CREATE DATA t_obj TYPE (string).
         CREATE DATA s_obj TYPE LINE OF (string).
         ASSIGN t_obj->* TO <t_obj>.
-        ASSIGN s_obj->* TO FIELD-SYMBOL(<obj>).
+
+        ASSIGN s_obj->* TO <obj>.
 
         CALL METHOD type->('GET_DDIC_OBJECT')
           RECEIVING  p_object     = <t_obj>
@@ -1189,12 +1525,13 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           RETURN.
         ENDIF.
 
-        ASSIGN <t_obj>[ 1 ] TO <obj>.
+        READ TABLE <t_obj> INDEX 1 ASSIGNING <obj>.
         IF sy-subrc <> 0.
           RETURN.
         ENDIF.
 
-        ASSIGN COMPONENT 'CONVEXIT' OF STRUCTURE <obj> TO FIELD-SYMBOL(<conv>).
+
+        ASSIGN COMPONENT 'CONVEXIT' OF STRUCTURE <obj> TO <conv>.
         IF <conv> IS NOT ASSIGNED.
           RETURN.
         ENDIF.

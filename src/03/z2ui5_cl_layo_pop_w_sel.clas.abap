@@ -73,7 +73,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
   METHOD factory.
 
-    r_result = NEW #( ).
+    CREATE OBJECT r_result.
     r_result->title             = i_title.
     r_result->sort_field        = i_sort_field.
     r_result->descending        = i_descending.
@@ -96,7 +96,9 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
   METHOD render_main.
 
-    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+    DATA popup TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp1 LIKE REF TO mv_search_value.
+    popup = z2ui5_cl_ui5_view_builder=>factory(
                       )->ele( n = `FragmentDefinition` ns = `core`
                       )->a( n = `xmlns` v = `sap.m`
                       )->a( n = `xmlns:core` v = `sap.ui.core`
@@ -109,11 +111,13 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
                       )->a( n = `title` t = title
                       )->a( n = `afterClose` v = client->_event( 'CANCEL' ) ).
 
-    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data         = mr_out
+
+    GET REFERENCE OF mv_search_value INTO temp1.
+z2ui5_cl_layo_xml_builder=>xml_build_table( i_data         = mr_out
                                                 i_xml          = popup
                                                 i_client       = client
                                                 i_layout       = mo_layout
-                                                i_search_value = REF #( mv_search_value )
+                                                i_search_value = temp1
                                                 i_col_type     = 'Navigation'
                                                 i_col_bind_to  = 'ZZROW_ID' ).
 
@@ -125,7 +129,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     me->client = client.
 
-    IF client->check_on_init( ).
+    IF client->check_on_init( ) IS NOT INITIAL.
 
       set_output_table( ).
 
@@ -170,6 +174,8 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_after_layout.
+        DATA temp2 TYPE REF TO z2ui5_cl_layo_pop.
+        DATA app LIKE temp2.
 
     IF client->get( )-check_on_navigated = abap_false.
       RETURN.
@@ -177,7 +183,10 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+
+        temp2 ?= client->get_app( client->get( )-s_draft-id_prev_app ).
+
+        app = temp2.
 
         mo_layout = app->mo_layout.
 
@@ -192,14 +201,32 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
     FIELD-SYMBOLS <row> TYPE any.
+    DATA t_arg TYPE string_table.
+    DATA row_clicked LIKE LINE OF t_arg.
+    FIELD-SYMBOLS <temp1> LIKE LINE OF t_arg.
+    DATA temp2 LIKE sy-tabix.
+    FIELD-SYMBOLS <line> TYPE ANY.
+      FIELD-SYMBOLS <row_id> TYPE any.
 
     ASSIGN mr_out->* TO <tab>.
-    DATA(t_arg) = client->get( )-t_event_arg.
-    DATA(row_clicked) = t_arg[ 1 ].
 
-    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
+    t_arg = client->get( )-t_event_arg.
 
-      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
+
+
+    temp2 = sy-tabix.
+    READ TABLE t_arg INDEX 1 ASSIGNING <temp1>.
+    sy-tabix = temp2.
+    IF sy-subrc <> 0.
+      ASSERT 1 = 0.
+    ENDIF.
+    row_clicked = <temp1>.
+
+
+    LOOP AT <tab> ASSIGNING <line>.
+
+
+      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO <row_id>.
 
       IF <row_id> IS NOT ASSIGNED.
         CONTINUE.
@@ -226,12 +253,20 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
   METHOD set_output_table.
 
-    DATA(t_comp) = get_comp( ).
+    DATA t_comp TYPE abap_component_tab.
+        DATA new_struct_desc TYPE REF TO cl_abap_structdescr.
+        DATA new_table_desc TYPE REF TO cl_abap_tabledescr.
+    FIELD-SYMBOLS <t_out> TYPE data.
+    FIELD-SYMBOLS <t_tab> TYPE data.
+    FIELD-SYMBOLS <t_out_tmp> TYPE data.
+    t_comp = get_comp( ).
     TRY.
 
-        DATA(new_struct_desc) = cl_abap_structdescr=>create( t_comp ).
 
-        DATA(new_table_desc) = cl_abap_tabledescr=>create( p_line_type  = new_struct_desc
+        new_struct_desc = cl_abap_structdescr=>create( t_comp ).
+
+
+        new_table_desc = cl_abap_tabledescr=>create( p_line_type  = new_struct_desc
                                                            p_table_kind = cl_abap_tabledescr=>tablekind_std ).
 
         CREATE DATA mr_out     TYPE HANDLE new_table_desc.
@@ -241,9 +276,12 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     ENDTRY.
 
-    ASSIGN mr_out->* TO FIELD-SYMBOL(<t_out>).
-    ASSIGN mr_tab->* TO FIELD-SYMBOL(<t_tab>).
-    ASSIGN mr_out_tmp->* TO FIELD-SYMBOL(<t_out_tmp>).
+
+    ASSIGN mr_out->* TO <t_out>.
+
+    ASSIGN mr_tab->* TO <t_tab>.
+
+    ASSIGN mr_out_tmp->* TO <t_out_tmp>.
 
     <t_out> = <t_tab>.
 
@@ -256,12 +294,14 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
   METHOD set_row_id.
     FIELD-SYMBOLS <tab>  TYPE STANDARD TABLE.
     FIELD-SYMBOLS <line> TYPE any.
+      FIELD-SYMBOLS <row> TYPE any.
 
     ASSIGN mr_out->* TO <tab>.
 
     LOOP AT <tab> ASSIGNING <line>.
 
-      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+
+      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO <row>.
       IF <row> IS ASSIGNED.
         <row> = sy-tabix.
       ENDIF.
@@ -270,15 +310,30 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
   METHOD get_comp.
     DATA index TYPE int4.
+        DATA comp TYPE abap_component_tab.
+        DATA temp3 LIKE sy-subrc.
+          DATA temp4 TYPE cl_abap_structdescr=>component_table.
+          DATA temp5 LIKE LINE OF temp4.
+          DATA temp6 TYPE REF TO cl_abap_datadescr.
 
     TRY.
 
-        DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( mr_tab ).
 
-        IF NOT line_exists( comp[ name = 'ZZROW_ID' ] ).
-          APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
-                                    ( name = 'ZZROW_ID'
-                                      type = CAST #( cl_abap_datadescr=>describe_by_data( index ) ) ) ) TO result.
+        comp = z2ui5_cl_util=>rtti_get_t_attri_by_any( mr_tab ).
+
+
+        READ TABLE comp WITH KEY name = 'ZZROW_ID' TRANSPORTING NO FIELDS.
+        temp3 = sy-subrc.
+        IF NOT temp3 = 0.
+
+          CLEAR temp4.
+
+          temp5-name = 'ZZROW_ID'.
+
+          temp6 ?= cl_abap_datadescr=>describe_by_data( index ).
+          temp5-type = temp6.
+          INSERT temp5 INTO TABLE temp4.
+          APPEND LINES OF temp4 TO result.
         ENDIF.
 
         APPEND LINES OF comp TO result.
