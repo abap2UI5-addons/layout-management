@@ -43,11 +43,16 @@ the value and search helps of
   On-Premise, or SAP NetWeaver AS ABAP 7.50 or higher; NetWeaver 7.02 with the
   downported branch `702`
 - [abap2UI5](https://github.com/abap2UI5/abap2UI5)
+- [abap2UI5-ext](https://github.com/abap2UI5/abap2UI5-ext) - the legacy
+  utilities `z2ui5_cl_util*` this addon calls, which abap2UI5 no longer ships
 
 **Steps** - with [abapGit](https://abapgit.org), in this order:
 
 1. [abap2UI5](https://github.com/abap2UI5/abap2UI5)
-2. this repository, from the branch that fits your system - classes and the
+2. [abap2UI5-ext](https://github.com/abap2UI5/abap2UI5-ext) - `main`, on
+   NetWeaver 7.02 - 7.40 its branch `702`. Not needed while your abap2UI5
+   release still contains `src/99/01` (up to 1.148.0)
+3. this repository, from the branch that fits your system - classes and the
    two tables `z2ui5_t_11` / `z2ui5_t_12` for the layout variants:
 
 | System | Branch to pull |
