@@ -22,16 +22,20 @@ documentation must be in English.
 
 ## Utility Access
 
-The addon uses the abap2UI5 core utility class `z2ui5_cl_util` directly
-(`z2ui5_cl_util=>…`). abap2UI5 is a hard dependency of this addon (installed
-alongside via abapGit and declared in the abaplint configs), so no vendored
-utility copy is kept.
+The addon uses the legacy utility class `z2ui5_cl_util` directly
+(`z2ui5_cl_util=>…`). It no longer ships with abap2UI5: it moved, with the
+rest of the core's former `src/99/01`, to
+[abap2UI5-ext](https://github.com/abap2UI5/abap2UI5-ext), which is a hard
+dependency of this addon (installed alongside via abapGit and declared in the
+abaplint configs - `main`, and its branch `702` for the downport check). No
+vendored utility copy is kept (maintainer decision, for now).
 
 ## Dependencies
 
 Installed alongside via abapGit; declared in the abaplint configs:
 
 * [abap2UI5](https://github.com/abap2UI5/abap2UI5)
+* [abap2UI5-ext](https://github.com/abap2UI5/abap2UI5-ext) — `z2ui5_cl_util`, see "Utility Access"
 
 ## Coding Style
 

@@ -16,6 +16,15 @@
       "branch": "main",
       "folder": "/abap2UI5",
       "files": "/src/**/*.*"
+    },
+    {
+      // the legacy utilities z2ui5_cl_util* / z2ui5_cx_util_error this addon
+      // calls - moved out of the core's src/99/01 into abap2UI5-ext, which a
+      // system running this addon installs next to abap2UI5
+      "url": "https://github.com/abap2UI5/abap2UI5-ext",
+      "branch": "main",
+      "folder": "/abap2UI5-ext",
+      "files": "/src/**/*.*"
     }
   ],
   "syntax": {
