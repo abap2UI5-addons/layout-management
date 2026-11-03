@@ -763,11 +763,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     DATA(t_comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( data ).
 
-    LOOP AT t_comp INTO DATA(comp).
-      IF comp-type->type_kind = cl_abap_elemdescr=>typekind_oref.
-        DELETE t_comp INDEX sy-tabix.
-      ENDIF.
-    ENDLOOP.
+    DELETE t_comp WHERE type->type_kind = cl_abap_elemdescr=>typekind_oref.
 
     " Select Layout Heads
     DATA(head) = select_layouts( layout_guid = layout_guid
@@ -942,10 +938,6 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                             def           = abap_true
                             uname         = space ] OPTIONAL ).
 
-    IF result IS NOT INITIAL.
-      RETURN.
-    ENDIF.
-
   ENDMETHOD.
 
   METHOD sort.
@@ -981,7 +973,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     sortorder = VALUE abap_sortorder_tab( BASE sortorder
                                           FOR layout IN ms_layout-t_layout  WHERE ( sorting <> space )
-                                          ( descending = COND #( WHEN layout-sorting = 'DESCENDING' THEN abap_true )
+                                          ( descending = xsdbool( layout-sorting = 'DESCENDING' )
                                             name       = layout-fname ) ).
 
     IF sortorder IS INITIAL.
@@ -1003,7 +995,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
 
-    CHECK mv_sel_mode <> space.
+    IF mv_sel_mode = space.
+      RETURN.
+    ENDIF.
 
     IF mr_data IS NOT BOUND.
       RETURN.
@@ -1037,23 +1031,17 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       ENDIF.
 
       IF <id> = id.
-        <selkz> = COND #( WHEN <selkz> = abap_true THEN abap_false ELSE abap_true ).
+        <selkz> = xsdbool( <selkz> <> abap_true ).
 
         IF mv_sel_mode = `M`.
           EXIT.
-        ELSE.
+        ELSEIF <selkz> = abap_false.
           " if deselected, exit as well
-          IF <selkz> = abap_false.
-            EXIT.
-          ENDIF.
+          EXIT.
         ENDIF.
 
-      ELSE.
-
-        IF mv_sel_mode <> `M`.
-          <selkz> = abap_false.
-        ENDIF.
-
+      ELSEIF mv_sel_mode <> `M`.
+        <selkz> = abap_false.
       ENDIF.
 
     ENDLOOP.
@@ -1189,8 +1177,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           RETURN.
         ENDIF.
 
+        UNASSIGN <obj>.
         ASSIGN <t_obj>[ 1 ] TO <obj>.
-        IF sy-subrc <> 0.
+        IF <obj> IS NOT ASSIGNED.
           RETURN.
         ENDIF.
 

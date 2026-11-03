@@ -520,7 +520,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       layout->tlabel = mo_layout->text_of( layout->* ).
     ENDLOOP.
 
-    mo_layout->ms_layout-t_layout = mo_layout->sort_by_sequence( mo_layout->ms_layout-t_layout ).
+    mo_layout->ms_layout-t_layout = z2ui5_cl_layo_manager=>sort_by_sequence( mo_layout->ms_layout-t_layout ).
 
     check_rerender_necessary( ).
 
@@ -706,28 +706,25 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       WHERE guid = @head-guid
       INTO @DATA(head_db).
 
-    IF sy-subrc = 0.
+    " found entry - the same keys save the changes, other keys a new layout.
+    " A layout never changes hands: another user's personal layout, or a
+    " shared layout saved as user specific, is saved as a new layout of
+    " its own (a copy under the same name) and the original stays as it is
+    IF sy-subrc = 0
+        AND (    NOT (     head_db-layout   = head-layout
+                       AND head_db-control  = head-control
+                       AND head_db-handle01 = head-handle01
+                       AND head_db-handle02 = head-handle02
+                       AND head_db-handle03 = head-handle03
+                       AND head_db-handle04 = head-handle04 )
+              OR ( head_db-uname IS NOT INITIAL AND head_db-uname <> sy-uname )
+              OR ( head_db-uname IS INITIAL AND head-uname IS NOT INITIAL ) ).
 
-      " found entry - the same keys save the changes, other keys a new layout.
-      " A layout never changes hands: another user's personal layout, or a
-      " shared layout saved as user specific, is saved as a new layout of
-      " its own (a copy under the same name) and the original stays as it is
-      IF NOT (     head_db-layout   = head-layout
-               AND head_db-control  = head-control
-               AND head_db-handle01 = head-handle01
-               AND head_db-handle02 = head-handle02
-               AND head_db-handle03 = head-handle03
-               AND head_db-handle04 = head-handle04 )
-          OR ( head_db-uname IS NOT INITIAL AND head_db-uname <> sy-uname )
-          OR ( head_db-uname IS INITIAL AND head-uname IS NOT INITIAL ).
-
-        " Save New Layout - new Guid
-        TRY.
-            head-guid = cl_system_uuid=>create_uuid_c32_static( ).
-          CATCH cx_root ##NO_HANDLER.
-        ENDTRY.
-
-      ENDIF.
+      " Save New Layout - new Guid
+      TRY.
+          head-guid = cl_system_uuid=>create_uuid_c32_static( ).
+        CATCH cx_root ##NO_HANDLER.
+      ENDTRY.
 
     ENDIF.
 
@@ -996,11 +993,11 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD get_layouts.
 
-    mt_head = mo_layout->select_layouts( control  = mo_layout->ms_layout-s_head-control
-                                         handle01 = mo_layout->ms_layout-s_head-handle01
-                                         handle02 = mo_layout->ms_layout-s_head-handle02
-                                         handle03 = mo_layout->ms_layout-s_head-handle03
-                                         handle04 = mo_layout->ms_layout-s_head-handle04 ).
+    mt_head = z2ui5_cl_layo_manager=>select_layouts( control  = mo_layout->ms_layout-s_head-control
+                                                     handle01 = mo_layout->ms_layout-s_head-handle01
+                                                     handle02 = mo_layout->ms_layout-s_head-handle02
+                                                     handle03 = mo_layout->ms_layout-s_head-handle03
+                                                     handle04 = mo_layout->ms_layout-s_head-handle04 ).
 
     IF mt_head IS INITIAL.
       RETURN.
@@ -1011,10 +1008,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       head->selkz  = abap_true.
       head->active = abap_true.
       RETURN.
-    ELSE.
-      head = REF #( mt_head[ 1 ] OPTIONAL ).
-      head->selkz = abap_true.
     ENDIF.
+
+    head = REF #( mt_head[ 1 ] OPTIONAL ).
+    head->selkz = abap_true.
 
   ENDMETHOD.
 
@@ -1276,11 +1273,11 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       ENDIF.
 
       " the generic mode binds nothing - every change is written into the view
-      IF mo_layout->ms_layout-s_head-control = z2ui5_cl_layo_manager=>generic.
-        IF layout-visible <> layout_tmp-visible OR layout-width <> layout_tmp-width.
-          mv_rerender = abap_true.
-          RETURN.
-        ENDIF.
+      IF     mo_layout->ms_layout-s_head-control = z2ui5_cl_layo_manager=>generic
+         AND (    layout-visible <> layout_tmp-visible
+               OR layout-width   <> layout_tmp-width ).
+        mv_rerender = abap_true.
+        RETURN.
       ENDIF.
 
       IF layout-sequence <> layout_tmp-sequence.

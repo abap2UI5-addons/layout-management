@@ -5,12 +5,10 @@ CLASS z2ui5_cl_layo_sample_05 DEFINITION
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
-    TYPES:
-      BEGIN OF ty_s_data.
-        INCLUDE TYPE  z2ui5_t_11.
-    TYPES:
-        selkz TYPE abap_bool,
-      END OF ty_s_data.
+    TYPES BEGIN OF ty_s_data.
+    INCLUDE TYPE z2ui5_t_11.
+    TYPES selkz TYPE abap_bool.
+    TYPES END OF ty_s_data.
     TYPES ty_t_data TYPE STANDARD TABLE OF ty_s_data WITH EMPTY KEY.
 
     " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_table( ) binds it, handed over as REF #( mt_table )
@@ -44,19 +42,13 @@ CLASS z2ui5_cl_layo_sample_05 IMPLEMENTATION.
       WHEN 'BACK'.
         client->nav_app_leave( client->get_app( client->get( )-s_draft-id_prev_app_stack ) ).
 
-      WHEN OTHERS.
+      WHEN mo_layout->ms_layout-s_head-guid.
+        z2ui5_cl_layo_pop=>on_event_layout( client = client
+                                            layout = mo_layout ).
 
-        IF mo_layout->ms_layout-s_head-guid = client->get( )-event.
-
-          z2ui5_cl_layo_pop=>on_event_layout( client = client
-                                              layout = mo_layout ).
-
-        ELSEIF mo_table_layout->ms_layout-s_head-guid = client->get( )-event.
-
-          z2ui5_cl_layo_pop=>on_event_layout( client = client
-                                              layout = mo_table_layout ).
-
-        ENDIF.
+      WHEN mo_table_layout->ms_layout-s_head-guid.
+        z2ui5_cl_layo_pop=>on_event_layout( client = client
+                                            layout = mo_table_layout ).
 
     ENDCASE.
   ENDMETHOD.

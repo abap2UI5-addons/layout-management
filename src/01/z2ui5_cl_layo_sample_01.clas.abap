@@ -175,7 +175,9 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
 
   METHOD on_after_navigation.
 
-    CHECK client->check_on_navigated( ).
+    IF NOT client->check_on_navigated( ).
+      RETURN.
+    ENDIF.
 
     TRY.
 

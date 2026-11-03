@@ -360,6 +360,29 @@
     "range_row_values": true,
     "redundant_cast": true,
     "smim_consistency": true,
-    "sort_empty_key": true
+    "sort_empty_key": true,
+    // added 2026-11 with their findings fixed (abap2UI5 settings), no exceptions
+    "change_if_to_case": true,
+    "delete_index_in_loop": true,
+    "else_after_all_returns": true,
+    "exit_or_check": true,
+    "if_in_if": true,
+    "static_call_via_instance": {
+      "allowInTestclassIncludes": false
+    },
+    "subrc_after_assign": true,
+    "unnecessary_chaining": true,
+    "unnecessary_return": true,
+    "unused_variables": {
+      "severity": "Error",
+      "skipNames": [
+        "lv_dummy",
+        "lv_dummy2",
+        "lv_dummy3",
+        "lv_dummy4",
+        "<dummy>"
+      ]
+    },
+    "use_bool_expression": true
   }
 }

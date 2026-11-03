@@ -5,12 +5,10 @@ CLASS z2ui5_cl_layo_sample_03 DEFINITION
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
-    TYPES:
-      BEGIN OF ty_s_tab.
-        INCLUDE TYPE  z2ui5_t_11.
-    TYPES:
-        selkz TYPE abap_bool,
-      END OF ty_s_tab.
+    TYPES BEGIN OF ty_s_tab.
+    INCLUDE TYPE z2ui5_t_11.
+    TYPES selkz TYPE abap_bool.
+    TYPES END OF ty_s_tab.
     TYPES ty_t_table TYPE STANDARD TABLE OF ty_s_tab WITH EMPTY KEY.
 
     " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_table( ) binds it, handed over as REF #( mt_table )
