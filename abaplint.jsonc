@@ -383,6 +383,9 @@
         "<dummy>"
       ]
     },
-    "use_bool_expression": true
+    "use_bool_expression": true,
+    // added 2026-11 with its findings fixed: UNASSIGN before an ASSIGN in a loop
+    // (an inline FIELD-SYMBOL( ) of an ASSIGN COMPONENT became FIELD-SYMBOLS ... TYPE any)
+    "is_assigned_in_loop": true
   }
 }

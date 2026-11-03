@@ -1105,6 +1105,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       CASE ms_layout-s_head-control.
         WHEN ui_table OR m_table.
 
+          UNASSIGN <tab>.
           ASSIGN mr_data->* TO <tab>.
           IF <tab> IS NOT ASSIGNED.
             CONTINUE.

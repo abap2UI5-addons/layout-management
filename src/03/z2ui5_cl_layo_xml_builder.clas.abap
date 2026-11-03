@@ -178,7 +178,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       DATA(lv_index) = sy-tabix.
 
-      ASSIGN COMPONENT layout->fname OF STRUCTURE <data> TO FIELD-SYMBOL(<value>).
+      FIELD-SYMBOLS <value> TYPE any.
+      UNASSIGN <value>.
+      ASSIGN COMPONENT layout->fname OF STRUCTURE <data> TO <value>.
       IF <value> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
@@ -297,7 +299,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       IF layout->reference_field IS NOT INITIAL.
 
-        ASSIGN COMPONENT layout->reference_field OF STRUCTURE <data> TO FIELD-SYMBOL(<ref_value>).
+        FIELD-SYMBOLS <ref_value> TYPE any.
+        UNASSIGN <ref_value>.
+        ASSIGN COMPONENT layout->reference_field OF STRUCTURE <data> TO <ref_value>.
         IF <ref_value> IS NOT ASSIGNED.
           CONTINUE.
         ENDIF.
