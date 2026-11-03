@@ -243,11 +243,22 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     ENDTRY.
 
-    ASSIGN mr_out->* TO FIELD-SYMBOL(<t_out>).
-    ASSIGN mr_tab->* TO FIELD-SYMBOL(<t_tab>).
+    FIELD-SYMBOLS <t_out>  TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <t_tab>  TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <ls_tab> TYPE any.
+    FIELD-SYMBOLS <ls_out> TYPE any.
+
+    ASSIGN mr_out->* TO <t_out>.
+    ASSIGN mr_tab->* TO <t_tab>.
     ASSIGN mr_out_tmp->* TO FIELD-SYMBOL(<t_out_tmp>).
 
-    <t_out> = <t_tab>.
+    " row by row: the output line has ZZROW_ID in front, so the lines are not
+    " convertible as a whole (UC_OBJECTS_NOT_CONVERTIBLE)
+    CLEAR <t_out>.
+    LOOP AT <t_tab> ASSIGNING <ls_tab>.
+      APPEND INITIAL LINE TO <t_out> ASSIGNING <ls_out>.
+      MOVE-CORRESPONDING <ls_tab> TO <ls_out>.
+    ENDLOOP.
 
     set_row_id( ).
 

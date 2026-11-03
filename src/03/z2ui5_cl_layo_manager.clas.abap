@@ -314,8 +314,6 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                       ( control =  others        index = 2 attribute = 'VISIBLE' )
                       ( control =  others        index = 3 attribute = 'SEQUENCE' )
                       ( control =  others        index = 4 attribute = 'ALTERNATIVE_TEXT' )
-*                      ( control =  others        index = 5 attribute = 'REFERENCE_FIELD' )
-*                      ( control =  others        index = 6 attribute = 'WIDTH' )
                       ( control =  ui_simpleform index = 1 attribute = 'TLABEL' )
                       ( control =  ui_simpleform index = 2 attribute = 'VISIBLE' )
                       ( control =  ui_simpleform index = 3 attribute = 'SEQUENCE' )
@@ -915,12 +913,19 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " select_layouts( ) reads a layout without a format as L, so no format
+    " asked for is L as well - compared as is, a default never matched
+    DATA(lv_format) = CONV string( format ).
+    IF lv_format IS INITIAL.
+      lv_format = screen_format_l.
+    ENDIF.
+
     " Default all Handles + User and Format
     result = VALUE #( head[ handle01      = handle01
                             handle02      = handle02
                             handle03      = handle03
                             handle04      = handle04
-                            screen_format = format
+                            screen_format = lv_format
                             def           = abap_true
                             uname         = sy-uname ] OPTIONAL ).
 
@@ -934,7 +939,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                             handle02      = handle02
                             handle03      = handle03
                             handle04      = handle04
-                            screen_format = format
+                            screen_format = lv_format
                             def           = abap_true
                             uname         = space ] OPTIONAL ).
 

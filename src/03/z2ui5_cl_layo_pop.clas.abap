@@ -396,7 +396,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         )->a( n = `icon` v = 'sap-icon://sys-cancel-2'
         )->a( n = `press` v = client->_event( 'CLOSE' )
         )->tag( `Button`
-        )->a( n = `text` v = 'Okay'
+        )->a( n = `text` v = 'OK'
         )->a( n = `icon` v = 'sap-icon://accept'
         )->a( n = `press` v = client->_event( 'EDIT_OKAY' )
         )->tag( `Button`
@@ -625,13 +625,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         )->a( n = `text` v = 'Screen Size'
         )->ele( `ComboBox`
         )->a( n = `selectedKey` v = client->_bind_edit( mv_format )
-*             )->item( key  = `X`
-*                         text        = `XL - Large Desktop`
         )->tag( n = `Item` ns = `core`
         )->a( n = `key` v = z2ui5_cl_layo_manager=>screen_format_l
         )->a( n = `text` v = `Large - Terminal`
-*             )->item( key  = `M`
-*                      text = `M - Tablet`
         )->tag( n = `Item` ns = `core`
         )->a( n = `key` v = z2ui5_cl_layo_manager=>screen_format_s
         )->a( n = `text` v = `Small - Handheld` ).
@@ -663,6 +659,12 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     IF mv_usr = abap_true.
       DATA(user) = sy-uname.
+    ENDIF.
+
+    " a layout opened without a screen format is read as L
+    " (z2ui5_cl_layo_manager=>select_layouts) - it is saved as one
+    IF mv_format IS INITIAL.
+      mv_format = z2ui5_cl_layo_manager=>screen_format_l.
     ENDIF.
 
     DATA(head) = VALUE z2ui5_t_11( guid          = mo_layout->ms_layout-s_head-guid
@@ -785,12 +787,19 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     " same scope. Saving a non-default layout must not touch the current
     " default - otherwise auto-loading silently stops working.
     IF head-def = abap_true.
+      " a layout saved before the screen format existed has none and is
+      " read as L - it is a default of the same scope
+      DATA format_legacy LIKE head-screen_format.
+      IF head-screen_format <> z2ui5_cl_layo_manager=>screen_format_l.
+        format_legacy = head-screen_format.
+      ENDIF.
       UPDATE z2ui5_t_11 SET def = @abap_false WHERE control       = @head-control
                                                 AND handle01      = @head-handle01
                                                 AND handle02      = @head-handle02
                                                 AND handle03      = @head-handle03
                                                 AND handle04      = @head-handle04
-                                                AND screen_format = @head-screen_format
+                                                AND ( screen_format = @head-screen_format
+                                                   OR screen_format = @format_legacy )
                                                 AND uname         = @head-uname
                                                 AND def           = @abap_true
                                                 AND guid         <> @head-guid.

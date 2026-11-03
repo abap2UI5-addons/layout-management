@@ -571,10 +571,6 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD table_value_formatter.
 
-*    result = COND #( WHEN position-no_leading_zero = abap_true
-*                     THEN |\{path : '{ position-fname }', type : 'sap.ui.model.odata.type.String', constraints : \{  isDigitSequence : true \} \}|
-*                     ELSE |\{{ position-fname }\}| ).
-
     result = |\{{ position-fname }\}|.
 
   ENDMETHOD.
@@ -646,10 +642,7 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       i_xml->tag( n = `RadialMicroChart` ns = `mchart`
           )->a( n = `size` v = i_client->_bind( val = <size> )
           )->a( n = `percentage` v = i_client->_bind( val = <percentage> )
-*                                 press        = press
           )->a( n = `valueColor` v = i_client->_bind( val = <valuecolor> )
-*                                 height       = height
-*                                 aligncontent = aligncontent
           )->a( n = `hideOnNoData` v = i_client->_bind( val = <hideonnodata> ) ).
 
     ENDIF.
@@ -690,10 +683,6 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       IF <state> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
-*      ASSIGN COMPONENT |{ i_layout->visible }| OF STRUCTURE i_data->* TO FIELD-SYMBOL(<visible>).
-*      IF <visible> IS NOT ASSIGNED.
-*        RETURN.
-*      ENDIF.
 
       i_xml->tag( `ProgressIndicator`
           )->a( n = `class` v = `sapUiSmallMarginBottom`
@@ -841,12 +830,6 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD value_formatter.
-
-*    result = COND #( WHEN no_zero = abap_true
-*                     THEN |\{path : '{ i_client->_bind_edit(
-*                                           val  = value
-*                                           path = abap_true ) }', type : 'sap.ui.model.odata.type.String', constraints : \{  isDigitSequence : true \} \}|
-*                     ELSE i_client->_bind( value ) ).
 
     result = i_client->_bind( value ).
 
