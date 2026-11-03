@@ -3,6 +3,7 @@
 [![abap2UI5-addons](https://img.shields.io/badge/abap2UI5--addons-library-1873b4)](https://github.com/abap2UI5-addons)
 [![ABAP](https://img.shields.io/badge/ABAP-Cloud%20%7C%20Standard%20%E2%89%A5%207.50%20%7C%207.02-blue)](#installation)
 [![abap2UI5](https://img.shields.io/badge/requires-abap2UI5-blue)](https://github.com/abap2UI5/abap2UI5)
+[![abap2UI5-ext](https://img.shields.io/badge/requires-abap2UI5--ext-blue)](https://github.com/abap2UI5/abap2UI5-ext)
 [![License](https://img.shields.io/github/license/abap2UI5-addons/layout-management)](LICENSE)
 <br>
 [![ABAP Cloud](https://img.shields.io/github/actions/workflow/status/abap2UI5-addons/layout-management/abap-cloud.yaml?branch=main&label=ABAP%20Cloud)](https://github.com/abap2UI5-addons/layout-management/actions/workflows/abap-cloud.yaml)
@@ -33,7 +34,9 @@ layout-management does that once. It builds the table or form from your data
 via RTTI, offers the layout popup, and stores the variants per app in its own
 tables (`z2ui5_t_11`, `z2ui5_t_12`). Other addons build on it - for example
 the value and search helps of
-[abap2UI5-addons/popups](https://github.com/abap2UI5-addons/popups).
+[abap2UI5-addons/popups](https://github.com/abap2UI5-addons/popups), the data
+browser [abap2UI5-addons/se16n](https://github.com/abap2UI5-addons/se16n) and
+[abap2UI5-addons/table-maintenance](https://github.com/abap2UI5-addons/table-maintenance).
 
 ## Installation
 
@@ -280,7 +283,10 @@ npm run lint            # abaplint, Standard ABAP (v750)
 npm run check:cloud     # abaplint, ABAP Cloud
 npm run check:abap2ui5  # abap2UI5-linter over apps and views
 npm run rename          # namespace rename check
+npm run unit            # ABAP Unit tests on abap2UI5's transpiled Node runtime
 npm run downport        # downport the source to 7.02 syntax
+npm run site            # the GitHub Pages site (VitePress) into build/site
+npm run site:dev        # the same with the VitePress dev server
 ```
 
 ## Contributing

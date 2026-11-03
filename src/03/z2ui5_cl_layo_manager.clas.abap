@@ -314,8 +314,6 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                       ( control =  others        index = 2 attribute = 'VISIBLE' )
                       ( control =  others        index = 3 attribute = 'SEQUENCE' )
                       ( control =  others        index = 4 attribute = 'ALTERNATIVE_TEXT' )
-*                      ( control =  others        index = 5 attribute = 'REFERENCE_FIELD' )
-*                      ( control =  others        index = 6 attribute = 'WIDTH' )
                       ( control =  ui_simpleform index = 1 attribute = 'TLABEL' )
                       ( control =  ui_simpleform index = 2 attribute = 'VISIBLE' )
                       ( control =  ui_simpleform index = 3 attribute = 'SEQUENCE' )

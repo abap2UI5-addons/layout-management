@@ -396,7 +396,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         )->a( n = `icon` v = 'sap-icon://sys-cancel-2'
         )->a( n = `press` v = client->_event( 'CLOSE' )
         )->tag( `Button`
-        )->a( n = `text` v = 'Okay'
+        )->a( n = `text` v = 'OK'
         )->a( n = `icon` v = 'sap-icon://accept'
         )->a( n = `press` v = client->_event( 'EDIT_OKAY' )
         )->tag( `Button`
@@ -625,13 +625,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         )->a( n = `text` v = 'Screen Size'
         )->ele( `ComboBox`
         )->a( n = `selectedKey` v = client->_bind_edit( mv_format )
-*             )->item( key  = `X`
-*                         text        = `XL - Large Desktop`
         )->tag( n = `Item` ns = `core`
         )->a( n = `key` v = z2ui5_cl_layo_manager=>screen_format_l
         )->a( n = `text` v = `Large - Terminal`
-*             )->item( key  = `M`
-*                      text = `M - Tablet`
         )->tag( n = `Item` ns = `core`
         )->a( n = `key` v = z2ui5_cl_layo_manager=>screen_format_s
         )->a( n = `text` v = `Small - Handheld` ).

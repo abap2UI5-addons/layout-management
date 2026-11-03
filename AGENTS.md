@@ -17,7 +17,9 @@ documentation must be in English.
 
 | Package | Content |
 |---|---|
-| `src/01/`, `src/02/`, `src/03/` | Layout classes and samples (`z2ui5_cl_layo_*`) |
+| `src/01/` | Samples (`z2ui5_cl_layo_sample_*`) |
+| `src/02/` | Variant management - an empty package for now |
+| `src/03/` | Layout classes (`z2ui5_cl_layo_*`), the authorization hook `z2ui5_if_layo_auth` and the variant tables `z2ui5_t_11` / `z2ui5_t_12` |
 
 ## Utility Access
 
