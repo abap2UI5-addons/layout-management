@@ -58,6 +58,7 @@ CI:
 * `publish-702` / `abap-702` — `publish-702` writes the downported `702`
   branch on every push to `main` (`npm run auto_downport`: `abaplint --fix`
   against `.github/abaplint/abap_702.jsonc`), and `abap-702` lints it
+* `abap-unit` — the ABAP Unit tests on abap2UI5's transpiled Node runtime, the way abap2UI5 tests itself: `npm run unit` (`.github/scripts/unit.mjs`) copies the packages into a checkout of abap2UI5's `main` (abap2UI5-ext beside it), downports, transpiles and runs the tests of this repository's classes
 * `check-rename` — namespace-rename check (`npm run rename`, `.github/scripts/rename.mjs`)
 
 All `.abap`/`.xml`/config files are LF-only (`.gitattributes` enforces it).
