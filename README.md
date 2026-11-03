@@ -20,7 +20,7 @@ result as a layout variant in the database - the default variant is loaded
 automatically the next time the app starts. For developers of abap2UI5 apps
 who want ALV-like layouts without building them.
 
-> Part of [abap2UI5-addons](https://github.com/abap2UI5-addons) - addons and apps for [abap2UI5](https://github.com/abap2UI5/abap2UI5), installed with [abapGit](https://abapgit.org).
+> Part of [abap2UI5-addons](https://github.com/abap2UI5-addons) - addons and apps for [abap2UI5](https://github.com/abap2UI5/abap2UI5), installed with [abapGit](https://abapgit.org). Documentation: [abap2ui5-addons.github.io/layout-management](https://abap2ui5-addons.github.io/layout-management/).
 
 ## Why
 
