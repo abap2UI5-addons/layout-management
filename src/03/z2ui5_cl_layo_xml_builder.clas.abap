@@ -119,7 +119,6 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
       IMPORTING
         i_client      TYPE REF TO z2ui5_if_client
         !value        TYPE any
-        !layout       TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
       RETURNING
         VALUE(result) TYPE string.
 
@@ -179,7 +178,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       DATA(lv_index) = sy-tabix.
 
-      ASSIGN COMPONENT layout->fname OF STRUCTURE <data> TO FIELD-SYMBOL(<value>).
+      FIELD-SYMBOLS <value> TYPE any.
+      UNASSIGN <value>.
+      ASSIGN COMPONENT layout->fname OF STRUCTURE <data> TO <value>.
       IF <value> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
@@ -284,8 +285,7 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                           )->a( n = `visible` v = i_client->_bind( val       = layout->visible
                                                                    tab       = i_layout->ms_layout-t_layout
                                                                    tab_index = lv_index )
-                          )->a( n = `value` v = value_formatter( layout   = layout
-                                                                 i_client = i_client
+                          )->a( n = `value` v = value_formatter( i_client = i_client
                                                                  value    = <value> )
                           )->a( n = `enabled` b = abap_false
                           )->a( n = `width` v = i_client->_bind( val       = layout->width
@@ -299,7 +299,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       IF layout->reference_field IS NOT INITIAL.
 
-        ASSIGN COMPONENT layout->reference_field OF STRUCTURE <data> TO FIELD-SYMBOL(<ref_value>).
+        FIELD-SYMBOLS <ref_value> TYPE any.
+        UNASSIGN <ref_value>.
+        ASSIGN COMPONENT layout->reference_field OF STRUCTURE <data> TO <ref_value>.
         IF <ref_value> IS NOT ASSIGNED.
           CONTINUE.
         ENDIF.
@@ -313,8 +315,7 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                               )->a( n = `visible` v = i_client->_bind( val       = layout->visible
                                                                        tab       = i_layout->ms_layout-t_layout
                                                                        tab_index = lv_index )
-                              )->a( n = `value` v = value_formatter( layout   = ref_field
-                                                                     i_client = i_client
+                              )->a( n = `value` v = value_formatter( i_client = i_client
                                                                      value    = <ref_value> )
                               )->a( n = `enabled` b = abap_false ).
 
@@ -408,7 +409,7 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     ASSIGN i_data->* TO FIELD-SYMBOL(<tab>).
 
     DATA(table) = i_xml->ele( `Table`
-                      )->a( n = `growing` v = COND #( WHEN i_growingthreshold = space THEN abap_false ELSE abap_true  )
+                      )->a( n = `growing` v = CONV #( xsdbool( i_growingthreshold <> space ) )
                       )->a( n = `growingThreshold` v = i_growingthreshold
                       )->a( n = `width` v = 'auto'
                       )->a( n = `mode` v = COND #( WHEN i_sel_mode = space THEN `None` ELSE i_sel_mode  )
@@ -512,64 +513,57 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                i_client = i_client
                                i_xml    = cells ).
 
-      ELSE.
+      ELSEIF layout->t_sub_col IS NOT INITIAL.
 
-        IF layout->t_sub_col IS NOT INITIAL.
+        DATA(sub_col) = ``.
+        DATA(index) = 0.
 
-          DATA(sub_col) = ``.
-          DATA(index) = 0.
+        LOOP AT layout->t_sub_col INTO DATA(subcol).
 
-          LOOP AT layout->t_sub_col INTO DATA(subcol).
+          index = index + 1.
 
-            index = index + 1.
+          READ TABLE i_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
 
-            READ TABLE i_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
-
-            IF line-reference_field IS INITIAL.
-              DATA(column) = |{ line-tlabel }: { table_value_formatter( line ) }|.
-            ELSE.
-
-              READ TABLE i_layout->ms_layout-t_layout INTO DATA(ref) WITH KEY fname = line-reference_field.
-
-              column = |{ line-tlabel }: { table_value_formatter( line ) } { table_value_formatter( ref ) }|.
-            ENDIF.
-
-            IF index = 1.
-              sub_col = column.
-            ELSE.
-              sub_col = |{ sub_col }{ cl_abap_char_utilities=>cr_lf }{ column }|.
-            ENDIF.
-          ENDLOOP.
-
-          IF layout->reference_field IS NOT INITIAL.
-
-            READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = layout->reference_field.
-
-            cells->ele( `ObjectIdentifier`
-                )->a( n = `title` v = |{ table_value_formatter( layout->* ) } {
-                                                 table_value_formatter( ref ) }|
-                )->a( n = `text` v = sub_col ).
+          IF line-reference_field IS INITIAL.
+            DATA(column) = |{ line-tlabel }: { table_value_formatter( line ) }|.
           ELSE.
-            cells->ele( `ObjectIdentifier`
-                )->a( n = `title` v = table_value_formatter( layout->* )
-                )->a( n = `text` v = sub_col ).
+
+            READ TABLE i_layout->ms_layout-t_layout INTO DATA(ref) WITH KEY fname = line-reference_field.
+
+            column = |{ line-tlabel }: { table_value_formatter( line ) } { table_value_formatter( ref ) }|.
           ENDIF.
 
+          IF index = 1.
+            sub_col = column.
+          ELSE.
+            sub_col = |{ sub_col }{ cl_abap_char_utilities=>cr_lf }{ column }|.
+          ENDIF.
+        ENDLOOP.
+
+        IF layout->reference_field IS NOT INITIAL.
+
+          READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = layout->reference_field.
+
+          cells->ele( `ObjectIdentifier`
+              )->a( n = `title` v = |{ table_value_formatter( layout->* ) } {
+                                               table_value_formatter( ref ) }|
+              )->a( n = `text` v = sub_col ).
         ELSE.
-
-          IF layout->reference_field IS NOT INITIAL.
-
-            READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = layout->reference_field.
-
-            cells->ele( `ObjectIdentifier`
-                )->a( n = `text` v = |{ table_value_formatter( layout->* ) } {
-                                                table_value_formatter( ref ) }| ).
-          ELSE.
-            cells->ele( `ObjectIdentifier`
-                )->a( n = `text` v = |{ table_value_formatter( layout->* ) }| ).
-          ENDIF.
+          cells->ele( `ObjectIdentifier`
+              )->a( n = `title` v = table_value_formatter( layout->* )
+              )->a( n = `text` v = sub_col ).
         ENDIF.
 
+      ELSEIF layout->reference_field IS NOT INITIAL.
+
+        READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = layout->reference_field.
+
+        cells->ele( `ObjectIdentifier`
+            )->a( n = `text` v = |{ table_value_formatter( layout->* ) } {
+                                            table_value_formatter( ref ) }| ).
+      ELSE.
+        cells->ele( `ObjectIdentifier`
+            )->a( n = `text` v = |{ table_value_formatter( layout->* ) }| ).
       ENDIF.
     ENDLOOP.
 

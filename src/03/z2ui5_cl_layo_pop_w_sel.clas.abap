@@ -199,7 +199,9 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
+      FIELD-SYMBOLS <row_id> TYPE any.
+      UNASSIGN <row_id>.
+      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO <row_id>.
 
       IF <row_id> IS NOT ASSIGNED.
         CONTINUE.
@@ -261,7 +263,9 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING <line>.
 
-      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+      FIELD-SYMBOLS <row> TYPE any.
+      UNASSIGN <row>.
+      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO <row>.
       IF <row> IS ASSIGNED.
         <row> = sy-tabix.
       ENDIF.

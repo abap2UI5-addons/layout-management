@@ -5,12 +5,10 @@ CLASS z2ui5_cl_layo_sample_03 DEFINITION
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
-    TYPES:
-      BEGIN OF ty_s_tab.
-        INCLUDE TYPE  z2ui5_t_11.
-    TYPES:
-        selkz TYPE abap_bool,
-      END OF ty_s_tab.
+    TYPES BEGIN OF ty_s_tab.
+    INCLUDE TYPE z2ui5_t_11.
+    TYPES selkz TYPE abap_bool.
+    TYPES END OF ty_s_tab.
     TYPES ty_t_table TYPE STANDARD TABLE OF ty_s_tab WITH EMPTY KEY.
 
     " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_table( ) binds it, handed over as REF #( mt_table )
@@ -119,10 +117,16 @@ CLASS z2ui5_cl_layo_sample_03 IMPLEMENTATION.
     DATA(class) = cl_abap_classdescr=>get_class_name( me ).
     SHIFT class LEFT DELETING LEADING '\CLASS='.
 
+    " the draft table's name behind this class's own prefix (Z2UI5_, or the
+    " one a namespace rename gave it) - the rename rewrites the class name,
+    " never a literal
+    DATA(table) = substring_before( val = class
+                                    sub = `CL_LAYO_` ) && `T_01`.
+
     mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>m_table
                                                 data     = REF #( mt_table )
                                                 handle01 = class
-                                                handle02 = 'Z2UI5_T_01'
+                                                handle02 = table
                                                 handle03 = ''
                                                 handle04 = '' ).
 

@@ -164,10 +164,16 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
     DATA(class) = cl_abap_classdescr=>get_class_name( me ).
     SHIFT class LEFT DELETING LEADING '\CLASS='.
 
+    " the draft table's name behind this class's own prefix (Z2UI5_, or the
+    " one a namespace rename gave it) - the rename rewrites the class name,
+    " never a literal
+    DATA(table) = substring_before( val = class
+                                    sub = `CL_LAYO_` ) && `T_01`.
+
     mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>m_table
                                                 data     = REF #( mt_table )
                                                 handle01 = class
-                                                handle02 = 'Z2UI5_T_01'
+                                                handle02 = table
                                                 handle03 = ''
                                                 handle04 = '' ).
 
@@ -175,7 +181,9 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
 
   METHOD on_after_navigation.
 
-    CHECK client->check_on_navigated( ).
+    IF NOT client->check_on_navigated( ).
+      RETURN.
+    ENDIF.
 
     TRY.
 
