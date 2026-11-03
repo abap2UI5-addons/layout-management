@@ -64,6 +64,16 @@ the value and search helps of
 `?app_start=z2ui5_cl_layo_sample_01` for a table with icons, charts and
 indicators. All samples are listed under [Samples](#samples).
 
+### Parallel installation (namespace rename)
+
+To run a second copy next to the original in the same system, rename it the
+way abap2UI5 itself is renamed: run the workflow **build-rename** (Actions →
+build-rename → Run workflow) with the name your abap2UI5 installation was
+renamed to - e.g. `ZMYUI5` or `/CA2UI5/`. It pushes the branch `rename_<name>`, in
+which every object and every reference to abap2UI5 and to the addons this one
+needs carries that name; pull it with abapGit. Rename abap2UI5 and every addon
+of the installation with the same name.
+
 ## Usage
 
 Create a layout manager for your data, let `z2ui5_cl_layo_xml_builder` render
