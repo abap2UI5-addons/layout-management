@@ -739,7 +739,9 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
     LOOP AT t_index INTO lv_index.
       DATA(ls_block) = VALUE ty_s_block( parent = mt_node[ lv_index ]-parent ).
       DATA(lv_label) = label_of( lv_index ).
-      IF lv_label > 0.
+      " a Label registered itself is a block of its own - taken along a second
+      " time it would be a member twice, one more than the positions it holds
+      IF lv_label > 0 AND NOT line_exists( t_index[ table_line = lv_label ] ).
         APPEND lv_label TO ls_block-t_index.
       ENDIF.
       APPEND lv_index TO ls_block-t_index.
