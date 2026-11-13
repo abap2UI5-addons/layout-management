@@ -406,6 +406,10 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD xml_build_table.
 
+    " the work areas of the subcolumns and reference fields below
+    DATA line TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    DATA ref  TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+
     ASSIGN i_data->* TO FIELD-SYMBOL(<tab>).
 
     DATA(table) = i_xml->ele( `Table`
@@ -516,24 +520,27 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       ELSEIF layout->t_sub_col IS NOT INITIAL.
 
         DATA(sub_col) = ``.
-        DATA(index) = 0.
 
         LOOP AT layout->t_sub_col INTO DATA(subcol).
 
-          index = index + 1.
-
-          READ TABLE i_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
+          " a subcolumn that names no position (one added in the popup and
+          " left empty, or a field the structure no longer has) is left out -
+          " the work area kept the previous row and repeated it
+          READ TABLE i_layout->ms_layout-t_layout INTO line WITH KEY fname = subcol-fname.
+          IF sy-subrc <> 0.
+            CONTINUE.
+          ENDIF.
 
           IF line-reference_field IS INITIAL.
             DATA(column) = |{ line-tlabel }: { table_value_formatter( line ) }|.
           ELSE.
 
-            READ TABLE i_layout->ms_layout-t_layout INTO DATA(ref) WITH KEY fname = line-reference_field.
+            READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = line-reference_field.
 
             column = |{ line-tlabel }: { table_value_formatter( line ) } { table_value_formatter( ref ) }|.
           ENDIF.
 
-          IF index = 1.
+          IF sub_col IS INITIAL.
             sub_col = column.
           ELSE.
             sub_col = |{ sub_col }{ cl_abap_char_utilities=>cr_lf }{ column }|.

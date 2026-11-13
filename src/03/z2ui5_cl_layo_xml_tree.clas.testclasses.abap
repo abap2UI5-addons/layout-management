@@ -33,6 +33,7 @@ CLASS ltcl_apply DEFINITION FINAL FOR TESTING
     METHODS reorder_within_parent FOR TESTING.
     METHODS reorder_keeps_unregistered FOR TESTING.
     METHODS reorder_moves_label_along FOR TESTING.
+    METHODS reorder_registered_label FOR TESTING.
     METHODS reorder_only_within_parent FOR TESTING.
     METHODS unknown_id_is_ignored FOR TESTING.
     METHODS scan_ids_all FOR TESTING.
@@ -267,6 +268,24 @@ CLASS ltcl_apply IMPLEMENTATION.
 
     cl_abap_unit_assert=>assert_equals( act = lv_act
                                         exp = lv_exp ).
+
+  ENDMETHOD.
+
+  METHOD reorder_registered_label.
+
+    " a Label with an id of its own is registered as well (register_by_xml
+    " without a prefix) - it is placed by its own slot, and the reorder no
+    " longer counts it twice and stops on a missing position
+    DATA(lv_xml) = `<VBox id="box"><Label id="lblName" text="Name" labelFor="inpName"/>` &&
+                   `<Input id="inpName"/><Input id="inpCity"/></VBox>`.
+    DATA(lt_slot) = VALUE z2ui5_cl_layo_xml_tree=>ty_t_slot( visible = abap_true
+                                                             ( id = `inpCity` ) ( id = `lblName` ) ( id = `inpName` ) ).
+
+    cl_abap_unit_assert=>assert_equals(
+      act = z2ui5_cl_layo_xml_tree=>apply( xml    = lv_xml
+                                           t_slot = lt_slot )
+      exp = `<VBox id="box"><Input id="inpCity"/><Label id="lblName" text="Name" labelFor="inpName"/>` &&
+            `<Input id="inpName"/></VBox>` ).
 
   ENDMETHOD.
 

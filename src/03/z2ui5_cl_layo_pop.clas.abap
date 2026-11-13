@@ -994,9 +994,18 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD set_selected_layout.
 
+    DATA(lo_previous) = mo_layout.
+
     mo_layout = z2ui5_cl_layo_manager=>factory_by_guid( layout_guid = head-guid
-                                                        t_comps     = mo_layout->ms_layout-t_layout
-                                                        t_slots     = mo_layout->mt_slots ).
+                                                        t_comps     = lo_previous->ms_layout-t_layout
+                                                        t_slots     = lo_previous->mt_slots ).
+
+    " the layout opened is the app's layout from now on - it sorts, converts
+    " and selects the same table, which factory_by_guid( ) does not know
+    mo_layout->mr_data = lo_previous->mr_data.
+    mo_layout->set_selektion_criteria( sel_mode      = lo_previous->mv_sel_mode
+                                       sel_field     = lo_previous->mv_sel_field
+                                       sel_key_field = lo_previous->mv_sel_key_field ).
 
   ENDMETHOD.
 
