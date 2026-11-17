@@ -116,13 +116,13 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
     DATA lo_shipped TYPE REF TO z2ui5_cl_layo_auth.
     DATA lv_intf    TYPE string.
     DATA lv_shipped TYPE string.
-    DATA lt_class   TYPE z2ui5_cl_util=>ty_t_classes.
+    DATA lt_class   TYPE z2ui5_cl_layo_context=>ty_t_classes.
 
     TRY.
         lv_intf    = type_name_of( li_auth ).
         lv_shipped = type_name_of( lo_shipped ).
 
-        lt_class = z2ui5_cl_util=>rtti_get_classes_impl_intf( lv_intf ).
+        lt_class = z2ui5_cl_layo_context=>rtti_get_classes_impl_intf( lv_intf ).
         DELETE lt_class WHERE classname = lv_shipped.
 
         " reproducible when a system carries more than one: the first by name

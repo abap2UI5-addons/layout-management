@@ -19,24 +19,40 @@ documentation must be in English.
 |---|---|
 | `src/01/` | Samples (`z2ui5_cl_layo_sample_*`) |
 | `src/02/` | Variant management - an empty package for now |
-| `src/03/` | Layout classes (`z2ui5_cl_layo_*`), the authorization hook `z2ui5_if_layo_auth` and the variant tables `z2ui5_t_11` / `z2ui5_t_12` |
+| `src/03/` | Layout classes (`z2ui5_cl_layo_*`), the authorization hook `z2ui5_if_layo_auth`, the variant tables `z2ui5_t_11` / `z2ui5_t_12` and the vendored utility copies `z2ui5_cl_layo_context` / `z2ui5_cx_layo_error` (see "Utility Access") |
 
 ## Utility Access
 
-The addon uses the legacy utility class `z2ui5_cl_util` directly
-(`z2ui5_cl_util=>…`). It no longer ships with abap2UI5: it moved, with the
-rest of the core's former `src/99/01`, to
-[abap2UI5-ext](https://github.com/abap2UI5/abap2UI5-ext), which is a hard
-dependency of this addon (installed alongside via abapGit and declared in the
-abaplint configs - `main`, and its branch `702` for the downport check). No
-vendored utility copy is kept (maintainer decision, for now).
+`z2ui5_cl_layo_context` is a **renamed copy** of `zabaputil_cl_util_context`
+from the [abap-util](https://github.com/abap-util/abap-util) master catalog,
+**trimmed to the methods this addon uses** plus the private helpers, types
+and class data those need; `z2ui5_cx_layo_error` is
+`zabaputil_cx_util_error`, renamed and copied as-is. It is the convention of
+the other addons (popups' `z2ui5_cl_popup_context`, range-filter's
+`z2ui5_cl_sel_context`) and of the core (`z2ui5_cl_ui5_util_context`):
+abapGit has no dependency management, so utilities are vendored, not
+referenced.
+
+1. **Never the legacy `z2ui5_cl_util*` / `z2ui5_cx_util_error`.** They left
+   the core with its `src/99/01` for
+   [abap2UI5-ext](https://github.com/abap2UI5/abap2UI5-ext); this addon used
+   them until 2026-11 and needed abap2UI5-ext installed for it. Every utility
+   call goes through `z2ui5_cl_layo_context`, and nothing of abap2UI5-ext is
+   declared in the abaplint configs or cloned by `npm run unit`.
+2. **New methods are added locally** to `z2ui5_cl_layo_context`; if abap-util
+   already has the method, copy it from there with its private helpers. Keep
+   what goes there generic - layout logic stays in the layout classes.
+3. **Periodic AI sync-back** merges what was added or fixed here into
+   abap-util. One deliberate difference to the master today: `ty_t_classes`
+   has `WITH EMPTY KEY` (as in the core's copy), because abaplint's
+   `avoid_use` refuses `DEFAULT KEY`.
 
 ## Dependencies
 
 Installed alongside via abapGit; declared in the abaplint configs:
 
-* [abap2UI5](https://github.com/abap2UI5/abap2UI5)
-* [abap2UI5-ext](https://github.com/abap2UI5/abap2UI5-ext) — `z2ui5_cl_util`, see "Utility Access"
+* [abap2UI5](https://github.com/abap2UI5/abap2UI5) — nothing else; the
+  utilities are vendored, see "Utility Access"
 
 ## Coding Style
 
@@ -59,7 +75,7 @@ CI:
 * `publish-702` / `abap-702` — `publish-702` writes the downported `702`
   branch on every push to `main` (`npm run auto_downport`: `abaplint --fix`
   against `.github/abaplint/abap_702.jsonc`), and `abap-702` lints it
-* `abap-unit` — the ABAP Unit tests on abap2UI5's transpiled Node runtime, the way abap2UI5 tests itself: `npm run unit` (`.github/scripts/unit.mjs`) copies the packages into a checkout of abap2UI5's `main` (abap2UI5-ext beside it), downports, transpiles and runs the tests of this repository's classes
+* `abap-unit` — the ABAP Unit tests on abap2UI5's transpiled Node runtime, the way abap2UI5 tests itself: `npm run unit` (`.github/scripts/unit.mjs`) copies the packages into a checkout of abap2UI5's `main`, downports, transpiles and runs the tests of this repository's classes
 * `check-rename` — namespace-rename check (`npm run rename`, `.github/scripts/rename.mjs`)
 
 All `.abap`/`.xml`/config files are LF-only (`.gitattributes` enforces it).

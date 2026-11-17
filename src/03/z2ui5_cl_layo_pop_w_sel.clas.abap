@@ -81,7 +81,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     r_result->content_width     = i_contentwidth.
     r_result->growing_threshold = i_growingthreshold.
 
-    r_result->mr_tab            = z2ui5_cl_util=>conv_copy_ref_data( i_tab ).
+    r_result->mr_tab            = z2ui5_cl_layo_context=>conv_copy_ref_data( i_tab ).
 
     CREATE DATA r_result->ms_result-row LIKE LINE OF i_tab.
 
@@ -288,7 +288,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     TRY.
 
-        DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( mr_tab ).
+        DATA(comp) = z2ui5_cl_layo_context=>rtti_get_t_attri_by_any( mr_tab ).
 
         IF NOT line_exists( comp[ name = 'ZZROW_ID' ] ).
           APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
@@ -318,7 +318,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    z2ui5_cl_util=>itab_filter_by_val( EXPORTING val = mv_search_value
+    z2ui5_cl_layo_context=>itab_filter_by_val( EXPORTING val = mv_search_value
                                        CHANGING  tab = <tab> ).
 
   ENDMETHOD.

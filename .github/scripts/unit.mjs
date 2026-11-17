@@ -45,11 +45,9 @@ const CONFIG = {
   // built in, the others are what this repository builds on
   repos: [
     { name: "abap2UI5", url: "https://github.com/abap2UI5/abap2UI5", ref: "main" },
-    { name: "abap2UI5-ext", url: "https://github.com/abap2UI5/abap2UI5-ext", ref: "main" },
   ],
   // copied into <abap2UI5>/src/<into>/: entries relative to <from>/src
   packages: [
-    { into: "zz_abap2ui5_ext", from: path.join(WORK, "abap2UI5-ext"), entries: ["."] },
     { into: "zz_layout_management", from: ROOT, entries: ["."] },
   ],
 };

@@ -3,7 +3,6 @@
 [![abap2UI5-addons](https://img.shields.io/badge/abap2UI5--addons-library-1873b4)](https://github.com/abap2UI5-addons)
 [![ABAP](https://img.shields.io/badge/ABAP-Cloud%20%7C%20Standard%20%E2%89%A5%207.50%20%7C%207.02-blue)](#installation)
 [![abap2UI5](https://img.shields.io/badge/requires-abap2UI5-blue)](https://github.com/abap2UI5/abap2UI5)
-[![abap2UI5-ext](https://img.shields.io/badge/requires-abap2UI5--ext-blue)](https://github.com/abap2UI5/abap2UI5-ext)
 [![License](https://img.shields.io/github/license/abap2UI5-addons/layout-management)](LICENSE)
 <br>
 [![ABAP Cloud](https://img.shields.io/github/actions/workflow/status/abap2UI5-addons/layout-management/abap-cloud.yaml?branch=main&label=ABAP%20Cloud)](https://github.com/abap2UI5-addons/layout-management/actions/workflows/abap-cloud.yaml)
@@ -45,17 +44,17 @@ browser [abap2UI5-addons/se16n](https://github.com/abap2UI5-addons/se16n) and
 - ABAP Cloud (S/4 Public Cloud, BTP ABAP Environment), S/4 Private Cloud or
   On-Premise, or SAP NetWeaver AS ABAP 7.50 or higher; NetWeaver 7.02 with the
   downported branch `702`
-- [abap2UI5](https://github.com/abap2UI5/abap2UI5)
-- [abap2UI5-ext](https://github.com/abap2UI5/abap2UI5-ext) - the legacy
-  utilities `z2ui5_cl_util*` this addon calls, which abap2UI5 no longer ships
+- [abap2UI5](https://github.com/abap2UI5/abap2UI5) - nothing else
+
+Earlier versions also needed [abap2UI5-ext](https://github.com/abap2UI5/abap2UI5-ext)
+for the legacy `z2ui5_cl_util`; this one carries its own utility class
+(`z2ui5_cl_layo_context`). A system that has abap2UI5-ext keeps it - nothing
+collides - and can drop it once no other code of its own uses it.
 
 **Steps** - with [abapGit](https://abapgit.org), in this order:
 
 1. [abap2UI5](https://github.com/abap2UI5/abap2UI5)
-2. [abap2UI5-ext](https://github.com/abap2UI5/abap2UI5-ext) - `main`, on
-   NetWeaver 7.02 - 7.40 its branch `702`. Not needed while your abap2UI5
-   release still contains `src/99/01` (up to 1.148.0)
-3. this repository, from the branch that fits your system - classes and the
+2. this repository, from the branch that fits your system - classes and the
    two tables `z2ui5_t_11` / `z2ui5_t_12` for the layout variants:
 
 | System | Branch to pull |
