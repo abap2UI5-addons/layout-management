@@ -4,7 +4,7 @@
  * on the transpiled Node runtime abap2UI5 uses for its own suite (SQLite
  * behind the database statements, so RISK LEVEL DANGEROUS classes run too).
  *
- * What it does, the same in CI (abap-unit.yaml) and on a laptop:
+ * What it does, the same in CI (ci.yaml, the unit job) and on a laptop:
  *
  *   1. a checkout of every repository in CONFIG.repos under UNIT_DIR
  *      (default .unit/, git-ignored) - cloned on the first run, refreshed to
@@ -22,8 +22,7 @@
  * Environment:
  *   UNIT_DIR        the work folder (default .unit)
  *   UNIT_FILTER     run only the tests whose "OBJECT: class->method" contains it
- *   UNIT_NO_FETCH=1 use the checkouts under UNIT_DIR as they are - CI sets
- *                   it, actions/checkout has put them there already
+ *   UNIT_NO_FETCH=1 use the checkouts under UNIT_DIR as they are
  *
  * Never commit the work folder. A green transpiled run is not a substitute
  * for a run on a system (abap2UI5's abap-check skill lists what the
