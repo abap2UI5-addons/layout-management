@@ -66,23 +66,32 @@ returned value instead.
 
 Run `npm run check` before considering changes complete: it runs the same
 abaplint, abap2UI5-linter and rename steps as CI, and all of them must pass.
-CI:
+CI comes from the shared CI template of abap2UI5-addons (reusable workflows in
+[rap-ext](https://github.com/abap2UI5-addons/rap-ext/blob/main/.github/ci/README.md),
+pinned by commit in the `uses:` lines and moved by `bump-deps`):
 
-* `abap-standard` / `abap-cloud` — lint against Standard ABAP
-  (`abaplint.jsonc`) and ABAP Cloud (`.github/abaplint/abap_cloud.jsonc`)
-* `check-abap2ui5` — the abap2UI5-linter over the app classes and their
-  views (`abap2ui5lint.jsonc`)
-* `publish-702` / `abap-702` — `publish-702` writes the downported `702`
-  branch on every push to `main` (`npm run auto_downport`: `abaplint --fix`
-  against `.github/abaplint/abap_702.jsonc`), and `abap-702` lints it
-* `abap-unit` — the ABAP Unit tests on abap2UI5's transpiled Node runtime, the way abap2UI5 tests itself: `npm run unit` (`.github/scripts/unit.mjs`) copies the packages into a checkout of abap2UI5's `main`, downports, transpiles and runs the tests of this repository's classes
-* `check-rename` — namespace-rename check (`npm run rename`, `.github/scripts/rename.mjs`)
+* `ci` - one job per check: abaplint against Standard ABAP
+  (`abaplint.jsonc`) and ABAP Cloud (`.github/abaplint/abap_cloud.jsonc`),
+  `abap2ui5lint` (the app classes and their views, `abap2ui5lint.jsonc`),
+  `unit` - the ABAP Unit tests on abap2UI5's transpiled Node runtime, the
+  way abap2UI5 tests itself: `npm run unit` (`.github/scripts/unit.mjs`)
+  copies the packages into a checkout of abap2UI5's `main`, downports,
+  transpiles and runs the tests of this repository's classes - and `rename`,
+  the namespace-rename check (`npm run rename`, `.github/scripts/rename.mjs`)
+* `ci-702` — writes the downported `702` branch on every push to `main`
+  (`npm run auto_downport`: `abaplint --fix` against
+  `.github/abaplint/abap_702.jsonc`) and lints it
+* `build-rename`, `deploy-pages`, `bump-deps` — calls of the template
+
+Several addons pin this repository by commit in their `.github/deps.json`;
+their monthly `bump-deps` moves the pin, and their weekly `ci` run checks
+this repository's `main` tip.
 
 All `.abap`/`.xml`/config files are LF-only (`.gitattributes` enforces it).
 
 ## Namespace rename
 
-`npm run rename` (CI: `check-rename`) and the manual `build-rename` workflow
+`npm run rename` (CI: the `rename` job of `ci`) and the manual `build-rename` workflow
 are abap2UI5's namespace rename for this addon - `.github/scripts/rename.mjs`,
 the same file in every addon that has one. Every `z2ui5_` object becomes
 `<name>_...`, for a customer name such as `ZMYUI5` or a registered namespace
