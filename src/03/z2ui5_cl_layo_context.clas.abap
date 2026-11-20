@@ -133,7 +133,7 @@ CLASS z2ui5_cl_layo_context DEFINITION
         description TYPE string,
       END OF ty_s_class_descr.
 
-    TYPES ty_t_classes TYPE STANDARD TABLE OF ty_s_class_descr WITH EMPTY KEY.
+    TYPES ty_t_classes TYPE STANDARD TABLE OF ty_s_class_descr WITH DEFAULT KEY.
 
     CLASS-METHODS check_abap_cloud
       RETURNING
@@ -267,7 +267,7 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
     FIELD-SYMBOLS <from>   TYPE data.
     FIELD-SYMBOLS <result> TYPE data.
 
-    IF rtti_check_ref_data( from ).
+    IF rtti_check_ref_data( from ) IS NOT INITIAL.
       ASSIGN from->* TO <from>.
       IF <from> IS NOT ASSIGNED.
         " unbound data reference - nothing to copy, return an initial reference
@@ -291,9 +291,22 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
     FIELD-SYMBOLS <row>   TYPE any.
     FIELD-SYMBOLS <field> TYPE any.
 
-    DATA(lv_search) = COND string( WHEN ignore_case = abap_true
-                                   THEN to_upper( val )
-                                   ELSE val ).
+    DATA temp1 TYPE string.
+    DATA lv_search LIKE temp1.
+    DATA lv_field_count TYPE i.
+      DATA lv_tabix LIKE sy-tabix.
+      DATA lv_check_found LIKE abap_false.
+      DATA lv_index TYPE i.
+          DATA lv_name LIKE LINE OF fields.
+          FIELD-SYMBOLS <temp1> LIKE LINE OF fields.
+          DATA temp2 LIKE sy-tabix.
+    IF ignore_case = abap_true.
+      temp1 = to_upper( val ).
+    ELSE.
+      temp1 = val.
+    ENDIF.
+
+    lv_search = temp1.
     " an empty search is no filter: every row stays. Said here rather than
     " left to the match below - whether find( ) or CS reports a hit for an
     " empty substring is not something to build on, and a row with nothing
@@ -302,13 +315,17 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
     IF lv_search IS INITIAL.
       RETURN.
     ENDIF.
-    DATA(lv_field_count) = lines( fields ).
+
+    lv_field_count = lines( fields ).
 
     LOOP AT tab ASSIGNING <row>.
 
-      DATA(lv_tabix) = sy-tabix.
-      DATA(lv_check_found) = abap_false.
-      DATA(lv_index) = 1.
+
+      lv_tabix = sy-tabix.
+
+      lv_check_found = abap_false.
+
+      lv_index = 1.
       DO.
         IF fields IS INITIAL.
           ASSIGN COMPONENT lv_index OF STRUCTURE <row> TO <field>.
@@ -325,7 +342,16 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
           IF lv_index > lv_field_count.
             EXIT.
           ENDIF.
-          DATA(lv_name) = fields[ lv_index ].
+
+
+
+          temp2 = sy-tabix.
+          READ TABLE fields INDEX lv_index ASSIGNING <temp1>.
+          sy-tabix = temp2.
+          IF sy-subrc <> 0.
+            ASSERT 1 = 0.
+          ENDIF.
+          lv_name = <temp1>.
           ASSIGN COMPONENT lv_name OF STRUCTURE <row> TO <field>.
           IF sy-subrc <> 0.
             lv_index = lv_index + 1.
@@ -352,6 +378,10 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD rtti_check_ref_data.
+        DATA lo_typdescr TYPE REF TO cl_abap_typedescr.
+        DATA temp2 TYPE REF TO cl_abap_refdescr.
+        DATA lo_referenced TYPE REF TO cl_abap_typedescr.
+        DATA temp1 TYPE xsdboolean.
 
     TRY.
         " a kind comparison, not a CAST probe: the cast raised
@@ -361,7 +391,8 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
         " exception is orders of magnitude more expensive than comparing.
         " cl_abap_refdescr covers data and object references alike, and so
         " does kind_ref
-        DATA(lo_typdescr) = cl_abap_typedescr=>describe_by_data( val ).
+
+        lo_typdescr = cl_abap_typedescr=>describe_by_data( val ).
         IF lo_typdescr->kind <> cl_abap_typedescr=>kind_ref.
           RETURN.
         ENDIF.
@@ -369,9 +400,13 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
         " dereferences on a true answer (conv_copy_ref_data: `from->*`)
         " cannot do that to an object reference. Only a reference to DATA
         " answers true
-        DATA(lo_referenced) = CAST cl_abap_refdescr( lo_typdescr )->get_referenced_type( ).
-        result = xsdbool( lo_referenced->kind <> cl_abap_typedescr=>kind_class
-                      AND lo_referenced->kind <> cl_abap_typedescr=>kind_intf ).
+
+        temp2 ?= lo_typdescr.
+
+        lo_referenced = temp2->get_referenced_type( ).
+
+        temp1 = boolc( lo_referenced->kind <> cl_abap_typedescr=>kind_class AND lo_referenced->kind <> cl_abap_typedescr=>kind_intf ).
+        result = temp1.
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
@@ -406,9 +441,11 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
     " back the object already in hand - or fail for a local include type
     " whose absolute name does not resolve, where the direct cast cannot
     DATA sdescr TYPE REF TO cl_abap_structdescr.
+        DATA lx_cast TYPE REF TO cx_sy_move_cast_error.
     TRY.
         sdescr ?= type.
-      CATCH cx_sy_move_cast_error INTO DATA(lx_cast).
+
+      CATCH cx_sy_move_cast_error INTO lx_cast.
         RAISE EXCEPTION TYPE z2ui5_cx_layo_error
           EXPORTING
             val      = |Include type '{ type->absolute_name }' is not a structure|
@@ -420,6 +457,11 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD expand_components.
+    DATA temp3 LIKE LINE OF val.
+    DATA lr_comp LIKE REF TO temp3.
+        DATA lt_include TYPE abap_component_tab.
+          DATA temp4 LIKE LINE OF lt_include.
+          DATA lr_include LIKE REF TO temp4.
 
     " see the declaration: bounded so a cyclic include chain surfaces as a
     " readable error instead of a stack-overflow dump. 16 nested include
@@ -430,16 +472,21 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
           val = `RTTI_INCLUDE_RECURSION - include expansion exceeded 16 levels (cyclic include?)`.
     ENDIF.
 
-    LOOP AT val REFERENCE INTO DATA(lr_comp).
+
+
+    LOOP AT val REFERENCE INTO lr_comp.
       IF lr_comp->as_include = abap_true.
         " INCLUDE ... RENAMING WITH SUFFIX: the structure's components are
         " named <component><suffix>, and every nested level adds its own -
         " the bare include names do not exist on the structure, so a
         " binding path or ASSIGN COMPONENT built from them fails
-        DATA(lt_include) = rtti_get_t_attri_by_include( type  = lr_comp->type
+
+        lt_include = rtti_get_t_attri_by_include( type  = lr_comp->type
                                                         depth = depth + 1 ).
         IF lr_comp->suffix IS NOT INITIAL.
-          LOOP AT lt_include REFERENCE INTO DATA(lr_include).
+
+
+          LOOP AT lt_include REFERENCE INTO lr_include.
             lr_include->name = lr_include->name && lr_comp->suffix.
           ENDLOOP.
         ENDIF.
@@ -457,6 +504,11 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
     DATA lo_type          TYPE REF TO cl_abap_typedescr.
     " declared, not CONV string( ) - see error_get_attributes
     DATA lv_absolute_name TYPE string.
+        DATA temp5 TYPE REF TO cl_abap_structdescr.
+        DATA temp6 TYPE REF TO cl_abap_structdescr.
+        DATA temp3 TYPE REF TO cl_abap_tabledescr.
+    DATA lr_cache TYPE REF TO z2ui5_cl_layo_context=>ty_s_attri_cache.
+      DATA temp7 TYPE z2ui5_cl_layo_context=>ty_s_attri_cache.
 
     " describe_by_data never fails for a data object, and the reference case
     " is the one branch. The fallback chain that used to sit here - a second
@@ -470,9 +522,15 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
 
     CASE lo_type->kind.
       WHEN cl_abap_typedescr=>kind_struct.
-        lo_struct = CAST #( lo_type ).
+
+        temp5 ?= lo_type.
+        lo_struct = temp5.
       WHEN cl_abap_typedescr=>kind_table.
-        lo_struct = CAST #( CAST cl_abap_tabledescr( lo_type )->get_table_line_type( ) ).
+
+
+        temp3 ?= lo_type.
+        temp6 ?= temp3->get_table_line_type( ).
+        lo_struct = temp6.
       WHEN OTHERS.
         lo_struct ?= lo_type.
     ENDCASE.
@@ -480,7 +538,8 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
     " descriptor instances are singletons per type, so the identity check
     " guards against absolute names reused by other (local/anonymous) types
     lv_absolute_name = lo_struct->absolute_name.
-    READ TABLE mt_attri_cache REFERENCE INTO DATA(lr_cache)
+
+    READ TABLE mt_attri_cache REFERENCE INTO lr_cache
          WITH TABLE KEY absolute_name = lv_absolute_name.
     IF sy-subrc = 0 AND lr_cache->o_struct = lo_struct.
       result = lr_cache->t_attri.
@@ -493,18 +552,27 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
       lr_cache->o_struct = lo_struct.
       lr_cache->t_attri  = result.
     ELSE.
-      INSERT VALUE #( absolute_name = lv_absolute_name
-                      o_struct      = lo_struct
-                      t_attri       = result ) INTO TABLE mt_attri_cache.
+
+      CLEAR temp7.
+      temp7-absolute_name = lv_absolute_name.
+      temp7-o_struct = lo_struct.
+      temp7-t_attri = result.
+      INSERT temp7 INTO TABLE mt_attri_cache.
     ENDIF.
 
   ENDMETHOD.
 
   METHOD conv_exit.
 
-    DATA(conex) = COND string( WHEN output = abap_true
-                               THEN |CONVERSION_EXIT_{ convexit }_OUTPUT|
-                               ELSE |CONVERSION_EXIT_{ convexit }_INPUT| ).
+    DATA temp8 TYPE string.
+    DATA conex LIKE temp8.
+    IF output = abap_true.
+      temp8 = |CONVERSION_EXIT_{ convexit }_OUTPUT|.
+    ELSE.
+      temp8 = |CONVERSION_EXIT_{ convexit }_INPUT|.
+    ENDIF.
+
+    conex = temp8.
 
     TRY.
         IF convexit = `CUNIT`.
@@ -594,7 +662,7 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
 
   METHOD rtti_get_classes_impl_intf.
 
-    IF check_abap_cloud( ).
+    IF check_abap_cloud( ) IS NOT INITIAL.
       result = rtti_get_classes_intf_cloud( val              = val
                                             read_description = read_description ).
     ELSE.
@@ -681,7 +749,8 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
     " a STANDARD TABLE WITH DEFAULT KEY. WITH EMPTY KEY makes the table type
     " incompatible, so the CALL FUNCTION fails and no implementers are returned
     " (silently breaking user-exit discovery). Never change this key type.
-    DATA lt_impl TYPE STANDARD TABLE OF ty_s_impl WITH DEFAULT KEY.
+    TYPES temp1 TYPE STANDARD TABLE OF ty_s_impl WITH DEFAULT KEY.
+DATA lt_impl TYPE temp1.
     "#EC DEFAULT_KEY
     TYPES BEGIN OF ty_s_key.
     TYPES intkey TYPE c LENGTH 30.
@@ -939,6 +1008,7 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
     DATA lv_uuid      TYPE c LENGTH 32.
     DATA lv_classname TYPE string.
     DATA lv_fm        TYPE string.
+        DATA lx_uuid TYPE REF TO cx_root.
 
     TRY.
 
@@ -960,7 +1030,8 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
 
         result = lv_uuid.
 
-      CATCH cx_root INTO DATA(lx_uuid).
+
+      CATCH cx_root INTO lx_uuid.
         " both UUID mechanisms failed - raise the framework exception so the
         " consumer's single top-level catch can turn it into a handled error.
         " ASSERT would raise the uncatchable ASSERTION_FAILED and bypass that
@@ -984,13 +1055,18 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD rtti_get_class_descr_on_cloud.
+        DATA obj TYPE REF TO object.
+        DATA content TYPE REF TO object.
+        DATA lv_classname TYPE c LENGTH 30.
+        DATA xco_cp_abap TYPE c LENGTH 11.
+        DATA lv_description TYPE c LENGTH 60.
     TRY.
 
-        DATA obj          TYPE REF TO object.
-        DATA content      TYPE REF TO object.
-        DATA lv_classname   TYPE c LENGTH 30.
-        DATA xco_cp_abap    TYPE c LENGTH 11.
-        DATA lv_description TYPE c LENGTH 60.
+
+
+
+
+
 
         lv_classname = classname.
 
@@ -1017,6 +1093,7 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD itab_filter_check_field.
+    DATA lv_value TYPE string.
 
     " a table, a deep structure or a reference cannot go into a string
     " template - with no field list every component is visited, and a
@@ -1026,7 +1103,8 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA(lv_value) = |{ field }|.
+
+    lv_value = |{ field }|.
     IF ignore_case = abap_true.
       lv_value = to_upper( lv_value ).
       IF lv_value CS search.
