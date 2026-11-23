@@ -105,7 +105,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     DATA(dialog) = popup->ele( `Dialog` ).
 
     IF title IS NOT INITIAL.
-      dialog->a( n = `title` v = title ).
+      dialog->a( n = `title` t = title ).
     ENDIF.
 
     dialog->a( n = `afterClose` v = client->_event( 'CANCEL' ) ).
@@ -194,15 +194,14 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
 
     ASSIGN mr_out->* TO <tab>.
-    DATA(t_arg) = client->get( )-t_event_arg.
-    DATA(row_clicked) = t_arg[ 1 ].
+    " get_event_arg( ) is empty without an argument - t_arg[ 1 ] dumped
+    DATA(row_clicked) = client->get_event_arg( ).
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
       ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
-
-      IF <row_id> IS NOT ASSIGNED.
-        CONTINUE.
+      IF sy-subrc <> 0.
+        EXIT.
       ENDIF.
 
       IF <row_id> = row_clicked.
@@ -297,6 +296,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_tmp> TYPE STANDARD TABLE.
+    DATA lt_index TYPE STANDARD TABLE OF i WITH EMPTY KEY.
 
     ASSIGN mr_out->* TO <tab>.
     ASSIGN mr_out_tmp->* TO <tab_tmp>.
@@ -309,17 +309,24 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " a table, a reference or a deep structure is no operand of && - it
+    " dumped the search; only the flat components are searched
+    DATA(lo_line) = CAST cl_abap_structdescr( CAST cl_abap_tabledescr(
+        cl_abap_typedescr=>describe_by_data( <tab> ) )->get_table_line_type( ) ).
+    LOOP AT lo_line->components INTO DATA(ls_comp).
+      IF ls_comp-type_kind NA 'hlrv'.
+        APPEND sy-tabix TO lt_index.
+      ENDIF.
+    ENDLOOP.
+
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<f_row>).
       DATA(lv_row) = ``.
-      DATA(lv_index) = 1.
-      DO.
+      LOOP AT lt_index INTO DATA(lv_index).
         ASSIGN COMPONENT lv_index OF STRUCTURE <f_row> TO FIELD-SYMBOL(<field>).
-        IF sy-subrc <> 0.
-          EXIT.
+        IF sy-subrc = 0.
+          lv_row = lv_row && <field>.
         ENDIF.
-        lv_row = lv_row && <field>.
-        lv_index = lv_index + 1.
-      ENDDO.
+      ENDLOOP.
 
       IF lv_row NS mv_search_value.
         DELETE <tab>.

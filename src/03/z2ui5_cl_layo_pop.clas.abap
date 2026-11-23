@@ -212,12 +212,13 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
             )->tag( `ToolbarSpacer`
             )->tag( `SearchField`
                 )->a( n = `width`       v = `17.5rem`
-                )->a( n = `placeholder` v = |{ z2ui5_cl_layo_util=>rtti_get_data_element_texts( 'ROLLNAME' )-long
+                )->a( n = `placeholder` t = |{ z2ui5_cl_layo_util=>rtti_get_data_element_texts( 'ROLLNAME' )-long
                                              }/{
                                                z2ui5_cl_layo_util=>rtti_get_data_element_texts( 'NAME_FELD' )-long }|
                 )->a( n = `liveChange`  v = client->_event( val    = 'BUTTON_SEARCH'
                                                             t_arg  = VALUE #( ( `${$source>/value}` ) )
-                                                            s_ctrl = VALUE #( check_queue_last = abap_true ) ) ).
+                                                            s_ctrl = VALUE #( check_queue_last = abap_true
+                                                                              check_no_busy    = abap_true ) ) ).
 
     DATA(cells) = tab->ele( `ColumnListItem`
         )->ele( `cells` ).
@@ -456,7 +457,15 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
       WHEN 'OPEN_SELECT'.
 
-        set_selected_layout( get_selected_layout( ) ).
+        " nothing selected (or no layout at all): loading guid '' gave a
+        " layout without head - no control, no handles, nothing to save to
+        DATA(selected) = get_selected_layout( ).
+        IF selected-guid IS INITIAL.
+          client->message_toast_display( 'No layout selected.' ).
+          RETURN.
+        ENDIF.
+
+        set_selected_layout( selected ).
 
         mv_rerender = abap_true.
 
@@ -585,11 +594,15 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
             )->a( n = `columnsM`                v = `2`
             )->a( n = `editable`                b = abap_true ).
 
-    form->ele( `Toolbar`
-        )->tag( `Title`
-            )->a( n = `text` v = `Layout` ).
-
+    " ONE content aggregation: a second form:content tag replaces the first,
+    " and a Toolbar beside it lands in content anyway. In content, each
+    " Toolbar opens a new form container - the two sections of the form
     form->ele( n = `content` ns = `form`
+        )->ele( `Toolbar`
+            )->tag( `Title`
+                )->a( n = `text` v = `Layout`
+
+        )->end(
         )->tag( `Label`
             )->a( n = `text` v = `Layout`
         )->tag( `Input`
@@ -598,13 +611,12 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         )->tag( `Label`
             )->a( n = `text` v = `Description`
         )->tag( `Input`
-            )->a( n = `value` v = client->_bind( mv_descr ) ).
+            )->a( n = `value` v = client->_bind( mv_descr )
+        )->ele( `Toolbar`
+            )->tag( `Title`
+                )->a( n = `text` v = `Save Options`
 
-    form->ele( `Toolbar`
-        )->tag( `Title`
-            )->a( n = `text` v = `Save Options` ).
-
-    form->ele( n = `content` ns = `form`
+        )->end(
         )->tag( `Label`
             )->a( n = `text` v = `Default Layout`
         )->tag( `Switch`
@@ -637,7 +649,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
             )->a( n = `press` v = client->_event( 'SAVE_SAVE' )
             )->a( n = `text`  v = `Save`
             )->a( n = `icon`  v = `sap-icon://save`
-            )->a( n = `type`  v = `Success` ).
+            )->a( n = `type`  v = `Accept` ).
 
     client->popup_display( popup->stringify( ) ).
 
@@ -691,7 +703,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
          AND head_db-handle02      = head-handle02
          AND head_db-handle03      = head-handle03
          AND head_db-handle04      = head-handle04
-         AND head_db-screen_format = head-screen_format.
+         AND (    head_db-screen_format = head-screen_format
+               " a layout saved before the screen format existed is read
+               " back under the requested format - it is the same layout
+               OR head_db-screen_format IS INITIAL ).
         " Save Changes
 
       ELSE.
@@ -974,8 +989,23 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD set_selected_layout.
 
-    mo_layout = z2ui5_cl_layo_manager=>factory_by_guid( layout_guid = head-guid
-                                                        t_comps     = mo_layout->ms_layout-t_layout ).
+    DATA(layout) = z2ui5_cl_layo_manager=>factory_by_guid( layout_guid = head-guid
+                                                           t_comps     = mo_layout->ms_layout-t_layout ).
+
+    " deleted meanwhile (another session): keep the current layout
+    IF layout->ms_layout-s_head IS INITIAL.
+      client->message_toast_display( 'Layout no longer exists.' ).
+      RETURN.
+    ENDIF.
+
+    " the new manager knows only the layout - keep the data it sorts and
+    " converts and the row selection settings of the one it replaces
+    layout->mr_data = mo_layout->mr_data.
+    layout->set_selektion_criteria( sel_mode      = mo_layout->mv_sel_mode
+                                    sel_field     = mo_layout->mv_sel_field
+                                    sel_key_field = mo_layout->mv_sel_key_field ).
+
+    mo_layout = layout.
 
   ENDMETHOD.
 
@@ -987,6 +1017,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                                          handle03 = mo_layout->ms_layout-s_head-handle03
                                          handle04 = mo_layout->ms_layout-s_head-handle04
                                          format   = mo_layout->ms_layout-s_head-screen_format ).
+
+    " another user's personal layouts are neither to open nor to delete
+    DELETE mt_head WHERE uname IS NOT INITIAL AND uname <> sy-uname.
 
     IF mt_head IS INITIAL.
       RETURN.
@@ -1098,7 +1131,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       FIND REGEX '([0-9]{1,4})' IN width SUBMATCHES result.
     ENDIF.
 
-    IF result CO '0123456789. '.
+    " no digits in it (auto, %): an empty result stays empty - CO is true
+    " for an empty operand, which made the width a bare, invalid `rem`
+    IF result IS NOT INITIAL AND result CO '0123456789. '.
       result = |{ result }rem|.
     ENDIF.
 
@@ -1122,7 +1157,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         )->ele( `List`
             )->a( n = `items`           v = client->_bind( mo_layout->mt_sub_cols )
             )->a( n = `selectionChange` v = client->_event( 'SELCHANGE' )
-            )->a( n = `noData`          v = `no Subcolumns defined`
+            )->a( n = `noDataText`      v = `no Subcolumns defined`
 
             )->ele( `CustomListItem`
                 )->ele( `ComboBox`
@@ -1192,6 +1227,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
         CLEAR layout->subcolumn.
 
+        " rows added but never given a field would save as blanks
+        DELETE mo_layout->mt_sub_cols WHERE fname IS INITIAL.
+
         LOOP AT mo_layout->mt_sub_cols REFERENCE INTO DATA(line).
           layout->subcolumn = |{ layout->subcolumn } { line->fname }|.
         ENDLOOP.
@@ -1219,8 +1257,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         INSERT VALUE #( key = z2ui5_cl_layo_util=>uuid_get_c32( ) ) INTO TABLE mo_layout->mt_sub_cols.
 
       WHEN `SUBCOLUMN_DELETE`.
-        DATA(lt_event) = client->get( )-t_event_arg.
-        DELETE mo_layout->mt_sub_cols WHERE key = lt_event[ 1 ].
+        " get_event_arg( ) is empty without an argument - lt_event[ 1 ] dumped
+        DATA(sub_col_key) = client->get_event_arg( ).
+        DELETE mo_layout->mt_sub_cols WHERE key = sub_col_key.
 
       WHEN `SUBCOLUMN_DELETE_ALL`.
         mo_layout->mt_sub_cols = VALUE #( ).
