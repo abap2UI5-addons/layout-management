@@ -155,8 +155,10 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       DATA(lv_index) = sy-tabix.
 
+      " sy-subrc, not IS ASSIGNED: a failed ASSIGN COMPONENT keeps the field
+      " symbol on the previous column, which then rendered a second time
       ASSIGN COMPONENT layout->fname OF STRUCTURE i_data->* TO FIELD-SYMBOL(<value>).
-      IF <value> IS NOT ASSIGNED.
+      IF sy-subrc <> 0.
         CONTINUE.
       ENDIF.
 
@@ -246,12 +248,14 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       IF layout->reference_field IS NOT INITIAL.
 
         ASSIGN COMPONENT layout->reference_field OF STRUCTURE i_data->* TO FIELD-SYMBOL(<ref_value>).
-        IF <ref_value> IS NOT ASSIGNED.
+        IF sy-subrc <> 0.
           CONTINUE.
         ENDIF.
 
+        " a table expression with OPTIONAL sets no sy-subrc - test the
+        " reference, value_formatter( ) dereferences it
         DATA(ref_field) = REF #( i_layout->ms_layout-t_layout[ fname = layout->reference_field ] OPTIONAL ).
-        IF sy-subrc <> 0.
+        IF ref_field IS NOT BOUND.
           CONTINUE.
         ENDIF.
 
@@ -409,9 +413,11 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                                            tab       = i_layout->ms_layout-t_layout
                                                            tab_index = lv_index ) ).
 
+      " the label is text (a DDIC text or the user's alternative text), so a
+      " brace in it must show, not open a binding
       column->tag( `Text` ).
       IF layout->tlabel IS NOT INITIAL.
-        column->a( n = `text` v = layout->tlabel ).
+        column->a( n = `text` t = layout->tlabel ).
       ENDIF.
 
     ENDLOOP.
@@ -468,58 +474,60 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       ELSE.
 
-        IF layout->t_sub_col IS NOT INITIAL.
+        " the reference field of this column - only when it is a column, a
+        " failed READ used to leave the previous column's one in the work area
+        DATA(ref) = VALUE z2ui5_cl_layo_manager=>ty_s_positions( ).
+        IF layout->reference_field IS NOT INITIAL.
+          READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = layout->reference_field.
+          IF sy-subrc <> 0.
+            CLEAR ref.
+          ENDIF.
+        ENDIF.
+
+        DATA(cell_text) = table_value_formatter( layout->* ).
+        IF ref IS NOT INITIAL.
+          cell_text = |{ cell_text } { table_value_formatter( ref ) }|.
+        ENDIF.
+
+        IF layout->t_sub_col IS INITIAL.
+
+          cells->tag( `ObjectIdentifier`
+              )->a( n = `text` v = cell_text ).
+
+        ELSE.
 
           DATA(sub_col) = ``.
-          DATA(index) = 0.
 
           LOOP AT layout->t_sub_col INTO DATA(subcol).
 
-            index = index + 1.
-
+            " a subcolumn that is no column (any more) is skipped - a failed
+            " READ left the previous subcolumn in the work area, rendered twice
             READ TABLE i_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
-
-            IF line-reference_field IS INITIAL.
-              DATA(col_text) = |{ line-tlabel }: { table_value_formatter( line ) }|.
-            ELSE.
-
-              READ TABLE i_layout->ms_layout-t_layout INTO DATA(ref) WITH KEY fname = line-reference_field.
-
-              col_text = |{ line-tlabel }:  { table_value_formatter( line ) } { table_value_formatter( ref ) }|.
+            IF sy-subrc <> 0.
+              CONTINUE.
             ENDIF.
 
-            IF index = 1.
+            " the label is literal text inside a value that carries bindings
+            DATA(col_text) = |{ z2ui5_cl_ui5_view_builder=>escape_literal( line-tlabel ) }: { table_value_formatter( line ) }|.
+
+            IF line-reference_field IS NOT INITIAL.
+              READ TABLE i_layout->ms_layout-t_layout INTO DATA(sub_ref) WITH KEY fname = line-reference_field.
+              IF sy-subrc = 0.
+                col_text = |{ col_text } { table_value_formatter( sub_ref ) }|.
+              ENDIF.
+            ENDIF.
+
+            IF sub_col IS INITIAL.
               sub_col = col_text.
             ELSE.
               sub_col = |{ sub_col }{ cl_abap_char_utilities=>cr_lf }{ col_text }|.
             ENDIF.
           ENDLOOP.
 
-          IF layout->reference_field IS NOT INITIAL.
+          cells->tag( `ObjectIdentifier`
+              )->a( n = `text`  v = sub_col
+              )->a( n = `title` v = cell_text ).
 
-            READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = layout->reference_field.
-
-            cells->tag( `ObjectIdentifier`
-                )->a( n = `text`  v = sub_col
-                )->a( n = `title` v = |{ table_value_formatter( layout->* ) } { table_value_formatter( ref ) }| ).
-          ELSE.
-            cells->tag( `ObjectIdentifier`
-                )->a( n = `text`  v = sub_col
-                )->a( n = `title` v = table_value_formatter( layout->* ) ).
-          ENDIF.
-
-        ELSE.
-
-          IF layout->reference_field IS NOT INITIAL.
-
-            READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = layout->reference_field.
-
-            cells->tag( `ObjectIdentifier`
-                )->a( n = `text` v = |{ table_value_formatter( layout->* ) } { table_value_formatter( ref ) }| ).
-          ELSE.
-            cells->tag( `ObjectIdentifier`
-                )->a( n = `text` v = |{ table_value_formatter( layout->* ) }| ).
-          ENDIF.
         ENDIF.
 
       ENDIF.

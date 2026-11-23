@@ -296,25 +296,22 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     ENDIF.
 
-    " FALLBACK - Screenformat was added! We are changing empty Format.
-    " Set Default Layout
+    " FALLBACK - Screenformat was added! Layouts without a format are taken
+    " for the requested format (L when none is requested). The check for an
+    " existing default runs against that same format - with the raw, empty
+    " format it found the format-less default itself and demoted it.
+    DATA(fmt) = COND string( WHEN format IS INITIAL THEN screen_format_l ELSE format ).
 
-    IF line_exists( result[ screen_format = format
-                            def           = abap_true ] ).
-      DATA(no_default) = abap_true.
-    ENDIF.
+    DATA(other_default) = xsdbool( line_exists( result[ screen_format = fmt
+                                                        def           = abap_true ] ) ).
 
     LOOP AT result REFERENCE INTO DATA(line) WHERE screen_format IS INITIAL.
 
-      IF no_default = abap_true.
+      IF other_default = abap_true.
         line->def = abap_false.
       ENDIF.
 
-      IF format IS SUPPLIED AND format IS NOT INITIAL.
-        line->screen_format = format.
-      ELSE.
-        line->screen_format = screen_format_l.
-      ENDIF.
+      line->screen_format = fmt.
 
     ENDLOOP.
 
@@ -448,11 +445,10 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " no positions is a layout with every column hidden (only visible ones
+    " are saved) - not a reason to return without the head. The old check
+    " read a stale sy-subrc after the method call to do so
     DATA(t_pos) = select_layout_components( layout_guid ).
-
-    IF sy-subrc <> 0.
-      RETURN.
-    ENDIF.
 
     LOOP AT result->ms_layout-t_layout REFERENCE INTO DATA(layout).
 
@@ -659,12 +655,16 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " select_layouts( ) hands back format-less layouts under the requested
+    " format, L when none is requested - look them up under the same one
+    DATA(fmt) = COND string( WHEN format IS INITIAL THEN screen_format_l ELSE format ).
+
     " all Handles + Default + User + Format
     result = VALUE #( head[ handle01      = handle01
                             handle02      = handle02
                             handle03      = handle03
                             handle04      = handle04
-                            screen_format = format
+                            screen_format = fmt
                             def           = abap_true
                             uname         = sy-uname ] OPTIONAL ).
 
@@ -677,7 +677,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                             handle02      = handle02
                             handle03      = handle03
                             handle04      = handle04
-                            screen_format = format
+                            screen_format = fmt
                             def           = abap_true
                             uname         = space ] OPTIONAL ).
 
@@ -690,7 +690,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                             handle02      = handle02
                             handle03      = handle03
                             handle04      = handle04
-                            screen_format = format
+                            screen_format = fmt
                             uname         = space ] OPTIONAL ).
 
     IF result IS NOT INITIAL.
@@ -734,8 +734,12 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    IF no_selkz_sort = abap_false.
-      DATA(selkz) = VALUE #( ms_layout-t_layout[ fname = 'SELKZ' ] OPTIONAL ).
+    " SELKZ first - but only when the table has it: a sort order naming a
+    " component the table lacks raises, and the CATCH below then dropped
+    " every sort the user had configured
+    IF     no_selkz_sort = abap_false
+       AND line_exists( ms_layout-t_layout[ fname = 'SELKZ' ] ).
+      DATA(selkz) = ms_layout-t_layout[ fname = 'SELKZ' ].
 
       IF selkz-sorting = space.
 
@@ -772,9 +776,13 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     CHECK mv_sel_mode <> space.
 
+    IF mr_data IS NOT BOUND.
+      RETURN.
+    ENDIF.
+
     ASSIGN mr_data->* TO <table>.
 
-    IF <table> IS INITIAL.
+    IF <table> IS NOT ASSIGNED OR <table> IS INITIAL.
       RETURN.
     ENDIF.
 
@@ -823,6 +831,13 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
   METHOD data_conversion.
 
+    FIELD-SYMBOLS <table> TYPE ANY TABLE.
+    FIELD-SYMBOLS <value> TYPE any.
+
+    IF mr_data IS NOT BOUND.
+      RETURN.
+    ENDIF.
+
     ASSIGN mr_data->* TO FIELD-SYMBOL(<any>).
 
     IF <any> IS NOT ASSIGNED.
@@ -869,14 +884,22 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
       ENDIF.
 
+      " a failed ASSIGN COMPONENT leaves the field symbol on what it pointed
+      " to before - test sy-subrc, or a column missing in the data converts
+      " the previous column a second time
       CASE ms_layout-s_head-control.
         WHEN ui_table OR m_table.
 
-          LOOP AT <any> ASSIGNING FIELD-SYMBOL(<line>).
+          ASSIGN mr_data->* TO <table>.
+          IF sy-subrc <> 0.
+            RETURN.
+          ENDIF.
 
-            ASSIGN COMPONENT layout-fname OF STRUCTURE <line> TO FIELD-SYMBOL(<value>).
-            IF <value> IS NOT ASSIGNED.
-              CONTINUE.
+          LOOP AT <table> ASSIGNING FIELD-SYMBOL(<line>).
+
+            ASSIGN COMPONENT layout-fname OF STRUCTURE <line> TO <value>.
+            IF sy-subrc <> 0.
+              EXIT.
             ENDIF.
 
             convert( EXPORTING i_output = output
@@ -888,7 +911,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
         WHEN ui_simpleform.
 
           ASSIGN COMPONENT layout-fname OF STRUCTURE <any> TO <value>.
-          IF <value> IS NOT ASSIGNED.
+          IF sy-subrc <> 0.
             CONTINUE.
           ENDIF.
 
