@@ -149,6 +149,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       on_init( ).
       init_edit( ).
       render_edit( ).
+    ELSEIF client->check_on_navigated( ).
+      " a restored draft - nothing of the popup is on screen any more
+      init_edit( ).
+      render_edit( ).
     ELSEIF client->check_on_event( ).
       update_values( ).
       on_event( ).
