@@ -41,7 +41,6 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
         VALUE(result) TYPE ty_s_result.
 
   PROTECTED SECTION.
-    DATA check_initialized TYPE abap_bool.
     DATA client            TYPE REF TO z2ui5_if_client.
     DATA title             TYPE string.
     DATA sort_field        TYPE string.
@@ -126,20 +125,14 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     me->client = client.
 
-    IF check_initialized = abap_false.
-      check_initialized = abap_true.
-
+    IF client->check_on_init( ).
       set_output_table( ).
-
       Render_main( ).
-
-      RETURN.
-
+    ELSEIF client->check_on_navigated( ).
+      on_after_layout( ).
+    ELSEIF client->check_on_event( ).
+      on_event( ).
     ENDIF.
-
-    on_event( ).
-
-    on_after_layout( ).
 
   ENDMETHOD.
 
@@ -152,11 +145,11 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
         confirm( ).
 
         client->popup_destroy( ).
-        client->nav_app_leave( client->get_app( client->get( )-s_draft-id_prev_app_stack ) ).
+        client->nav_app_leave( ).
 
       WHEN 'CANCEL'.
         client->popup_destroy( ).
-        client->nav_app_leave( client->get_app( client->get( )-s_draft-id_prev_app_stack ) ).
+        client->nav_app_leave( ).
 
       WHEN 'SEARCH'.
         on_event_search( ).
@@ -172,20 +165,17 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
   METHOD on_after_layout.
 
-    IF client->get( )-check_on_navigated = abap_false.
-      RETURN.
-    ENDIF.
-
+    " back from the layout popup: take its layout. Any other return (a
+    " restored draft) still has to put the popup on screen again
     TRY.
-
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
-
-        mo_layout = app->mo_layout.
-
-        Render_main( ).
-
-      CATCH cx_root.
+        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
+        IF app IS BOUND.
+          mo_layout = app->mo_layout.
+        ENDIF.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
+
+    Render_main( ).
 
   ENDMETHOD.
 

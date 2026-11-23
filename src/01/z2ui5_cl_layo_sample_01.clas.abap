@@ -20,8 +20,7 @@ CLASS z2ui5_cl_layo_sample_01 DEFINITION
     DATA mo_layout TYPE REF TO z2ui5_cl_layo_manager.
 
   PROTECTED SECTION.
-    DATA client            TYPE REF TO z2ui5_if_client.
-    DATA check_initialized TYPE abap_bool.
+    DATA client TYPE REF TO z2ui5_if_client.
 
     METHODS on_init.
     METHODS on_event.
@@ -46,7 +45,7 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
         mo_layout->set_selkz( t_event_arg = client->get( )-t_event_arg ).
 
       WHEN 'BACK'.
-        client->nav_app_leave( client->get_app( client->get( )-s_draft-id_prev_app_stack ) ).
+        client->nav_app_leave( ).
 
       WHEN OTHERS.
 
@@ -81,7 +80,7 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
     DATA(page) = view->ele( `Shell`
         )->ele( `Page`
             )->a( n = `title`          v = `Layout`
-            )->a( n = `showNavButton`  b = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL )
+            )->a( n = `showNavButton`  b = client->check_app_prev_stack( )
             )->a( n = `navButtonPress` v = client->_event( 'BACK' )
             )->a( n = `class`          v = `sapUiContentPadding` ).
 
@@ -97,18 +96,15 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
   METHOD z2ui5_if_app~main.
     me->client = client.
 
-    IF check_initialized = abap_false.
-      check_initialized = abap_true.
+    IF client->check_on_init( ).
       on_init( ).
+    ELSEIF client->check_on_navigated( ).
+      on_after_navigation( ).
+    ELSEIF client->check_on_event( ).
+      on_event( ).
     ENDIF.
-
-    on_event( ).
 
     mo_layout->sort( ).
-
-    IF client->get( )-check_on_navigated = abap_true.
-      on_after_navigation( ).
-    ENDIF.
 
   ENDMETHOD.
 
@@ -171,16 +167,17 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
 
   METHOD on_after_navigation.
 
-    CHECK client->check_on_navigated( ).
-
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
         mo_layout = app->mo_layout.
 
         render_main( ).
 
       CATCH cx_root.
+        " not back from the layout popup (e.g. a restored draft) - the
+        " view still has to be displayed
+        render_main( ).
     ENDTRY.
 
   ENDMETHOD.

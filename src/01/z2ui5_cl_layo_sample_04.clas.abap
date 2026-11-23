@@ -66,7 +66,7 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
     DATA(page) = view->ele( `Shell`
         )->ele( `Page`
             )->a( n = `title`          v = `Layout`
-            )->a( n = `showNavButton`  b = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL )
+            )->a( n = `showNavButton`  b = client->check_app_prev_stack( )
             )->a( n = `navButtonPress` v = client->_event( 'BACK' )
             )->a( n = `class`          v = `sapUiContentPadding` ).
 
@@ -84,12 +84,10 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
 
     IF client->check_on_init( ).
       on_init( ).
-    ENDIF.
-
-    on_event( ).
-
-    IF client->get( )-check_on_navigated = abap_true.
+    ELSEIF client->check_on_navigated( ).
       on_after_navigation( ).
+    ELSEIF client->check_on_event( ).
+      on_event( ).
     ENDIF.
 
   ENDMETHOD.
@@ -121,7 +119,7 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
 
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
         mo_layout = app->mo_layout.
 
         IF app->mv_rerender = abap_true.
@@ -131,6 +129,9 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
           "  for all other changes in Layout View Model Update is enough.
         ENDIF.
       CATCH cx_root.
+        " not back from the layout popup (e.g. a restored draft) - the
+        " view still has to be displayed
+        render_main( ).
     ENDTRY.
 
   ENDMETHOD.

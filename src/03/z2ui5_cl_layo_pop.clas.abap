@@ -73,8 +73,7 @@ CLASS z2ui5_cl_layo_pop DEFINITION
         VALUE(result) TYPE REF TO z2ui5_cl_layo_pop.
 
   PROTECTED SECTION.
-    DATA client  TYPE REF TO z2ui5_if_client.
-    DATA mv_init TYPE abap_bool.
+    DATA client TYPE REF TO z2ui5_if_client.
 
     METHODS render_edit.
     METHODS on_event.
@@ -154,20 +153,14 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     me->client = client.
 
-    IF mv_init = abap_false.
-      mv_init = abap_true.
-
+    IF client->check_on_init( ).
       on_init( ).
-
       init_edit( ).
-
       render_edit( ).
-
+    ELSEIF client->check_on_event( ).
+      update_values( ).
+      on_event( ).
     ENDIF.
-
-    update_values( ).
-
-    on_event( ).
 
   ENDMETHOD.
 
@@ -435,7 +428,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
         client->popup_destroy( ).
 
-        client->nav_app_leave( client->get_app( client->get( )-s_draft-id_prev_app_stack ) ).
+        client->nav_app_leave( ).
 
       WHEN 'EDIT_SAVE'.
 
