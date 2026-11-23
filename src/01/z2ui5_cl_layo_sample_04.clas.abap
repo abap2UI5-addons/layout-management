@@ -51,12 +51,24 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
 
   METHOD render_main.
 
-    DATA(view) = z2ui5_cl_xml_view=>factory( )->shell( ).
+    DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+        )->ele( n = `View` ns = `mvc`
+            )->a( n = `displayBlock` v = `true`
+            )->a( n = `height`       v = `100%`
+            )->a( n = `xmlns`        v = `sap.m`
+            )->a( n = `xmlns:mvc`    v = `sap.ui.core.mvc`
+            )->a( n = `xmlns:core`   v = `sap.ui.core`
+            )->a( n = `xmlns:form`   v = `sap.ui.layout.form`
+            )->a( n = `xmlns:layout` v = `sap.ui.layout`
+            )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
+            )->a( n = `xmlns:si`     v = `sap.suite.ui.commons.statusindicator` ).
 
-    DATA(page) = view->page( title          = 'Layout'
-                             navbuttonpress = client->_event( 'BACK' )
-                             shownavbutton  = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL )
-                             class          = 'sapUiContentPadding' ).
+    DATA(page) = view->ele( `Shell`
+        )->ele( `Page`
+            )->a( n = `title`          v = `Layout`
+            )->a( n = `showNavButton`  b = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL )
+            )->a( n = `navButtonPress` v = client->_event( 'BACK' )
+            )->a( n = `class`          v = `sapUiContentPadding` ).
 
     z2ui5_cl_layo_xml_builder=>xml_build_simple_form( i_data   = REF #( ms_data )
                                                       i_xml    = page
@@ -94,7 +106,7 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA(class) = z2ui5_cl_util=>rtti_get_classname_by_ref( me ).
+    DATA(class) = z2ui5_cl_layo_util=>rtti_get_classname_by_ref( me ).
 
     mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>ui_simpleform
                                                 data     = REF #( ms_data )

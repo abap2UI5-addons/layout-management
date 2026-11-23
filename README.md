@@ -18,7 +18,35 @@ An addon for customizable table and form layouts with persistent variant managem
 * R/3 NetWeaver AS ABAP 7.50 or higher (Standard ABAP)
 
 #### Dependencies
-* [abap2UI5](https://github.com/abap2UI5/abap2UI5)
+* [abap2UI5](https://github.com/abap2UI5/abap2UI5) - nothing else: the addon does not need the abap2UI5 extension ([abap2UI5/frontend](https://github.com/abap2UI5/frontend)). Its views are built with the core's generic builder `z2ui5_cl_ui5_view_builder`, and the few utilities it needs live in its own class `z2ui5_cl_layo_util`.
+
+#### Breaking Change - `z2ui5_cl_layo_xml_builder`
+`xml_build_table` and `xml_build_simple_form` take the node to render into as a `z2ui5_cl_ui5_view_builder` (parameter `i_xml`) instead of the legacy `z2ui5_cl_xml_view` of the extension. Build your view with the builder and declare the namespaces the layout may write on its root (`View` or `FragmentDefinition`):
+
+```abap
+DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+    )->ele( n = `View` ns = `mvc`
+        )->a( n = `xmlns`        v = `sap.m`
+        )->a( n = `xmlns:mvc`    v = `sap.ui.core.mvc`
+        )->a( n = `xmlns:core`   v = `sap.ui.core`
+        )->a( n = `xmlns:form`   v = `sap.ui.layout.form`
+        )->a( n = `xmlns:layout` v = `sap.ui.layout`
+        )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
+        )->a( n = `xmlns:si`     v = `sap.suite.ui.commons.statusindicator` ).
+
+DATA(page) = view->ele( `Shell`
+    )->ele( `Page`
+        )->a( n = `title` v = `Layout` ).
+
+z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = REF #( mt_table )
+                                            i_xml    = page
+                                            i_client = client
+                                            i_layout = mo_layout ).
+
+client->view_display( view->stringify( ) ).
+```
+
+`xml_build_table` needs `core`, `mchart` and `si`; `xml_build_simple_form` additionally `form` and `layout`. The samples in `src/01` show both.
 
 #### Demo
 

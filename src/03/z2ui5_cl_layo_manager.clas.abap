@@ -354,9 +354,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD set_text.
 
     IF layout-alternative_text IS INITIAL.
-      result = z2ui5_cl_util=>rtti_get_data_element_texts( layout-rollname  )-long.
+      result = z2ui5_cl_layo_util=>rtti_get_data_element_texts( layout-rollname  )-long.
     ELSE.
-      result = z2ui5_cl_util=>rtti_get_data_element_texts( layout-alternative_text )-long.
+      result = z2ui5_cl_layo_util=>rtti_get_data_element_texts( layout-alternative_text )-long.
     ENDIF.
 
     IF result IS INITIAL.
@@ -402,7 +402,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       SPLIT line->subcolumn AT ` ` INTO TABLE DATA(tab).
 
       line->t_sub_col = VALUE #( FOR t IN tab
-                                 ( key = z2ui5_cl_util=>uuid_get_c32( ) fname = t ) ).
+                                 ( key = z2ui5_cl_layo_util=>uuid_get_c32( ) fname = t ) ).
 
     ENDLOOP.
 
@@ -500,7 +500,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     " Save Ref for Sorting and Conversions
     result->mr_data = data.
 
-    DATA(t_comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( data ).
+    DATA(t_comp) = z2ui5_cl_layo_util=>rtti_get_t_attri_by_any( data ).
 
     LOOP AT t_comp INTO DATA(comp).
       IF comp-type->type_kind = cl_abap_elemdescr=>typekind_oref.

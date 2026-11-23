@@ -80,7 +80,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     r_result->content_width     = i_contentwidth.
     r_result->growing_threshold = i_growingthreshold.
 
-    r_result->mr_tab            = z2ui5_cl_util=>conv_copy_ref_data( i_tab ).
+    r_result->mr_tab            = z2ui5_cl_layo_util=>conv_copy_ref_data( i_tab ).
 
     CREATE DATA r_result->ms_result-row LIKE LINE OF i_tab.
 
@@ -95,11 +95,23 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
   METHOD Render_main.
 
-    DATA(popup) = z2ui5_cl_xml_view=>factory_popup( )->dialog( title      = title
-                                                               afterclose = client->_event( 'CANCEL' )  ).
+    DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
+        )->ele( n = `FragmentDefinition` ns = `core`
+            )->a( n = `xmlns`        v = `sap.m`
+            )->a( n = `xmlns:core`   v = `sap.ui.core`
+            )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
+            )->a( n = `xmlns:si`     v = `sap.suite.ui.commons.statusindicator` ).
+
+    DATA(dialog) = popup->ele( `Dialog` ).
+
+    IF title IS NOT INITIAL.
+      dialog->a( n = `title` v = title ).
+    ENDIF.
+
+    dialog->a( n = `afterClose` v = client->_event( 'CANCEL' ) ).
 
     z2ui5_cl_layo_xml_builder=>xml_build_table( i_data         = mr_out
-                                                i_xml          = popup
+                                                i_xml          = dialog
                                                 i_client       = client
                                                 i_layout       = mo_layout
                                                 i_search_value = REF #( mv_search_value )
@@ -261,7 +273,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     TRY.
 
-        DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( mr_tab ).
+        DATA(comp) = z2ui5_cl_layo_util=>rtti_get_t_attri_by_any( mr_tab ).
 
         IF xsdbool( line_exists( comp[ name = 'ZZROW_ID' ] ) ) = abap_false.
           APPEND LINES OF VALUE cl_abap_structdescr=>component_table(

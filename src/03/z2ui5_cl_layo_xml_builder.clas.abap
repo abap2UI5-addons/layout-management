@@ -3,10 +3,15 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
+    "! Render a sap.m.Table for the layout into i_xml, a node of a
+    "! z2ui5_cl_ui5_view_builder view. Declare the namespaces it may write
+    "! on the root of that view: xmlns:core (sap.ui.core), xmlns:mchart
+    "! (sap.suite.ui.microchart) and xmlns:si
+    "! (sap.suite.ui.commons.statusindicator)
     CLASS-METHODS xml_build_table
       IMPORTING
         i_data             TYPE REF TO data
-        i_xml              TYPE REF TO z2ui5_cl_xml_view
+        i_xml              TYPE REF TO z2ui5_cl_ui5_view_builder
         I_client           TYPE REF TO z2ui5_if_client
         i_layout           TYPE REF TO z2ui5_cl_layo_manager
         i_search_value     TYPE REF TO data OPTIONAL
@@ -17,10 +22,16 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
         i_col_type         TYPE string      OPTIONAL
         i_col_bind_to      TYPE string      OPTIONAL.
 
+    "! Render a sap.ui.layout.form.SimpleForm for the layout into i_xml, a
+    "! node of a z2ui5_cl_ui5_view_builder view. Declare the namespaces it may
+    "! write on the root of that view: xmlns:form (sap.ui.layout.form),
+    "! xmlns:layout (sap.ui.layout), xmlns:core (sap.ui.core), xmlns:mchart
+    "! (sap.suite.ui.microchart) and xmlns:si
+    "! (sap.suite.ui.commons.statusindicator)
     CLASS-METHODS xml_build_simple_form
       IMPORTING
         i_DATA   TYPE REF TO data
-        i_xml    TYPE REF TO z2ui5_cl_xml_view
+        i_xml    TYPE REF TO z2ui5_cl_ui5_view_builder
         I_client TYPE REF TO z2ui5_if_client
         i_layout TYPE REF TO z2ui5_cl_layo_manager
         i_title  TYPE string OPTIONAL.
@@ -37,52 +48,50 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
              ref_fied TYPE string,
            END OF ty_s_grid_layout.
 
-    CLASS-DATA mv_element_counter TYPE int4.
-
     CLASS-METHODS xml_build_status_indicator
       IMPORTING
         i_data        TYPE REF TO data OPTIONAL
         I_client      TYPE REF TO z2ui5_if_client
         i_layout      TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
-        i_xml         TYPE REF TO z2ui5_cl_xml_view
+        i_xml         TYPE REF TO z2ui5_cl_ui5_view_builder
       RETURNING
-        VALUE(result) TYPE  REF TO z2ui5_cl_xml_view.
+        VALUE(result) TYPE  REF TO z2ui5_cl_ui5_view_builder.
 
     CLASS-METHODS xml_build_progress_indicator
       IMPORTING
         i_data        TYPE REF TO data OPTIONAL
         I_client      TYPE REF TO z2ui5_if_client
         i_layout      TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
-        i_xml         TYPE REF TO z2ui5_cl_xml_view
+        i_xml         TYPE REF TO z2ui5_cl_ui5_view_builder
       RETURNING
-        VALUE(result) TYPE  REF TO z2ui5_cl_xml_view.
+        VALUE(result) TYPE  REF TO z2ui5_cl_ui5_view_builder.
 
     CLASS-METHODS xml_build_radial_microchart
       IMPORTING
         i_data        TYPE REF TO data OPTIONAL
         I_client      TYPE REF TO z2ui5_if_client
         i_layout      TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
-        i_xml         TYPE REF TO z2ui5_cl_xml_view
+        i_xml         TYPE REF TO z2ui5_cl_ui5_view_builder
       RETURNING
-        VALUE(result) TYPE  REF TO z2ui5_cl_xml_view.
+        VALUE(result) TYPE  REF TO z2ui5_cl_ui5_view_builder.
 
     CLASS-METHODS xml_build_icon
       IMPORTING
         i_data        TYPE REF TO data OPTIONAL
         I_client      TYPE REF TO z2ui5_if_client
         i_layout      TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
-        i_xml         TYPE REF TO z2ui5_cl_xml_view
+        i_xml         TYPE REF TO z2ui5_cl_ui5_view_builder
       RETURNING
-        VALUE(result) TYPE  REF TO z2ui5_cl_xml_view.
+        VALUE(result) TYPE  REF TO z2ui5_cl_ui5_view_builder.
 
     CLASS-METHODS xml_build_generic_tag
       IMPORTING
         i_data        TYPE REF TO data OPTIONAL
         I_client      TYPE REF TO z2ui5_if_client
         i_layout      TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
-        i_xml         TYPE REF TO z2ui5_cl_xml_view
+        i_xml         TYPE REF TO z2ui5_cl_ui5_view_builder
       RETURNING
-        VALUE(result) TYPE  REF TO z2ui5_cl_xml_view.
+        VALUE(result) TYPE  REF TO z2ui5_cl_ui5_view_builder.
 
     CLASS-METHODS get_grid_layout
       IMPORTING
@@ -93,7 +102,7 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
     CLASS-METHODS set_layout_for_element
       IMPORTING
         span  TYPE string
-        i_xml TYPE REF TO z2ui5_cl_xml_view.
+        i_xml TYPE REF TO z2ui5_cl_ui5_view_builder.
 
     CLASS-METHODS value_formatter
       IMPORTING
@@ -120,23 +129,27 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                                xml    = i_xml
                                                layout = i_layout ).
 
-    DATA(form) = i_xml->simple_form( title                   = i_title
-                                     editable                = abap_true
-                                     layout                  = `ResponsiveGridLayout`
-                                     labelspans              = '3'
-                                     labelspanm              = '3'
-                                     labelspanl              = '3'
-                                     labelspanxl             = '3'
-                                     adjustlabelspan         = abap_false
-                                     emptyspanxl             = '4'
-                                     emptyspanl              = '4'
-                                     emptyspanm              = '2'
-                                     emptyspans              = '0'
-                                     columnsxl               = '1'
-                                     columnsl                = '1'
-                                     columnsm                = '1'
-                                     singlecontainerfullsize = abap_false
-                              )->content( ns = `form` ).
+    DATA(form) = i_xml->ele( n = `SimpleForm` ns = `form` ).
+
+    IF i_title IS NOT INITIAL.
+      form->a( n = `title` v = i_title ).
+    ENDIF.
+
+    DATA(line) = form->a( n = `layout`                  v = `ResponsiveGridLayout`
+                    )->a( n = `emptySpanL`              v = `4`
+                    )->a( n = `emptySpanM`              v = `2`
+                    )->a( n = `emptySpanS`              v = `0`
+                    )->a( n = `emptySpanXL`             v = `4`
+                    )->a( n = `labelSpanL`              v = `3`
+                    )->a( n = `labelSpanM`              v = `3`
+                    )->a( n = `labelSpanS`              v = `3`
+                    )->a( n = `labelSpanXL`             v = `3`
+                    )->a( n = `singleContainerFullSize` b = abap_false
+                    )->a( n = `columnsXL`               v = `1`
+                    )->a( n = `columnsL`                v = `1`
+                    )->a( n = `columnsM`                v = `1`
+                    )->a( n = `editable`                b = abap_true
+                    )->ele( n = `content` ns = `form` ).
 
     LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
 
@@ -149,104 +162,83 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       DATA(grid_layout) = get_grid_layout( layout ).
 
-      DATA(line) = form->label( wrapping = abap_false
-                                text     = i_client->_bind( val       = layout->tlabel
-                                                            tab       = i_layout->ms_layout-t_layout
-                                                            tab_index = lv_index )
-                                labelfor = ` `  ).
+      DATA(label) = line->ele( `Label`
+          )->a( n = `text`     v = i_client->_bind( val       = layout->tlabel
+                                                    tab       = i_layout->ms_layout-t_layout
+                                                    tab_index = lv_index )
+          )->a( n = `wrapping` b = abap_false
+          )->a( n = `labelFor` v = ` ` ).
 
-      set_layout_for_element( i_xml = line
+      set_layout_for_element( i_xml = label
                               span  = grid_layout-label ).
 
-      IF layout->rollname CP `*_XML_S_ICON`.
+      IF    layout->rollname CP `*_XML_S_ICON`
+         OR layout->rollname CP `*_XML_S_PROGRESSIND`
+         OR layout->rollname CP `*_XML_S_GENERICTAG`
+         OR layout->rollname CP `*_XML_S_STATUSIND`
+         OR layout->rollname CP `*_XML_S_RADIALCHART`.
 
-        DATA(hbox) = line->hbox( rendertype = `Bare`
-                                 visible    = I_client->_bind( val       = layout->visible
-                                                               tab       = i_layout->ms_layout-t_layout
-                                                               tab_index = lv_index ) ).
+        DATA(hbox) = line->ele( `HBox`
+            )->a( n = `renderType` v = `Bare`
+            )->a( n = `visible`    v = i_client->_bind( val       = layout->visible
+                                                        tab       = i_layout->ms_layout-t_layout
+                                                        tab_index = lv_index ) ).
 
-        set_layout_for_element( i_xml = line
+        set_layout_for_element( i_xml = hbox
                                 span  = grid_layout-value ).
 
-        xml_build_icon( i_layout = layout
-                        i_data   = i_data
-                        I_client = I_client
-                        i_xml    = hbox ).
+        IF layout->rollname CP `*_XML_S_ICON`.
 
-      ELSEIF layout->rollname CP `*_XML_S_PROGRESSIND`.
+          xml_build_icon( i_layout = layout
+                          i_data   = i_data
+                          i_client = i_client
+                          i_xml    = hbox ).
 
-        hbox = line->hbox( rendertype = `Bare`
-                           visible    = I_client->_bind( val       = layout->visible
-                                                         tab       = I_layout->ms_layout-t_layout
-                                                         tab_index = lv_index ) ).
+        ELSEIF layout->rollname CP `*_XML_S_PROGRESSIND`.
 
-        set_layout_for_element( i_xml = line
-                                span  = grid_layout-value ).
+          xml_build_progress_indicator( i_layout = layout
+                                        i_data   = i_data
+                                        i_client = i_client
+                                        i_xml    = hbox ).
 
-        xml_build_progress_indicator( i_layout = layout
-                                      i_data   = i_data
-                                      I_client = I_client
+        ELSEIF layout->rollname CP `*_XML_S_GENERICTAG`.
+
+          xml_build_generic_tag( i_layout = layout
+                                 i_data   = i_data
+                                 i_client = i_client
+                                 i_xml    = hbox ).
+
+        ELSEIF layout->rollname CP `*_XML_S_STATUSIND`.
+
+          xml_build_status_indicator( i_data   = i_data
+                                      i_client = i_client
+                                      i_layout = layout
                                       i_xml    = hbox ).
 
-      ELSEIF layout->rollname CP `*_XML_S_GENERICTAG`.
+        ELSE.
 
-        hbox = line->hbox( rendertype = `Bare`
-                           visible    = I_client->_bind( val       = layout->visible
-                                                         tab       = I_layout->ms_layout-t_layout
-                                                         tab_index = lv_index ) ).
+          xml_build_radial_microchart( i_data   = i_data
+                                       i_client = i_client
+                                       i_layout = layout
+                                       i_xml    = hbox ).
 
-        set_layout_for_element( i_xml = line
-                                span  = grid_layout-value ).
-
-        xml_build_generic_tag( i_layout = layout
-                               i_data   = i_data
-                               I_client = I_client
-                               i_xml    = hbox ).
-
-      ELSEIF layout->rollname CP `*_XML_S_STATUSIND`.
-
-        hbox = line->hbox( rendertype = `Bare`
-                           visible    = I_client->_bind( val       = layout->visible
-                                                         tab       = I_layout->ms_layout-t_layout
-                                                         tab_index = lv_index ) ).
-
-        set_layout_for_element( i_xml = line
-                                span  = grid_layout-value ).
-
-        xml_build_status_indicator( i_data   = i_data
-                                    I_client = I_client
-                                    i_layout = layout
-                                    i_xml    = hbox ).
-
-      ELSEIF layout->rollname CP `*_XML_S_RADIALCHART`.
-
-        hbox = line->hbox( rendertype = `Bare`
-                           visible    = I_client->_bind( val       = layout->visible
-                                                         tab       = I_layout->ms_layout-t_layout
-                                                         tab_index = lv_index ) ).
-
-        set_layout_for_element( i_xml = line
-                                span  = grid_layout-value ).
-
-        xml_build_radial_microchart( i_data   = i_data
-                                     I_client = I_client
-                                     i_layout = layout
-                                     i_xml    = hbox ).
+        ENDIF.
 
       ELSE.
 
-        line->input( visible = I_client->_bind( val       = layout->visible
-                                                tab       = I_layout->ms_layout-t_layout
-                                                tab_index = lv_index )
-                     value   = value_formatter( layout  = layout
-                                                I_client = I_client
-                                                value    = <value> )
-                     enabled = abap_false
-                     width   = I_client->_bind( val       = layout->width
-                                                tab       = I_layout->ms_layout-t_layout
-                                                tab_index = lv_index ) ).
+        DATA(input) = line->ele( `Input`
+            )->a( n = `enabled` b = abap_false
+            )->a( n = `visible` v = i_client->_bind( val       = layout->visible
+                                                     tab       = i_layout->ms_layout-t_layout
+                                                     tab_index = lv_index )
+            )->a( n = `value`   v = value_formatter( layout   = layout
+                                                     i_client = i_client
+                                                     value    = <value> )
+            )->a( n = `width`   v = i_client->_bind( val       = layout->width
+                                                     tab       = i_layout->ms_layout-t_layout
+                                                     tab_index = lv_index ) ).
 
-        set_layout_for_element( i_xml = line
+        set_layout_for_element( i_xml = input
                                 span  = grid_layout-value ).
 
       ENDIF.
@@ -258,28 +250,27 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
           CONTINUE.
         ENDIF.
 
-        DATA(ref_field) = ref #( I_layout->ms_layout-t_layout[ fname = layout->reference_field ] OPTIONAL ).
+        DATA(ref_field) = REF #( i_layout->ms_layout-t_layout[ fname = layout->reference_field ] OPTIONAL ).
         IF sy-subrc <> 0.
           CONTINUE.
         ENDIF.
 
-        " TODO: variable is assigned but never used (ABAP cleaner)
-        DATA(ref_f) = VALUE #( I_layout->ms_layout-t_layout[ fname = layout->reference_field ] OPTIONAL ).
+        DATA(ref_input) = line->ele( `Input`
+            )->a( n = `enabled` b = abap_false
+            )->a( n = `visible` v = i_client->_bind( val       = layout->visible
+                                                     tab       = i_layout->ms_layout-t_layout
+                                                     tab_index = lv_index )
+            )->a( n = `value`   v = value_formatter( layout   = ref_field
+                                                     i_client = i_client
+                                                     value    = <ref_value> ) ).
 
-        line->input( visible = I_client->_bind( val       = layout->visible
-                                                tab       = I_layout->ms_layout-t_layout
-                                                tab_index = lv_index )
-                     value   = value_formatter( layout  = ref_field
-                                                I_client = I_client
-                                                value    = <ref_value> )
-                     enabled = abap_false ).
-
-        set_layout_for_element( i_xml = line
+        set_layout_for_element( i_xml = ref_input
                                 span  = grid_layout-ref_fied ).
 
       ENDIF.
 
     ENDLOOP.
+
   ENDMETHOD.
 
   METHOD get_grid_layout.
@@ -347,85 +338,99 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD set_layout_for_element.
 
-    mv_element_counter = mv_element_counter + 1.
+    " i_xml is the control itself: its layoutData aggregation carries the
+    " grid span of the ResponsiveGridLayout
     IF span IS INITIAL.
-
       RETURN.
     ENDIF.
-    i_xml->get_child( mv_element_counter )->layout_data( )->grid_data( span = span ).
+
+    i_xml->ele( `layoutData`
+        )->tag( n = `GridData` ns = `layout`
+            )->a( n = `span` v = span ).
 
   ENDMETHOD.
 
   METHOD xml_build_table.
 
-  ASSIGN i_data->* to FIELD-SYMBOL(<tab>).
+    ASSIGN i_data->* TO FIELD-SYMBOL(<tab>).
 
-    DATA(table) = i_xml->table(
-                      growing          = COND #( WHEN i_growingthreshold = space THEN abap_false ELSE abap_true  )
-                      growingthreshold = i_growingthreshold
-                      width            = 'auto'
-                      mode             = COND #( WHEN i_sel_mode = space THEN `None` ELSE i_sel_mode  )
-                      items            = i_client->_bind( <tab> )
-                      selectionchange  = i_client->_event( 'SELECTION_CHANGE' ) ).
+    DATA(table) = i_xml->ele( `Table`
+        )->a( n = `items`   v = i_client->_bind( <tab> )
+        )->a( n = `growing` b = xsdbool( i_growingthreshold <> space ) ).
 
-    DATA(toolbar) = table->header_toolbar(
-                  )->overflow_toolbar( ).
-
-    IF i_headertext IS NOT INITIAL.
-      toolbar->title( text  = i_headertext
-                      level = `H2` ).
+    IF i_growingthreshold IS NOT INITIAL.
+      table->a( n = `growingThreshold` v = i_growingthreshold ).
     ENDIF.
 
-    toolbar->toolbar_spacer( ).
+    table->a( n = `mode`            v = COND #( WHEN i_sel_mode = space THEN `None` ELSE i_sel_mode )
+        )->a( n = `width`           v = `auto`
+        )->a( n = `selectionChange` v = i_client->_event( 'SELECTION_CHANGE' ) ).
+
+    DATA(toolbar) = table->ele( `headerToolbar`
+        )->ele( `OverflowToolbar` ).
+
+    IF i_headertext IS NOT INITIAL.
+      toolbar->tag( `Title`
+          )->a( n = `text`  v = i_headertext
+          )->a( n = `level` v = `H2` ).
+    ENDIF.
+
+    toolbar->tag( `ToolbarSpacer` ).
 
     IF i_search_value IS SUPPLIED.
 
-    ASSIGN i_search_value->* to FIELD-SYMBOL(<search>).
+      ASSIGN i_search_value->* TO FIELD-SYMBOL(<search>).
 
-      toolbar->search_field( value  = i_client->_bind( <search> )
-                             search = i_client->_event( 'SEARCH' )
-                             change = i_client->_event( 'SEARCH' )
-                             id     = `SEARCH`
-                             width  = '17.5rem' ).
+      toolbar->tag( `SearchField`
+          )->a( n = `width`  v = `17.5rem`
+          )->a( n = `search` v = i_client->_event( 'SEARCH' )
+          )->a( n = `value`  v = i_client->_bind( <search> )
+          )->a( n = `id`     v = `SEARCH`
+          )->a( n = `change` v = i_client->_event( 'SEARCH' ) ).
     ENDIF.
 
     z2ui5_cl_layo_pop=>render_layout_function( client = i_client
                                                xml    = toolbar
                                                layout = i_layout ).
 
-    DATA(columns) = table->columns( ).
+    DATA(columns) = table->ele( `columns` ).
 
     LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
       DATA(lv_index) = sy-tabix.
 
-      columns->column( visible         = i_client->_bind( val       = layout->visible
-                                                          tab       = i_layout->ms_layout-t_layout
-                                                          tab_index = lv_index )
-                       mergeduplicates = i_client->_bind( val       = layout->merge
-                                                          tab       = i_layout->ms_layout-t_layout
-                                                          tab_index = lv_index )
-                       width           = i_client->_bind( val       = layout->width
-                                                          tab       = i_layout->ms_layout-t_layout
-                                                          tab_index = lv_index )
+      DATA(column) = columns->ele( `Column`
+          )->a( n = `width`           v = i_client->_bind( val       = layout->width
+                                                           tab       = i_layout->ms_layout-t_layout
+                                                           tab_index = lv_index )
+          )->a( n = `mergeDuplicates` v = i_client->_bind( val       = layout->merge
+                                                           tab       = i_layout->ms_layout-t_layout
+                                                           tab_index = lv_index )
+          )->a( n = `visible`         v = i_client->_bind( val       = layout->visible
+                                                           tab       = i_layout->ms_layout-t_layout
+                                                           tab_index = lv_index ) ).
 
-       )->text( layout->tlabel ).
+      column->tag( `Text` ).
+      IF layout->tlabel IS NOT INITIAL.
+        column->a( n = `text` v = layout->tlabel ).
+      ENDIF.
 
     ENDLOOP.
 
-    DATA(column_list_item) = columns->get_parent( )->items(
-                                       )->column_list_item(
-                                           valign   = 'Middle'
-                                           selected = COND #( WHEN i_sel_bind_to = space
-                                                              THEN ``
-                                                              ELSE |\{{ i_sel_bind_to }\}| )
-                                           type     = COND #( WHEN i_col_type = space THEN `Inactive` ELSE i_col_type  )
-                                           press    = i_client->_event(
-                                               val   = 'ROW_SELECT'
-                                               t_arg = VALUE #( ( COND #( WHEN i_col_bind_to = space
-                                                                          THEN ``
-                                                                          ELSE |$\{{ i_col_bind_to }\}| )  ) ) ) ).
+    DATA(column_list_item) = table->ele( `items`
+        )->ele( `ColumnListItem`
+            )->a( n = `vAlign` v = `Middle` ).
 
-    DATA(cells) = column_list_item->cells( ).
+    IF i_sel_bind_to <> space.
+      column_list_item->a( n = `selected` v = |\{{ i_sel_bind_to }\}| ).
+    ENDIF.
+
+    column_list_item->a( n = `type`  v = COND #( WHEN i_col_type = space THEN `Inactive` ELSE i_col_type )
+        )->a( n = `press` v = i_client->_event( val   = 'ROW_SELECT'
+                                                t_arg = VALUE #( ( COND #( WHEN i_col_bind_to = space
+                                                                           THEN ``
+                                                                           ELSE |$\{{ i_col_bind_to }\}| ) ) ) ) ).
+
+    DATA(cells) = column_list_item->ele( `cells` ).
 
     LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO layout.
 
@@ -433,32 +438,32 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       IF layout->rollname CP `*_XML_S_ICON`.
 
-        xml_build_icon( I_client = I_client
+        xml_build_icon( i_client = i_client
                         i_layout = layout
                         i_xml    = cells ).
 
       ELSEIF layout->rollname CP `*_XML_S_RADIALCHART`.
 
         xml_build_radial_microchart( i_layout = layout
-                                     I_client = I_client
+                                     i_client = i_client
                                      i_xml    = cells ).
 
       ELSEIF layout->rollname CP `*_XML_S_PROGRESSIND`.
 
         xml_build_progress_indicator( i_layout = layout
-                                      I_client = I_client
+                                      i_client = i_client
                                       i_xml    = cells ).
 
       ELSEIF layout->rollname CP `*_XML_S_STATUSIND`.
 
         xml_build_status_indicator( i_layout = layout
-                                    I_client = I_client
+                                    i_client = i_client
                                     i_xml    = cells ).
 
       ELSEIF layout->rollname CP `*_XML_S_GENERICTAG`.
 
         xml_build_generic_tag( i_layout = layout
-                               I_client = I_client
+                               i_client = i_client
                                i_xml    = cells ).
 
       ELSE.
@@ -475,18 +480,18 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
             READ TABLE i_layout->ms_layout-t_layout INTO DATA(line) WITH KEY fname = subcol-fname.
 
             IF line-reference_field IS INITIAL.
-              DATA(column) = |{ line-tlabel }: { table_value_formatter( line ) }|.
+              DATA(col_text) = |{ line-tlabel }: { table_value_formatter( line ) }|.
             ELSE.
 
               READ TABLE i_layout->ms_layout-t_layout INTO DATA(ref) WITH KEY fname = line-reference_field.
 
-              column = |{ line-tlabel }:  { table_value_formatter( line ) } { table_value_formatter( ref ) }|.
+              col_text = |{ line-tlabel }:  { table_value_formatter( line ) } { table_value_formatter( ref ) }|.
             ENDIF.
 
             IF index = 1.
-              sub_col = column.
+              sub_col = col_text.
             ELSE.
-              sub_col = |{ sub_col }{ cl_abap_char_utilities=>cr_lf }{ column }|.
+              sub_col = |{ sub_col }{ cl_abap_char_utilities=>cr_lf }{ col_text }|.
             ENDIF.
           ENDLOOP.
 
@@ -494,12 +499,13 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
             READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = layout->reference_field.
 
-            cells->object_identifier( title = |{ table_value_formatter( layout->* ) } {
-                                                 table_value_formatter( ref ) }|
-                                      text  = sub_col ).
+            cells->tag( `ObjectIdentifier`
+                )->a( n = `text`  v = sub_col
+                )->a( n = `title` v = |{ table_value_formatter( layout->* ) } { table_value_formatter( ref ) }| ).
           ELSE.
-            cells->object_identifier( title = table_value_formatter( layout->* )
-                                      text  = sub_col ).
+            cells->tag( `ObjectIdentifier`
+                )->a( n = `text`  v = sub_col
+                )->a( n = `title` v = table_value_formatter( layout->* ) ).
           ENDIF.
 
         ELSE.
@@ -508,10 +514,11 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
             READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = layout->reference_field.
 
-            cells->object_identifier( text = |{ table_value_formatter( layout->* ) } {
-                                                table_value_formatter( ref ) }| ).
+            cells->tag( `ObjectIdentifier`
+                )->a( n = `text` v = |{ table_value_formatter( layout->* ) } { table_value_formatter( ref ) }| ).
           ELSE.
-            cells->object_identifier( text = |{ table_value_formatter( layout->* ) }| ).
+            cells->tag( `ObjectIdentifier`
+                )->a( n = `text` v = |{ table_value_formatter( layout->* ) }| ).
           ENDIF.
         ENDIF.
 
@@ -534,8 +541,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     IF i_data IS NOT SUPPLIED. " Table case
 
-      i_xml->icon( src  = |\{{ i_layout->fname }/SRC\}|
-                   size = |\{{ i_layout->fname }/ICON_SIZE\}| ).
+      i_xml->tag( n = `Icon` ns = `core`
+          )->a( n = `size` v = |\{{ i_layout->fname }/ICON_SIZE\}|
+          )->a( n = `src`  v = |\{{ i_layout->fname }/SRC\}| ).
 
     ELSE.
 
@@ -549,8 +557,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
         RETURN.
       ENDIF.
 
-      i_xml->icon( src  = I_client->_bind( val = <src> )
-                   size = I_client->_bind( val = <size> ) ).
+      i_xml->tag( n = `Icon` ns = `core`
+          )->a( n = `size` v = i_client->_bind( val = <size> )
+          )->a( n = `src`  v = i_client->_bind( val = <src> ) ).
 
     ENDIF.
 
@@ -560,12 +569,13 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD xml_build_radial_microchart.
 
-    IF i_data IS NOT  SUPPLIED. " Table case
+    IF i_data IS NOT SUPPLIED. " Table case
 
-      i_xml->radial_micro_chart( size         = |\{{ i_layout->fname }/RADIALMICROCHART_SIZE\}|
-                                 percentage   = |\{{ i_layout->fname }/PERCENTAGE\}|
-                                 valuecolor   = |\{{ i_layout->fname }/VALUECOLOR\}|
-                                 hideonnodata = |\{{ i_layout->fname }/HIDEONNODATA\}| ).
+      i_xml->tag( n = `RadialMicroChart` ns = `mchart`
+          )->a( n = `percentage`   v = |\{{ i_layout->fname }/PERCENTAGE\}|
+          )->a( n = `size`         v = |\{{ i_layout->fname }/RADIALMICROCHART_SIZE\}|
+          )->a( n = `hideOnNoData` v = |\{{ i_layout->fname }/HIDEONNODATA\}|
+          )->a( n = `valueColor`   v = |\{{ i_layout->fname }/VALUECOLOR\}| ).
 
     ELSE.
 
@@ -587,13 +597,11 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
         RETURN.
       ENDIF.
 
-      i_xml->radial_micro_chart( size         = I_client->_bind( val = <size> )
-                                 percentage   = I_client->_bind( val = <percentage> )
-*                                 press        = press
-                                 valuecolor   = I_client->_bind( val = <valuecolor> )
-*                                 height       = height
-*                                 aligncontent = aligncontent
-                                 hideonnodata = I_client->_bind( val = <hideonnodata> ) ).
+      i_xml->tag( n = `RadialMicroChart` ns = `mchart`
+          )->a( n = `percentage`   v = i_client->_bind( val = <percentage> )
+          )->a( n = `size`         v = i_client->_bind( val = <size> )
+          )->a( n = `hideOnNoData` v = i_client->_bind( val = <hideonnodata> )
+          )->a( n = `valueColor`   v = i_client->_bind( val = <valuecolor> ) ).
 
     ENDIF.
 
@@ -603,13 +611,14 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD xml_build_progress_indicator.
 
-    IF i_data IS NOT  SUPPLIED. " Table case
+    IF i_data IS NOT SUPPLIED. " Table case
 
-      i_xml->progress_indicator( class        = `sapUiSmallMarginBottom`
-                                 percentvalue = |\{{ i_layout->fname }/PERCENTVALUE\}|
-                                 displayvalue = |\{{ i_layout->fname }/DISPLAYVALUE\}|
-                                 showvalue    = |\{{ i_layout->fname }/SHOWVALUE\}|
-                                 state        = |\{{ i_layout->fname }/STATE\}| ).
+      i_xml->tag( `ProgressIndicator`
+          )->a( n = `class`        v = `sapUiSmallMarginBottom`
+          )->a( n = `percentValue` v = |\{{ i_layout->fname }/PERCENTVALUE\}|
+          )->a( n = `displayValue` v = |\{{ i_layout->fname }/DISPLAYVALUE\}|
+          )->a( n = `showValue`    v = |\{{ i_layout->fname }/SHOWVALUE\}|
+          )->a( n = `state`        v = |\{{ i_layout->fname }/STATE\}| ).
 
     ELSE.
 
@@ -630,17 +639,14 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       IF <state> IS NOT ASSIGNED.
         RETURN.
       ENDIF.
-*      ASSIGN COMPONENT |{ i_layout->visible }| OF STRUCTURE i_data->* TO FIELD-SYMBOL(<visible>).
-*      IF <visible> IS NOT ASSIGNED.
-*        RETURN.
-*      ENDIF.
 
-      i_xml->progress_indicator( class        = `sapUiSmallMarginBottom`
-                                 percentvalue = I_client->_bind( val = <percentvalue> )
-                                 displayvalue = I_client->_bind( val = <displayvalue> )
-                                 showvalue    = I_client->_bind( val = <showvalue> )
-                                 state        = I_client->_bind( val = <state> )
-                                 visible      = i_layout->visible  ).
+      i_xml->tag( `ProgressIndicator`
+          )->a( n = `class`        v = `sapUiSmallMarginBottom`
+          )->a( n = `percentValue` v = i_client->_bind( val = <percentvalue> )
+          )->a( n = `displayValue` v = i_client->_bind( val = <displayvalue> )
+          )->a( n = `showValue`    v = i_client->_bind( val = <showvalue> )
+          )->a( n = `visible`      b = i_layout->visible
+          )->a( n = `state`        v = i_client->_bind( val = <state> ) ).
 
     ENDIF.
 
@@ -652,22 +658,25 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     IF i_data IS NOT SUPPLIED. " We want to build a Table!
 
-      DATA(status_indicator) = i_xml->status_indicator( class = |\{{ i_layout->fname }/CLASS\}|
-                                                        size  = |\{{ i_layout->fname }/STATUSINDICATOR_SIZE\}|
-                                                        value = |\{{ i_layout->fname }/VALUE\}| ).
+      DATA(status_indicator) = i_xml->ele( n = `StatusIndicator` ns = `si`
+          )->a( n = `class` v = |\{{ i_layout->fname }/CLASS\}|
+          )->a( n = `size`  v = |\{{ i_layout->fname }/STATUSINDICATOR_SIZE\}|
+          )->a( n = `value` v = |\{{ i_layout->fname }/VALUE\}| ).
 
-      DATA(thresholds) = status_indicator->property_thresholds( ).
+      status_indicator->ele( n = `propertyThresholds` ns = `si`
+          )->tag( n = `PropertyThreshold` ns = `si`
+              )->a( n = `fillColor` v = `Good`
+              )->a( n = `toValue`   v = |\{{ i_layout->fname }/FILLCOLOR_GOOD\}|
+          )->tag( n = `PropertyThreshold` ns = `si`
+              )->a( n = `fillColor` v = `Critical`
+              )->a( n = `toValue`   v = |\{{ i_layout->fname }/FILLCOLOR_CRITICAL\}|
+          )->tag( n = `PropertyThreshold` ns = `si`
+              )->a( n = `fillColor` v = `Error`
+              )->a( n = `toValue`   v = |\{{ i_layout->fname }/FILLCOLOR_ERROR\}| ).
 
-      thresholds->property_threshold( fillcolor = 'Good'
-                                      tovalue   = |\{{ i_layout->fname }/FILLCOLOR_GOOD\}| ).
-
-      thresholds->property_threshold( fillcolor = 'Critical'
-                                      tovalue   = |\{{ i_layout->fname }/FILLCOLOR_CRITICAL\}| ).
-
-      thresholds->property_threshold( fillcolor = 'Error'
-                                      tovalue   = |\{{ i_layout->fname }/FILLCOLOR_ERROR\}| ).
-
-      status_indicator->shape_group( )->library_shape( shapeid = |\{{ i_layout->fname }/SHAPEID\}| ).
+      status_indicator->ele( n = `ShapeGroup` ns = `si`
+          )->tag( n = `LibraryShape` ns = `si`
+              )->a( n = `shapeId` v = |\{{ i_layout->fname }/SHAPEID\}| ).
 
     ELSE.
 
@@ -686,12 +695,13 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
         RETURN.
       ENDIF.
 
-      status_indicator = i_xml->status_indicator( class   = I_client->_bind( val = <class> )
-                                                  size    = I_client->_bind( val = <size> )
-                                                  value   = I_client->_bind( val = <value> )
-                                                  visible = i_layout->visible ).
+      status_indicator = i_xml->ele( n = `StatusIndicator` ns = `si`
+          )->a( n = `class`   v = i_client->_bind( val = <class> )
+          )->a( n = `size`    v = i_client->_bind( val = <size> )
+          )->a( n = `value`   v = i_client->_bind( val = <value> )
+          )->a( n = `visible` b = i_layout->visible ).
 
-      thresholds = status_indicator->property_thresholds( ).
+      DATA(thresholds) = status_indicator->ele( n = `propertyThresholds` ns = `si` ).
 
       ASSIGN COMPONENT |{ i_layout->fname }-FILLCOLOR_GOOD| OF STRUCTURE i_data->* TO FIELD-SYMBOL(<fillcolor_good>).
       IF <fillcolor_good> IS NOT ASSIGNED.
@@ -710,16 +720,19 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
         RETURN.
       ENDIF.
 
-      thresholds->property_threshold( fillcolor = 'Good'
-                                      tovalue   = I_client->_bind( val = <fillcolor_good> ) ).
+      thresholds->tag( n = `PropertyThreshold` ns = `si`
+          )->a( n = `fillColor` v = `Good`
+          )->a( n = `toValue`   v = i_client->_bind( val = <fillcolor_good> )
+      )->tag( n = `PropertyThreshold` ns = `si`
+          )->a( n = `fillColor` v = `Critical`
+          )->a( n = `toValue`   v = i_client->_bind( val = <fillcolor_critical> )
+      )->tag( n = `PropertyThreshold` ns = `si`
+          )->a( n = `fillColor` v = `Error`
+          )->a( n = `toValue`   v = i_client->_bind( val = <fillcolor_error> ) ).
 
-      thresholds->property_threshold( fillcolor = 'Critical'
-                                      tovalue   = I_client->_bind( val = <fillcolor_critical> ) ).
-
-      thresholds->property_threshold( fillcolor = 'Error'
-                                      tovalue   = I_client->_bind( val = <fillcolor_error> ) ).
-
-      status_indicator->shape_group( )->library_shape( shapeid = I_client->_bind( val = <shapeid> ) ).
+      status_indicator->ele( n = `ShapeGroup` ns = `si`
+          )->tag( n = `LibraryShape` ns = `si`
+              )->a( n = `shapeId` v = i_client->_bind( val = <shapeid> ) ).
 
     ENDIF.
 
@@ -731,9 +744,10 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     IF i_data IS NOT SUPPLIED. " Table case
 
-      i_xml->generic_tag( text   = |\{{ i_layout->fname }/TEXT\}|
-                          design = |\{{ i_layout->fname }/DESIGN\}|
-                          status = |\{{ i_layout->fname }/STATUS\}| ).
+      i_xml->tag( `GenericTag`
+          )->a( n = `design` v = |\{{ i_layout->fname }/DESIGN\}|
+          )->a( n = `status` v = |\{{ i_layout->fname }/STATUS\}|
+          )->a( n = `text`   v = |\{{ i_layout->fname }/TEXT\}| ).
 
     ELSE.
 
@@ -751,9 +765,10 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
         RETURN.
       ENDIF.
 
-      i_xml->generic_tag( text   = I_client->_bind( <text> )
-                          design = I_client->_bind( <design> )
-                          status = I_client->_bind( <status> ) ).
+      i_xml->tag( `GenericTag`
+          )->a( n = `design` v = i_client->_bind( <design> )
+          )->a( n = `status` v = i_client->_bind( <status> )
+          )->a( n = `text`   v = i_client->_bind( <text> ) ).
 
     ENDIF.
 
@@ -772,7 +787,5 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 result = I_client->_bind( value ).
 
   ENDMETHOD.
-
-
 
 ENDCLASS.
