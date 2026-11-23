@@ -1,30 +1,39 @@
 {
-    "name": "abap2ui5-layout-management",
-    "private": true,
-    "version": "1.0.0",
-    "description": "Layout Management for abap2UI5.",
-    "scripts": {
-      "syfixes": "find . -type f -name '*.abap' -exec sed -i -e 's/ RAISE EXCEPTION TYPE cx_sy_itab_line_not_found/ ASSERT 1 = 0/g' {} + ",
-      "downport": "abaplint --fix .github/abaplint/abap_702.jsonc && npm run syfixes",
-      "rename": "abaplint .github/abaplint/rename.json --rename"
-    },
-    "repository": {
-      "type": "git",
-      "url": "git+https://github.com/abap2UI5-addons/layout-management.git"
-    },
-    "license": "MIT",
-    "bugs": {
-      "url": "https://github.com/abap2UI5-addons/layout-management.git"
-    },
-    "homepage": "https://github.com/abap2UI5-addons/layout-management#readme",
-    "devDependencies": {
-      "@abaplint/cli": "^2.113.86",
-      "@abaplint/database-sqlite": "^2.10.20",
-      "@abaplint/runtime": "^2.10.23",
-      "@abaplint/transpiler-cli": "^2.10.23",
-      "@types/node": "^22.10.5"
-    },
-    "dependencies": {
-      "npm-check-updates": "^17.1.13"
-    }
+  "name": "abap2ui5-layout-management",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Table and form layouts for abap2UI5 apps that users arrange themselves and save as variants.",
+  "scripts": {
+    "syfixes": "find . -type f -name '*.abap' -exec sed -i -e 's/ RAISE EXCEPTION TYPE cx_sy_itab_line_not_found/ ASSERT 1 = 0/g' {} + ",
+    "strip_trailing_ws": "find src -type f -name '*.abap' -exec sed -i 's/[[:space:]]\\+$//' {} +",
+    "abaplintpathfix": "sed -i 's|\"files\": \"/\\.\\.\\/\\.\\.\\/src\\/\\*\\*\\/\\*\\.\\*\"|\"files\": \"/src/**/*.*\"|g' abaplint.jsonc",
+    "downport": "abaplint --fix .github/abaplint/abap_702.jsonc && npm run syfixes",
+    "auto_downport": "abaplint --fix .github/abaplint/abap_702.jsonc && npm run syfixes && npm run strip_trailing_ws && cp -f .github/abaplint/abap_702.jsonc abaplint.jsonc && npm run abaplintpathfix",
+    "rename": "node .github/scripts/rename.mjs",
+    "lint": "abaplint ./abaplint.jsonc",
+    "check:cloud": "abaplint .github/abaplint/abap_cloud.jsonc",
+    "check:abap2ui5": "abap2ui5lint",
+    "check": "npm run lint && npm run check:cloud && npm run check:abap2ui5 && npm run rename",
+    "test": "npm run check",
+    "unit": "node .github/scripts/unit.mjs",
+    "site": "npm run build --prefix site",
+    "site:dev": "npm run dev --prefix site"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abap2UI5-addons/layout-management.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/abap2UI5-addons/layout-management/issues"
+  },
+  "homepage": "https://github.com/abap2UI5-addons/layout-management#readme",
+  "devDependencies": {
+    "@abap2ui5/linter": "^0.11.3",
+    "@abap2ui5/linter-render": "^0.11.3",
+    "@abaplint/cli": "^2.120.92"
+  },
+  "engines": {
+    "node": ">=22"
   }
+}

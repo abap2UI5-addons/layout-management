@@ -3,8 +3,15 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
   CREATE PROTECTED.
 
   PUBLIC SECTION.
-    INTERFACES if_serializable_object.
     INTERFACES z2ui5_if_app.
+
+    DATA mr_tab          TYPE REF TO data.
+    DATA mr_out          TYPE REF TO data.
+    DATA mr_out_tmp      TYPE REF TO data.
+
+    DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
+    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder binds it, handed over as REF #( mv_search_value )
+    DATA mv_search_value TYPE string.
 
     TYPES:
       BEGIN OF ty_s_result,
@@ -12,13 +19,8 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
         check_confirmed TYPE abap_bool,
       END OF ty_s_result.
 
+    " abap2ui5lint-disable-next-line unbound-public-attribute -- a popup's result is its interface to the app that called it; result( ) returns the same, PUBLIC keeps direct readers compiling
     DATA ms_result       TYPE ty_s_result.
-    DATA mr_tab          TYPE REF TO data.
-    DATA mr_out          TYPE REF TO data.
-    DATA mr_out_tmp      TYPE REF TO data.
-
-    DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
-    DATA mv_search_value TYPE string.
 
     CLASS-METHODS factory
       IMPORTING
@@ -50,7 +52,7 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
     DATA descending        TYPE abap_bool.
 
     METHODS on_event.
-    METHODS Render_main.
+    METHODS render_main.
     METHODS set_output_table.
 
     METHODS on_event_search.
@@ -79,7 +81,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     r_result->content_width     = i_contentwidth.
     r_result->growing_threshold = i_growingthreshold.
 
-    r_result->mr_tab            = z2ui5_cl_layo_util=>conv_copy_ref_data( i_tab ).
+    r_result->mr_tab            = z2ui5_cl_layo_context=>conv_copy_ref_data( i_tab ).
 
     CREATE DATA r_result->ms_result-row LIKE LINE OF i_tab.
 
@@ -92,25 +94,23 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD Render_main.
+  METHOD render_main.
 
     DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
-        )->ele( n = `FragmentDefinition` ns = `core`
-            )->a( n = `xmlns`        v = `sap.m`
-            )->a( n = `xmlns:core`   v = `sap.ui.core`
-            )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
-            )->a( n = `xmlns:si`     v = `sap.suite.ui.commons.statusindicator` ).
-
-    DATA(dialog) = popup->ele( `Dialog` ).
-
-    IF title IS NOT INITIAL.
-      dialog->a( n = `title` t = title ).
-    ENDIF.
-
-    dialog->a( n = `afterClose` v = client->_event( 'CANCEL' ) ).
+                      )->ele( n = `FragmentDefinition` ns = `core`
+                      )->a( n = `xmlns` v = `sap.m`
+                      )->a( n = `xmlns:core` v = `sap.ui.core`
+                      " abap2ui5lint-disable unused-namespace-declaration -- z2ui5_cl_layo_xml_builder writes controls with these prefixes into this view
+                      )->a( n = `xmlns:form` v = `sap.ui.layout.form`
+                      )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
+                      )->a( n = `xmlns:si` v = `sap.suite.ui.commons.statusindicator`
+                      " abap2ui5lint-enable unused-namespace-declaration
+                      )->ele( `Dialog`
+                      )->a( n = `title` t = title
+                      )->a( n = `afterClose` v = client->_event( 'CANCEL' ) ).
 
     z2ui5_cl_layo_xml_builder=>xml_build_table( i_data         = mr_out
-                                                i_xml          = dialog
+                                                i_xml          = popup
                                                 i_client       = client
                                                 i_layout       = mo_layout
                                                 i_search_value = REF #( mv_search_value )
@@ -127,7 +127,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     IF client->check_on_init( ).
       set_output_table( ).
-      Render_main( ).
+      render_main( ).
     ELSEIF client->check_on_navigated( ).
       on_after_layout( ).
     ELSEIF client->check_on_event( ).
@@ -175,13 +175,14 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 
-    Render_main( ).
+    render_main( ).
 
   ENDMETHOD.
 
   METHOD confirm.
 
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <row> TYPE any.
 
     ASSIGN mr_out->* TO <tab>.
     " get_event_arg( ) is empty without an argument - t_arg[ 1 ] dumped
@@ -189,13 +190,18 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
-      IF sy-subrc <> 0.
-        EXIT.
+      FIELD-SYMBOLS <row_id> TYPE any.
+      UNASSIGN <row_id>.
+      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO <row_id>.
+
+      IF <row_id> IS NOT ASSIGNED.
+        CONTINUE.
       ENDIF.
 
       IF <row_id> = row_clicked.
-        ms_result-row->* = CORRESPONDING #( <line> ).
+        ASSIGN ms_result-row->* TO <row>.
+        CLEAR <row>.
+        MOVE-CORRESPONDING <line> TO <row>.
         EXIT.
       ENDIF.
 
@@ -224,15 +230,26 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
         CREATE DATA mr_out     TYPE HANDLE new_table_desc.
         CREATE DATA mr_out_tmp TYPE HANDLE new_table_desc.
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
 
     ENDTRY.
 
-    ASSIGN mr_out->* TO FIELD-SYMBOL(<t_out>).
-    ASSIGN mr_tab->* TO FIELD-SYMBOL(<t_tab>).
+    FIELD-SYMBOLS <t_out>  TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <t_tab>  TYPE STANDARD TABLE.
+    FIELD-SYMBOLS <ls_tab> TYPE any.
+    FIELD-SYMBOLS <ls_out> TYPE any.
+
+    ASSIGN mr_out->* TO <t_out>.
+    ASSIGN mr_tab->* TO <t_tab>.
     ASSIGN mr_out_tmp->* TO FIELD-SYMBOL(<t_out_tmp>).
 
-    <t_out> = <t_tab>.
+    " row by row: the output line has ZZROW_ID in front, so the lines are not
+    " convertible as a whole (UC_OBJECTS_NOT_CONVERTIBLE)
+    CLEAR <t_out>.
+    LOOP AT <t_tab> ASSIGNING <ls_tab>.
+      APPEND INITIAL LINE TO <t_out> ASSIGNING <ls_out>.
+      MOVE-CORRESPONDING <ls_tab> TO <ls_out>.
+    ENDLOOP.
 
     set_row_id( ).
 
@@ -248,7 +265,9 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     LOOP AT <tab> ASSIGNING <line>.
 
-      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO FIELD-SYMBOL(<row>).
+      FIELD-SYMBOLS <row> TYPE any.
+      UNASSIGN <row>.
+      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO <row>.
       IF <row> IS ASSIGNED.
         <row> = sy-tabix.
       ENDIF.
@@ -258,27 +277,19 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
   METHOD get_comp.
     DATA index TYPE int4.
 
-*    DATA selkz TYPE abap_bool.
-
     TRY.
 
-        DATA(comp) = z2ui5_cl_layo_util=>rtti_get_t_attri_by_any( mr_tab ).
+        DATA(comp) = z2ui5_cl_layo_context=>rtti_get_t_attri_by_any( mr_tab ).
 
-        IF xsdbool( line_exists( comp[ name = 'ZZROW_ID' ] ) ) = abap_false.
+        IF NOT line_exists( comp[ name = 'ZZROW_ID' ] ).
           APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
                                     ( name = 'ZZROW_ID'
                                       type = CAST #( cl_abap_datadescr=>describe_by_data( index ) ) ) ) TO result.
         ENDIF.
-*        IF xsdbool( line_exists( comp[ name = 'SELKZ' ] ) ) = abap_false.
-*          APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
-*                                    ( name = 'SELKZ'
-*                                      type = CAST #( cl_abap_datadescr=>describe_by_data( selkz ) ) ) ) TO result.
-*
-*        ENDIF.
 
         APPEND LINES OF comp TO result.
 
-      CATCH cx_root.
+      CATCH cx_root ##NO_HANDLER.
     ENDTRY.
   ENDMETHOD.
 
@@ -286,7 +297,6 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     FIELD-SYMBOLS <tab>     TYPE STANDARD TABLE.
     FIELD-SYMBOLS <tab_tmp> TYPE STANDARD TABLE.
-    DATA lt_index TYPE STANDARD TABLE OF i WITH EMPTY KEY.
 
     ASSIGN mr_out->* TO <tab>.
     ASSIGN mr_out_tmp->* TO <tab_tmp>.
@@ -299,29 +309,8 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    " a table, a reference or a deep structure is no operand of && - it
-    " dumped the search; only the flat components are searched
-    DATA(lo_line) = CAST cl_abap_structdescr( CAST cl_abap_tabledescr(
-        cl_abap_typedescr=>describe_by_data( <tab> ) )->get_table_line_type( ) ).
-    LOOP AT lo_line->components INTO DATA(ls_comp).
-      IF ls_comp-type_kind NA 'hlrv'.
-        APPEND sy-tabix TO lt_index.
-      ENDIF.
-    ENDLOOP.
-
-    LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<f_row>).
-      DATA(lv_row) = ``.
-      LOOP AT lt_index INTO DATA(lv_index).
-        ASSIGN COMPONENT lv_index OF STRUCTURE <f_row> TO FIELD-SYMBOL(<field>).
-        IF sy-subrc = 0.
-          lv_row = lv_row && <field>.
-        ENDIF.
-      ENDLOOP.
-
-      IF lv_row NS mv_search_value.
-        DELETE <tab>.
-      ENDIF.
-    ENDLOOP.
+    z2ui5_cl_layo_context=>itab_filter_by_val( EXPORTING val = mv_search_value
+                                       CHANGING  tab = <tab> ).
 
   ENDMETHOD.
 

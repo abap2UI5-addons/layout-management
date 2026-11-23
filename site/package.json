@@ -1,0 +1,19 @@
+{
+  "name": "site",
+  "private": true,
+  "description": "The GitHub Pages site of this addon - VitePress, see .vitepress/config.mts",
+  "type": "module",
+  "scripts": {
+    "build": "vitepress build",
+    "dev": "vitepress dev"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "overrides": {
+    "vite": "^6.4.5"
+  }
+}
