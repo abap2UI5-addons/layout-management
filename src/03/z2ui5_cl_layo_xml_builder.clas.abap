@@ -365,7 +365,7 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                       growingthreshold = i_growingthreshold
                       width            = 'auto'
                       mode             = COND #( WHEN i_sel_mode = space THEN `None` ELSE i_sel_mode  )
-                      items            = i_client->_bind_edit( <tab> )
+                      items            = i_client->_bind( <tab> )
                       selectionchange  = i_client->_event( 'SELECTION_CHANGE' ) ).
 
     DATA(toolbar) = table->header_toolbar(
@@ -382,7 +382,7 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     ASSIGN i_search_value->* to FIELD-SYMBOL(<search>).
 
-      toolbar->search_field( value  = i_client->_bind_edit( <search> )
+      toolbar->search_field( value  = i_client->_bind( <search> )
                              search = i_client->_event( 'SEARCH' )
                              change = i_client->_event( 'SEARCH' )
                              id     = `SEARCH`
@@ -764,7 +764,7 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
   METHOD value_formatter.
 
 *    result = COND #( WHEN no_zero = abap_true
-*                     THEN |\{path : '{ I_client->_bind_edit(
+*                     THEN |\{path : '{ I_client->_bind(
 *                                           val  = value
 *                                           path = abap_true ) }', type : 'sap.ui.model.odata.type.String', constraints : \{  isDigitSequence : true \} \}|
 *                     ELSE I_client->_bind( value ) ).

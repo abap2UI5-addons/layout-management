@@ -55,8 +55,6 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
 
     ENDCASE.
 
-    client->view_model_update( ).
-
   ENDMETHOD.
 
   METHOD on_init.

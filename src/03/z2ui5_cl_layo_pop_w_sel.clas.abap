@@ -148,7 +148,6 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
       WHEN 'SEARCH'.
         on_event_search( ).
-        client->popup_model_update( ).
 
       WHEN OTHERS.
 

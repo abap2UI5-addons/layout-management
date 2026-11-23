@@ -171,7 +171,6 @@ CLASS z2ui5_cl_layo_sample_05 IMPLEMENTATION.
           render_main( ).
         ELSE.
           "  for all other changes in Layout View Model Update is enough.
-          client->view_model_update( ).
         ENDIF.
       CATCH cx_root.
     ENDTRY.

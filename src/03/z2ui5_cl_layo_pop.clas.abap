@@ -199,7 +199,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     DATA(tab) = content->table( growing          = abap_true
                                 growingthreshold = '80'
                                 sticky           = `ColumnHeaders`
-                                items            = client->_bind_edit( mt_layout ) ).
+                                items            = client->_bind( mt_layout ) ).
 
     tab->header_toolbar(
                   )->overflow_toolbar(
@@ -212,7 +212,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
                         livechange  = client->_event( val    = 'BUTTON_SEARCH'
                                                       t_arg  = VALUE #( ( `${$source>/value}` ) )
-                                                      s_ctrl = VALUE #( check_allow_multi_req = abap_true ) )  ).
+                                                      s_ctrl = VALUE #( check_queue_last = abap_true ) )  ).
 
     DATA(list) = tab->column_list_item( ).
 
@@ -326,7 +326,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         WHEN 'SORTING'.
 
           cells->combobox( selectedkey = |\{{ comp-name }\}|
-                           items       = client->_bind_edit( mt_sorting )
+                           items       = client->_bind( mt_sorting )
                            width       = '5rem'
                         )->item( key  = '{SORTING}'
                                  text = '{DESCR}' ).
@@ -334,7 +334,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         WHEN 'REFERENCE_FIELD'.
 
           cells->combobox( selectedkey = |\{{ comp-name }\}|
-                           items       = client->_bind_edit( mo_layout->ms_layout-t_layout )
+                           items       = client->_bind( mo_layout->ms_layout-t_layout )
                            width       = '10rem'
                         )->item( key  = '{FNAME}'
                                  text = '{FNAME} - {TLABEL}' ).
@@ -439,8 +439,6 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
           DELETE mt_head WHERE selkz = abap_true.
         ENDIF.
 
-        client->popup_model_update( ).
-
       WHEN OTHERS.
 
         on_event_subcoloumns( ).
@@ -480,8 +478,6 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       ENDIF.
 
     ENDLOOP.
-
-    client->popup_model_update( ).
 
   ENDMETHOD.
 
@@ -555,22 +551,22 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     form->content( 'form'
                            )->label( 'Layout'
-                           )->input( value     = client->_bind_edit( mv_layout )
+                           )->input( value     = client->_bind( mv_layout )
                                      maxlength = '10'
                            )->label( 'Description'
-                           )->input( client->_bind_edit( mv_descr ) ).
+                           )->input( client->_bind( mv_descr ) ).
 
     form->toolbar( )->title( `Save Options` ).
 
     form->content( 'form'
                            )->label( 'Default Layout'
                            )->switch( type  = 'AcceptReject'
-                                      state = client->_bind_edit( mv_def )
+                                      state = client->_bind( mv_def )
                            )->label( 'User specific'
                            )->switch( type  = 'AcceptReject'
-                                      state = client->_bind_edit( mv_usr )
+                                      state = client->_bind( mv_usr )
             )->label( 'Screen Size'
-            )->combobox( selectedkey = client->_bind_edit( mv_format )
+            )->combobox( selectedkey = client->_bind( mv_format )
 *             )->item( key  = `X`
 *                         text        = `XL - Large Desktop`
              )->item( key  = z2ui5_cl_layo_manager=>screen_format_l
@@ -742,7 +738,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     " selectedKey, so a tab click sends the new key back in mv_tab.
     mv_tab = active.
 
-    DATA(bar) = dialog->icon_tab_bar( selectedkey          = client->_bind_edit( mv_tab )
+    DATA(bar) = dialog->icon_tab_bar( selectedkey          = client->_bind( mv_tab )
                                       select               = client->_event( 'TAB_SELECT' )
                                       stretchcontentheight = abap_true
                                       expandable           = abap_false ).
@@ -779,7 +775,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                                      active = 'DELETE' ).
 
     content->table( mode  = 'SingleSelectLeft'
-                    items = client->_bind_edit( mt_head )
+                    items = client->_bind( mt_head )
                  )->columns(
                      )->column( )->text( 'Layout' )->get_parent(
                      )->column( )->text( 'Description' )->get_parent(
@@ -819,7 +815,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                                      active = 'SELECT' ).
 
     content->table( mode  = 'SingleSelectLeft'
-                    items = client->_bind_edit( mt_head )
+                    items = client->_bind( mt_head )
                  )->columns(
                      )->column( )->text( 'Layout' )->get_parent(
                      )->column( )->text( 'Active' )->get_parent(
@@ -998,7 +994,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     DATA(vbox) = lo_popup->vbox( justifycontent = 'SpaceBetween' ).
 
     DATA(item) = vbox->list( nodata          = `no Subcolumns defined`
-                             items           = client->_bind_edit( mo_layout->mt_sub_cols )
+                             items           = client->_bind( mo_layout->mt_sub_cols )
                              selectionchange = client->_event( 'SELCHANGE' )
                 )->custom_list_item( ).
 
@@ -1083,16 +1079,13 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
       WHEN `SUBCOLUMN_ADD`.
         INSERT VALUE #( key = z2ui5_cl_util=>uuid_get_c32( ) ) INTO TABLE mo_layout->mt_sub_cols.
-        client->popup_model_update( ).
 
       WHEN `SUBCOLUMN_DELETE`.
         DATA(lt_event) = client->get( )-t_event_arg.
         DELETE mo_layout->mt_sub_cols WHERE key = lt_event[ 1 ].
-        client->popup_model_update( ).
 
       WHEN `SUBCOLUMN_DELETE_ALL`.
         mo_layout->mt_sub_cols = VALUE #( ).
-        client->popup_model_update( ).
 
     ENDCASE.
 
@@ -1257,51 +1250,51 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(line) = form->label( text = 'XL'
-                 )->combobox( selectedkey = client->_bind_edit( mv_xl_label )
+                 )->combobox( selectedkey = client->_bind( mv_xl_label )
                               width       = `7rem`
                               items       = client->_bind( t_col  )
                    )->item( key  = '{COL}'
                             text = '{COL} Label Span' ).
 
-    form->combobox( selectedkey = client->_bind_edit( mv_xl_value )
+    form->combobox( selectedkey = client->_bind( mv_xl_value )
                     width       = `7rem`
                     items       = client->_bind( t_col  )
 )->item( key  = '{COL}'
          text = '{COL} Value Span' ).
 
     line = form->label( text = 'L'
-                  )->combobox( selectedkey = client->_bind_edit( mv_l_label )
+                  )->combobox( selectedkey = client->_bind( mv_l_label )
                                width       = `7rem`
                                items       = client->_bind( t_col  )
                     )->item( key  = '{COL}'
                              text = '{COL} Label Span' ).
-    form->combobox( selectedkey = client->_bind_edit( mv_l_value )
+    form->combobox( selectedkey = client->_bind( mv_l_value )
 
                     items       = client->_bind( t_col  )
 )->item( key  = '{COL}'
          text = '{COL} Value Span' ).
 
     line = form->label( text = 'M'
-                  )->combobox( selectedkey = client->_bind_edit( mv_m_label )
+                  )->combobox( selectedkey = client->_bind( mv_m_label )
                                width       = `7rem`
                                items       = client->_bind( t_col  )
                     )->item( key  = '{COL}'
                              text = '{COL} Label Span' ).
 
-    form->combobox( selectedkey = client->_bind_edit( mv_m_value )
+    form->combobox( selectedkey = client->_bind( mv_m_value )
                     width       = `7rem`
                     items       = client->_bind( t_col  )
       )->item( key  = '{COL}'
                text = '{COL} Value Span' ).
 
     line = form->label( text = 'S'
-                  )->combobox( selectedkey = client->_bind_edit( mv_s_label )
+                  )->combobox( selectedkey = client->_bind( mv_s_label )
                                width       = `7rem`
                                items       = client->_bind( t_col  )
                     )->item( key  = '{COL}'
                              text = '{COL} Label Span' ).
 
-    form->combobox( selectedkey = client->_bind_edit( mv_s_value )
+    form->combobox( selectedkey = client->_bind( mv_s_value )
                     width       = `7rem`
                     items       = client->_bind( t_col  )
       )->item( key  = '{COL}'
