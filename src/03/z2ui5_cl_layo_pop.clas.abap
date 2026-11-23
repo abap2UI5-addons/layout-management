@@ -23,7 +23,7 @@ CLASS z2ui5_cl_layo_pop DEFINITION
              col TYPE c LENGTH 2,
            END OF ty_s_col.
 
-    DATA t_col          TYPE STANDARD TABLE OF ty_s_col.
+    DATA t_col          TYPE STANDARD TABLE OF ty_s_col WITH EMPTY KEY.
 
     DATA mo_layout      TYPE REF TO z2ui5_cl_layo_manager.
     DATA mt_controls    TYPE z2ui5_cl_layo_manager=>ty_t_controls.
@@ -100,9 +100,7 @@ CLASS z2ui5_cl_layo_pop DEFINITION
 
     METHODS on_init.
 
-    METHODS render_open
-      IMPORTING
-        external_call TYPE abap_bool OPTIONAL.
+    METHODS render_open.
 
     METHODS get_selected_layout
       RETURNING
@@ -127,12 +125,6 @@ CLASS z2ui5_cl_layo_pop DEFINITION
     METHODS on_event_gridlayout.
     METHODS render_add_gridlayout.
     METHODS update_values.
-
-    CLASS-METHODS get_relative_name_of_table
-      IMPORTING
-        !table        TYPE any
-      RETURNING
-        VALUE(result) TYPE string.
 
   PRIVATE SECTION.
     METHODS check_grid_sum
@@ -218,12 +210,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     DATA(columns) = tab->ele( `columns` ).
 
-    DATA(t_layout) = mo_layout->ms_layout-t_layout.
-
-    SORT t_layout BY visible DESCENDING
-                     fname ASCENDING.
-
-    DATA(lt_comp) = z2ui5_cl_layo_util=>rtti_get_t_attri_by_any( t_layout ).
+    " only the components of the position type are read here - the sorted
+    " copy of the layout this used to describe was never displayed
+    DATA(lt_comp) = z2ui5_cl_layo_util=>rtti_get_t_attri_by_any( mt_layout ).
 
     LOOP AT mt_controls REFERENCE INTO DATA(control) WHERE control = mo_layout->ms_layout-s_head-control.
 
@@ -486,32 +475,14 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD Search.
 
-    FIELD-SYMBOLS <row> TYPE any.
+    DATA(search_value) = client->get_event_arg( ).
 
     mt_layout = mo_layout->ms_layout-t_layout.
 
-    LOOP AT mt_layout ASSIGNING <row>.
-      DATA(lv_row) = ``.
-
-      ASSIGN COMPONENT 'FNAME' OF STRUCTURE <row> TO FIELD-SYMBOL(<fname>).
-      IF sy-subrc <> 0.
-        EXIT.
-      ENDIF.
-      ASSIGN COMPONENT 'ROLLNAME' OF STRUCTURE <row> TO FIELD-SYMBOL(<rollname>).
-      IF sy-subrc <> 0.
-        EXIT.
-      ENDIF.
-      ASSIGN COMPONENT 'TLABEL' OF STRUCTURE <row> TO FIELD-SYMBOL(<tlabel>).
-      IF sy-subrc <> 0.
-        EXIT.
-      ENDIF.
-
-      lv_row = lv_row && <fname> && <rollname> && <tlabel>.
-
-      IF lv_row NS client->get_event_arg( 1 ).
+    LOOP AT mt_layout REFERENCE INTO DATA(row).
+      IF |{ row->fname }{ row->rollname }{ row->tlabel }| NS search_value.
         DELETE mt_layout.
       ENDIF.
-
     ENDLOOP.
 
   ENDMETHOD.
@@ -894,7 +865,6 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD render_open.
-    " TODO: parameter EXTERNAL_CALL is never used (ABAP cleaner)
 
     DATA(popup) = z2ui5_cl_ui5_view_builder=>factory(
         )->ele( n = `FragmentDefinition` ns = `core`
@@ -1083,32 +1053,6 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     result = abap_true.
 
     client->message_toast_display( 'Layout deleted.' ).
-
-  ENDMETHOD.
-
-  METHOD get_relative_name_of_table.
-
-    FIELD-SYMBOLS <table> TYPE any.
-
-    TRY.
-        DATA(typedesc) = cl_abap_typedescr=>describe_by_data( table ).
-
-        CASE typedesc->kind.
-
-          WHEN cl_abap_typedescr=>kind_table.
-            DATA(tabledesc) = CAST cl_abap_tabledescr( typedesc ).
-            DATA(structdesc) = CAST cl_abap_structdescr( tabledesc->get_table_line_type( ) ).
-            result = structdesc->get_relative_name( ).
-            RETURN.
-
-          WHEN typedesc->kind_ref.
-
-            ASSIGN table->* TO <table>.
-            result = get_relative_name_of_table( <table> ).
-
-        ENDCASE.
-      CATCH cx_root.
-    ENDTRY.
 
   ENDMETHOD.
 

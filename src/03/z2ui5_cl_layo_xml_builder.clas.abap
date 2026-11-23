@@ -440,8 +440,6 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO layout.
 
-      lv_index = sy-tabix.
-
       IF layout->rollname CP `*_XML_S_ICON`.
 
         xml_build_icon( i_client = i_client

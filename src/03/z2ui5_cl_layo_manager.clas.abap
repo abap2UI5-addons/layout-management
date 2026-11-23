@@ -368,25 +368,22 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
   METHOD sort_by_seqence.
 
-    " First all wit a seqence then the rest
-    DATA(tab) = pos.
+    " First all with a sequence (1 to 999, ascending, equal ones in their
+    " order) then the rest in its order - one pass and a stable sort
+    " instead of 999 scans of the table
+    DATA rest TYPE ty_t_positions.
 
-    DATA(index) = 0.
-
-    DO 999 TIMES.
-
-      index = index + 1.
-
-      LOOP AT tab INTO DATA(line) WHERE sequence = index.
-
+    LOOP AT pos INTO DATA(line).
+      IF line-sequence BETWEEN 1 AND 999.
         APPEND line TO result.
-        DELETE tab.
+      ELSE.
+        APPEND line TO rest.
+      ENDIF.
+    ENDLOOP.
 
-      ENDLOOP.
+    SORT result STABLE BY sequence.
 
-    ENDDO.
-
-    APPEND LINES OF tab TO result.
+    APPEND LINES OF rest TO result.
 
   ENDMETHOD.
 
@@ -536,12 +533,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
         ELSE.
 
-          DATA(pos) = REF #( t_pos[ fname = r_comp->name ] OPTIONAL ).
-
-          " Structure was changed - Field no longer exists
-          IF NOT line_exists( t_comp[ name = pos->fname ] ).
-            CONTINUE.
-          ENDIF.
+          " positions of fields that no longer exist are never reached - the
+          " loop runs over the fields of the structure
+          DATA(pos) = REF #( t_pos[ fname = r_comp->name ] ).
 
           DATA(layout) = VALUE ty_s_positions( ).
 
