@@ -48,6 +48,13 @@ client->view_display( view->stringify( ) ).
 
 `xml_build_table` needs `core`, `mchart` and `si`; `xml_build_simple_form` additionally `form` and `layout`. The samples in `src/01` show both.
 
+#### The table after a roundtrip
+The layout keeps a data reference to your table (`factory( data = REF #( mt_table ) )`). Between two roundtrips abap2UI5 serializes the app into its draft, and a data reference comes back pointing at a **copy** of the table, not at your attribute. Hand the table over again in every roundtrip before the layout works on it - pass it to `sort( )`, `set_selkz( )` and `data_conversion( )` or call `set_data( )` once:
+
+```abap
+mo_layout->sort( data = REF #( mt_table ) ).
+```
+
 #### Demo
 
 ###### Tables

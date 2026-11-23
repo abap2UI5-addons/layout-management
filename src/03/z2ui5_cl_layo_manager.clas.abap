@@ -97,9 +97,23 @@ CLASS z2ui5_cl_layo_manager DEFINITION
       RETURNING
         VALUE(result) TYPE  ty_t_positions.
 
+    "! output: abap_true formats the values for the screen, abap_false back.
+    "! data: the table again - see set_data( )
     METHODS data_conversion
       IMPORTING
-        !output TYPE abap_bool.
+        !output TYPE abap_bool
+        !data   TYPE REF TO data OPTIONAL.
+
+    "! Point the layout at the app's table again. Call it in every
+    "! roundtrip before sort( ), set_selkz( ) or data_conversion( ), or pass
+    "! the table to them directly: the draft of an app is serialized and
+    "! restored between two roundtrips, and a data reference comes back as a
+    "! reference to a COPY of the table, no longer to the app's attribute -
+    "! so without it the layout sorts and converts a copy nobody sees.
+    "! (A sticky session keeps the reference; then it is merely redundant.)
+    METHODS set_data
+      IMPORTING
+        !data TYPE REF TO data.
 
     CLASS-METHODS set_text
       IMPORTING
@@ -134,9 +148,11 @@ CLASS z2ui5_cl_layo_manager DEFINITION
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_Layo_pop_w_sel.
 
+    "! data: the table again - see set_data( )
     METHODS sort
       IMPORTING
-        no_selkz_sort TYPE abap_bool OPTIONAL.
+        no_selkz_sort TYPE abap_bool    OPTIONAL
+        !data         TYPE REF TO data OPTIONAL.
 
     METHODS set_selektion_criteria
       IMPORTING
@@ -144,7 +160,11 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         sel_field     TYPE string
         sel_key_field TYPE string.
 
-    METHODS set_selkz IMPORTING t_event_arg TYPE string_table.
+    "! data: the table again - see set_data( )
+    METHODS set_selkz
+      IMPORTING
+        t_event_arg TYPE string_table
+        !data       TYPE REF TO data OPTIONAL.
 
     DATA mv_sel_mode      TYPE string.
     DATA mv_sel_field     TYPE string.
@@ -714,9 +734,22 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD set_data.
+
+    mr_data = data.
+
+  ENDMETHOD.
+
   METHOD sort.
 
     FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
+
+    IF data IS BOUND.
+      mr_data = data.
+    ENDIF.
+    IF mr_data IS NOT BOUND.
+      RETURN.
+    ENDIF.
 
     ASSIGN mr_data->* TO <table>.
 
@@ -767,6 +800,10 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD set_selkz.
 
     FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
+
+    IF data IS BOUND.
+      mr_data = data.
+    ENDIF.
 
     CHECK mv_sel_mode <> space.
 
@@ -827,6 +864,10 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     FIELD-SYMBOLS <table> TYPE ANY TABLE.
     FIELD-SYMBOLS <value> TYPE any.
+
+    IF data IS BOUND.
+      mr_data = data.
+    ENDIF.
 
     IF mr_data IS NOT BOUND.
       RETURN.

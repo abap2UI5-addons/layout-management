@@ -42,7 +42,8 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
 
       WHEN 'ROW_SELECT'.
 
-        mo_layout->set_selkz( t_event_arg = client->get( )-t_event_arg ).
+        mo_layout->set_selkz( t_event_arg = client->get( )-t_event_arg
+                               data        = REF #( mt_table ) ).
 
       WHEN 'BACK'.
         client->nav_app_leave( ).
@@ -104,7 +105,9 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
       on_event( ).
     ENDIF.
 
-    mo_layout->sort( ).
+    " the table again: the restored draft holds the layout's reference to a
+    " copy of it (z2ui5_cl_layo_manager=>set_data)
+    mo_layout->sort( data = REF #( mt_table ) ).
 
   ENDMETHOD.
 

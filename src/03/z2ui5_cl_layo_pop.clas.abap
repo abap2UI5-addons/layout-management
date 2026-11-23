@@ -1062,21 +1062,64 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD check_width_unit.
 
+    " the number at the start of the width - up to four digits, optionally
+    " a dot and one decimal (`10`, `12.5`) - with the unit rem. A loop over
+    " the characters instead of FIND REGEX: POSIX regular expressions are
+    " deprecated (ATC), and FIND PCRE does not exist before 7.55 or in the
+    " 7.02 downport
+    DATA lv_pos    TYPE i.
+    DATA lv_char   TYPE c LENGTH 1.
+    DATA lv_digits TYPE i.
+
     IF width IS INITIAL.
       RETURN.
     ENDIF.
 
-    IF width CA '.'.
-      FIND REGEX '([0-9]{1,4}.[0-9]{1})' IN width SUBMATCHES result.
-    ELSE.
-      FIND REGEX '([0-9]{1,4})' IN width SUBMATCHES result.
+    DATA(lv_len) = strlen( width ).
+
+    " to the first digit
+    WHILE lv_pos < lv_len.
+      lv_char = substring( val = width
+                           off = lv_pos
+                           len = 1 ).
+      IF lv_char CO '0123456789'.
+        EXIT.
+      ENDIF.
+      lv_pos = lv_pos + 1.
+    ENDWHILE.
+
+    " up to four digits
+    WHILE lv_pos < lv_len AND lv_digits < 4.
+      lv_char = substring( val = width
+                           off = lv_pos
+                           len = 1 ).
+      IF lv_char CN '0123456789'.
+        EXIT.
+      ENDIF.
+      result = result && lv_char.
+      lv_digits = lv_digits + 1.
+      lv_pos = lv_pos + 1.
+    ENDWHILE.
+
+    " no digits in it (auto, %): nothing - a bare `rem` is no width
+    IF result IS INITIAL.
+      RETURN.
     ENDIF.
 
-    " no digits in it (auto, %): an empty result stays empty - CO is true
-    " for an empty operand, which made the width a bare, invalid `rem`
-    IF result IS NOT INITIAL AND result CO '0123456789. '.
-      result = |{ result }rem|.
+    " a dot and one decimal
+    IF lv_pos + 1 < lv_len
+        AND substring( val = width
+                       off = lv_pos
+                       len = 1 ) = '.'
+        AND substring( val = width
+                       off = lv_pos + 1
+                       len = 1 ) CO '0123456789'.
+      result = |{ result }.{ substring( val = width
+                                        off = lv_pos + 1
+                                        len = 1 ) }|.
     ENDIF.
+
+    result = |{ result }rem|.
 
   ENDMETHOD.
 
