@@ -152,7 +152,8 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     METHODS sort
       IMPORTING
         no_selkz_sort TYPE abap_bool    OPTIONAL
-        !data         TYPE REF TO data OPTIONAL.
+        !data         TYPE REF TO data OPTIONAL
+          PREFERRED PARAMETER no_selkz_sort.
 
     METHODS set_selektion_criteria
       IMPORTING
