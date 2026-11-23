@@ -9,15 +9,13 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
     TYPES:
       BEGIN OF ty_s_result,
         row             TYPE REF TO data,
-      END OF ty_s_result,
-      ty_t_result TYPE STANDARD TABLE OF ty_s_result WITH EMPTY KEY.
+        check_confirmed TYPE abap_bool,
+      END OF ty_s_result.
 
     DATA ms_result       TYPE ty_s_result.
-    DATA mt_result       TYPE ty_t_result.
     DATA mr_tab          TYPE REF TO data.
     DATA mr_out          TYPE REF TO data.
     DATA mr_out_tmp      TYPE REF TO data.
-    DATA mv_check_confirmed type abap_bool.
 
     DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
     DATA mv_search_value TYPE string.
@@ -31,8 +29,6 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
         i_contentwidth     TYPE clike                         OPTIONAL
         i_contentheight    TYPE clike                         OPTIONAL
         i_growingthreshold TYPE clike                         OPTIONAL
-
-        i_multiselect      TYPE abap_bool                     OPTIONAL
         i_handle01         TYPE z2ui5_cl_layo_manager=>handle OPTIONAL
         i_handle02         TYPE z2ui5_cl_layo_manager=>handle OPTIONAL
         i_handle03         TYPE z2ui5_cl_layo_manager=>handle OPTIONAL
@@ -42,7 +38,7 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
 
     METHODS result
       RETURNING
-        VALUE(result) TYPE ty_t_result.
+        VALUE(result) TYPE ty_s_result.
 
   PROTECTED SECTION.
     DATA check_initialized TYPE abap_bool.
@@ -53,7 +49,6 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
     DATA content_height    TYPE string.
     DATA growing_threshold TYPE string.
     DATA descending        TYPE abap_bool.
-    DATA multiselect       TYPE abap_bool.
 
     METHODS on_event.
     METHODS Render_main.
@@ -84,7 +79,6 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     r_result->content_height    = i_contentheight.
     r_result->content_width     = i_contentwidth.
     r_result->growing_threshold = i_growingthreshold.
-    r_result->multiselect       = i_multiselect.
 
     r_result->mr_tab            = z2ui5_cl_util=>conv_copy_ref_data( i_tab ).
 
@@ -104,16 +98,13 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     DATA(popup) = z2ui5_cl_xml_view=>factory_popup( )->dialog( title      = title
                                                                afterclose = client->_event( 'CANCEL' )  ).
 
-    z2ui5_cl_layo_xml_builder=>xml_build_table(
-        i_data         = mr_out
-        i_xml          = popup
-        i_client       = client
-        i_layout       = mo_layout
-        i_search_value = REF #( mv_search_value )
-        i_sel_mode     = COND #( WHEN multiselect = 'MultiSelect' THEN 'M' ELSE 'S' )
-        i_col_type     = 'Navigation'
-        i_col_bind_to  = 'ZZROW_ID'
-        i_sel_bind_to  = 'ZZSELKZ' ).
+    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data         = mr_out
+                                                i_xml          = popup
+                                                i_client       = client
+                                                i_layout       = mo_layout
+                                                i_search_value = REF #( mv_search_value )
+                                                i_col_type     = 'Navigation'
+                                                i_col_bind_to  = 'ZZROW_ID' ).
 
     client->popup_display( popup->stringify( ) ).
 
@@ -145,8 +136,6 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     CASE client->get( )-event.
 
       WHEN 'ROW_SELECT'.
-
-        mo_layout->set_selkz( client->get( )-t_event_arg ).
 
         confirm( ).
 
@@ -194,33 +183,31 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
 
     ASSIGN mr_out->* TO <tab>.
+    DATA(t_arg) = client->get( )-t_event_arg.
+    DATA(row_clicked) = t_arg[ 1 ].
 
     LOOP AT <tab> ASSIGNING FIELD-SYMBOL(<line>).
 
-      ASSIGN COMPONENT 'ZZSELKZ' OF STRUCTURE <line> TO FIELD-SYMBOL(<selkz>).
+      ASSIGN COMPONENT 'ZZROW_ID' OF STRUCTURE <line> TO FIELD-SYMBOL(<row_id>).
 
-      IF <selkz> IS NOT ASSIGNED.
+      IF <row_id> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
 
-      IF <selkz> = abap_true.
-
+      IF <row_id> = row_clicked.
         ms_result-row->* = CORRESPONDING #( <line> ).
-        APPEND ms_result-row->* TO mt_result.
-
+        EXIT.
       ENDIF.
 
     ENDLOOP.
 
-    IF mt_result IS NOT INITIAL.
-      mv_check_confirmed = abap_true.
-    ENDIF.
+    ms_result-check_confirmed = abap_true.
 
   ENDMETHOD.
 
   METHOD result.
 
-    result = mt_result.
+    result = ms_result.
 
   ENDMETHOD.
 
@@ -254,7 +241,6 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD set_row_id.
-
     FIELD-SYMBOLS <tab>  TYPE STANDARD TABLE.
     FIELD-SYMBOLS <line> TYPE any.
 
@@ -267,35 +253,33 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
         <row> = sy-tabix.
       ENDIF.
     ENDLOOP.
-
   ENDMETHOD.
 
   METHOD get_comp.
-
     DATA index TYPE int4.
-    DATA selkz TYPE abap_bool.
+
+*    DATA selkz TYPE abap_bool.
 
     TRY.
 
         DATA(comp) = z2ui5_cl_util=>rtti_get_t_attri_by_any( mr_tab ).
-
-        APPEND LINES OF comp TO result.
 
         IF xsdbool( line_exists( comp[ name = 'ZZROW_ID' ] ) ) = abap_false.
           APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
                                     ( name = 'ZZROW_ID'
                                       type = CAST #( cl_abap_datadescr=>describe_by_data( index ) ) ) ) TO result.
         ENDIF.
-        IF xsdbool( line_exists( comp[ name = 'ZZSELKZ' ] ) ) = abap_false.
-          APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
-                                    ( name = 'ZZSELKZ'
-                                      type = CAST #( cl_abap_datadescr=>describe_by_data( selkz ) ) ) ) TO result.
+*        IF xsdbool( line_exists( comp[ name = 'SELKZ' ] ) ) = abap_false.
+*          APPEND LINES OF VALUE cl_abap_structdescr=>component_table(
+*                                    ( name = 'SELKZ'
+*                                      type = CAST #( cl_abap_datadescr=>describe_by_data( selkz ) ) ) ) TO result.
+*
+*        ENDIF.
 
-        ENDIF.
+        APPEND LINES OF comp TO result.
 
       CATCH cx_root.
     ENDTRY.
-
   ENDMETHOD.
 
   METHOD on_event_search.

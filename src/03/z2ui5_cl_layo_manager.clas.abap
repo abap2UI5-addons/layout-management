@@ -5,6 +5,9 @@ CLASS z2ui5_cl_layo_manager DEFINITION
   PUBLIC SECTION.
     INTERFACES if_serializable_object.
 
+    CONSTANTS screen_format_l TYPE string VALUE 'L' ##NO_TEXT.
+    CONSTANTS screen_format_s TYPE string VALUE 'S' ##NO_TEXT.
+
     TYPES handle  TYPE c LENGTH 40.
     TYPES control TYPE c LENGTH 15.
 
@@ -29,6 +32,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
       BEGIN OF ty_s_sub_columns,
         key   TYPE string,
         fname TYPE string,
+        descr type abap_bool,
       END OF ty_s_sub_columns.
     TYPES ty_t_sub_columns TYPE STANDARD TABLE OF ty_s_sub_columns WITH EMPTY KEY.
 
@@ -64,6 +68,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         handle02      TYPE clike OPTIONAL
         handle03      TYPE clike OPTIONAL
         handle04      TYPE clike OPTIONAL
+        !format       TYPE clike OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
 
@@ -82,6 +87,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         handle02      TYPE clike OPTIONAL
         handle03      TYPE clike OPTIONAL
         handle04      TYPE clike OPTIONAL
+        !format       TYPE clike OPTIONAL
       RETURNING
         VALUE(result) TYPE  ty_t_head.
 
@@ -124,6 +130,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         handle02      TYPE clike   OPTIONAL
         handle03      TYPE clike   OPTIONAL
         handle04      TYPE clike   OPTIONAL
+        !format       TYPE clike   OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_Layo_pop_w_sel.
 
@@ -161,6 +168,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         handle02      TYPE clike       OPTIONAL
         handle03      TYPE clike       OPTIONAL
         handle04      TYPE clike       OPTIONAL
+        !format       TYPE clike       OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
 
@@ -171,6 +179,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         handle02      TYPE clike
         handle01      TYPE clike
         layout_guid   TYPE clike
+        !format       TYPE clike OPTIONAL
         !head         TYPE  ty_t_head
       RETURNING
         VALUE(result) TYPE  ty_s_head.
@@ -240,7 +249,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                                 handle01 = handle01
                                 handle02 = handle02
                                 handle03 = handle03
-                                handle04 = handle04 ).
+                                handle04 = handle04
+                                format   = format  ).
 
   ENDMETHOD.
 
@@ -255,6 +265,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
              handle02,
              handle03,
              handle04,
+             screen_format,
              descr,
              def,
              uname
@@ -271,6 +282,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
              handle02,
              handle03,
              handle04,
+             screen_format,
              descr,
              def,
              uname
@@ -283,6 +295,28 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
         INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
 
     ENDIF.
+
+    " FALLBACK - Screenformat was added! We are changing empty Format.
+    " Set Default Layout
+
+    IF line_exists( result[ screen_format = format
+                            def           = abap_true ] ).
+      DATA(no_default) = abap_true.
+    ENDIF.
+
+    LOOP AT result REFERENCE INTO DATA(line) WHERE screen_format IS INITIAL.
+
+      IF no_default = abap_true.
+        line->def = abap_false.
+      ENDIF.
+
+      IF format IS SUPPLIED AND format IS NOT INITIAL.
+        line->screen_format = format.
+      ELSE.
+        line->screen_format = screen_format_l.
+      ENDIF.
+
+    ENDLOOP.
 
   ENDMETHOD.
 
@@ -320,9 +354,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD set_text.
 
     IF layout-alternative_text IS INITIAL.
-      result = z2ui5_cl_util=>rtti_get_data_element_texts( layout-rollname  )-short.
+      result = z2ui5_cl_util=>rtti_get_data_element_texts( layout-rollname  )-long.
     ELSE.
-      result = z2ui5_cl_util=>rtti_get_data_element_texts( layout-alternative_text )-short.
+      result = z2ui5_cl_util=>rtti_get_data_element_texts( layout-alternative_text )-long.
     ENDIF.
 
     IF result IS INITIAL.
@@ -380,7 +414,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                                     handle01 = handle01
                                     handle02 = handle02
                                     handle03 = handle03
-                                    handle04 = handle04  ).
+                                    handle04 = handle04
+                                    format   = format  ).
 
     result = z2ui5_cl_Layo_pop_w_sel=>factory( i_tab   = layouts
                                                i_title = 'Layouts' ).
@@ -401,6 +436,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                   handle02,
                   handle03,
                   handle04,
+                  screen_format,
                   descr,
                   def,
                   uname
@@ -478,13 +514,15 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                                  handle01    = handle01
                                  handle02    = handle02
                                  handle03    = handle03
-                                 handle04    = handle04 ).
+                                 handle04    = handle04
+                                 format      = format  ).
 
     DATA(def) = get_default_layout( handle04    = handle04
                                     handle03    = handle03
                                     handle02    = handle02
                                     handle01    = handle01
                                     layout_guid = layout_guid
+                                    format      = format
                                     head        = head ).
 
     IF def-layout IS NOT INITIAL.
@@ -548,15 +586,16 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
       ENDLOOP.
 
-      result->ms_layout-s_head-guid     = guid.
-      result->ms_layout-s_head-layout   = 'DEFAULT'.
-      result->ms_layout-s_head-control  = control.
-      result->ms_layout-s_head-descr    = 'System generated Layout'.
-      result->ms_layout-s_head-def      = abap_true.
-      result->ms_layout-s_head-handle01 = handle01.
-      result->ms_layout-s_head-handle02 = handle02.
-      result->ms_layout-s_head-handle03 = handle03.
-      result->ms_layout-s_head-handle04 = handle04.
+      result->ms_layout-s_head-guid          = guid.
+      result->ms_layout-s_head-layout        = 'DEFAULT'.
+      result->ms_layout-s_head-control       = control.
+      result->ms_layout-s_head-descr         = |{ handle04 } - { handle03 } - { format }|.
+      result->ms_layout-s_head-def           = abap_true.
+      result->ms_layout-s_head-handle01      = handle01.
+      result->ms_layout-s_head-handle02      = handle02.
+      result->ms_layout-s_head-handle03      = handle03.
+      result->ms_layout-s_head-handle04      = handle04.
+      result->ms_layout-s_head-screen_format = format.
 
     ENDIF.
 
@@ -620,24 +659,64 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    " Default all Handles + User
-    result = VALUE #( head[ handle01 = handle01
-                            handle02 = handle02
-                            handle03 = handle03
-                            handle04 = handle04
-                            def      = abap_true
-                            uname    = sy-uname ] OPTIONAL ).
+    " all Handles + Default + User + Format
+    result = VALUE #( head[ handle01      = handle01
+                            handle02      = handle02
+                            handle03      = handle03
+                            handle04      = handle04
+                            screen_format = format
+                            def           = abap_true
+                            uname         = sy-uname ] OPTIONAL ).
 
     IF result IS NOT INITIAL.
       RETURN.
     ENDIF.
 
-    " Default frist 4 Handles + no User
-    result = VALUE #( head[ handle01 = handle01
-                            handle02 = handle02
-                            handle03 = handle03
-                            handle04 = handle04
-                            def      = abap_true ] OPTIONAL ).
+    " first 4 Handles + Default  + no User + Format
+    result = VALUE #( head[ handle01      = handle01
+                            handle02      = handle02
+                            handle03      = handle03
+                            handle04      = handle04
+                            screen_format = format
+                            def           = abap_true
+                            uname         = space ] OPTIONAL ).
+
+    IF result IS NOT INITIAL.
+      RETURN.
+    ENDIF.
+
+    " first 4 Handles + no User and Format
+    result = VALUE #( head[ handle01      = handle01
+                            handle02      = handle02
+                            handle03      = handle03
+                            handle04      = handle04
+                            screen_format = format
+                            uname         = space ] OPTIONAL ).
+
+    IF result IS NOT INITIAL.
+      RETURN.
+    ENDIF.
+
+
+
+    " Default all Handles + User
+    " result = VALUE #( head[ handle01 = handle01
+    " handle02 = handle02
+    " handle03 = handle03
+    " handle04 = handle04
+    " def      = abap_true
+    " uname    = sy-uname ] OPTIONAL ).
+    " --
+    " IF result IS NOT INITIAL.
+    " RETURN.
+    " ENDIF.
+    " --
+    " Default first 4 Handles + no User
+    " result = VALUE #( head[ handle01 = handle01
+    " handle02 = handle02
+    " handle03 = handle03
+    " handle04 = handle04
+    " def      = abap_true ] OPTIONAL ).
 
   ENDMETHOD.
 

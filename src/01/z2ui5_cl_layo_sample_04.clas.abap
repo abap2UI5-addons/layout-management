@@ -94,7 +94,7 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA(class) = z2ui5_cL_util=>rtti_get_classname_by_ref( me ).
+    DATA(class) = z2ui5_cl_util=>rtti_get_classname_by_ref( me ).
 
     mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>ui_simpleform
                                                 data     = REF #( ms_data )
