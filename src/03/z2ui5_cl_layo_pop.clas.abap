@@ -42,14 +42,14 @@ CLASS z2ui5_cl_layo_pop DEFINITION
     DATA mv_rerender    TYPE abap_bool.
     DATA mv_tab         TYPE string.
 
-    DATA mv_xl_label    TYPE int4.
-    DATA mv_xl_value    TYPE int4.
-    DATA mv_l_label     TYPE int4.
-    DATA mv_l_value     TYPE int4.
-    DATA mv_m_label     TYPE int4.
-    DATA mv_m_value     TYPE int4.
-    DATA mv_s_label     TYPE int4.
-    DATA mv_s_value     TYPE int4.
+    DATA mv_xl_label    TYPE i.
+    DATA mv_xl_value    TYPE i.
+    DATA mv_l_label     TYPE i.
+    DATA mv_l_value     TYPE i.
+    DATA mv_m_label     TYPE i.
+    DATA mv_m_value     TYPE i.
+    DATA mv_s_label     TYPE i.
+    DATA mv_s_value     TYPE i.
 
     CLASS-METHODS on_event_layout
       IMPORTING
