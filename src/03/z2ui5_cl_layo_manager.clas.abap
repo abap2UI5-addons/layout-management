@@ -308,6 +308,17 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         !data         TYPE REF TO data OPTIONAL
           PREFERRED PARAMETER no_selkz_sort.
 
+    "! The sorting of one column clicked in the table header: none -&gt;
+    "! ascending -&gt; descending -&gt; none. Every other column loses its
+    "! sorting, so the table is sorted by the column clicked last. Changes the
+    "! layout only - sort( ) applies it to the data.
+    "! result: abap_false when the layout has no column fname
+    METHODS toggle_sorting
+      IMPORTING
+        fname         TYPE clike
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
     METHODS set_selektion_criteria
       IMPORTING
         sel_mode      TYPE string
@@ -1483,6 +1494,27 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
   METHOD digit_type_require.
 
     result = |\{{ digit_type_alias }:'{ digit_type_module }'\}|.
+
+  ENDMETHOD.
+
+  METHOD toggle_sorting.
+
+    READ TABLE ms_layout-t_layout REFERENCE INTO DATA(column) WITH KEY fname = fname.
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    DATA(sorting) = SWITCH string( column->sorting
+                                   WHEN space        THEN `ASCENDING`
+                                   WHEN `ASCENDING`  THEN `DESCENDING`
+                                   ELSE `` ).
+
+    LOOP AT ms_layout-t_layout REFERENCE INTO DATA(position) WHERE sorting IS NOT INITIAL.
+      CLEAR position->sorting.
+    ENDLOOP.
+
+    column->sorting = sorting.
+    result = abap_true.
 
   ENDMETHOD.
 

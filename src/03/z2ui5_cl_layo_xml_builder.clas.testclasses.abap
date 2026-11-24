@@ -1,5 +1,5 @@
-" the app a table is rendered for: the client binds the table and the
-" layout as its public attributes
+" the apps a table is rendered for: the client binds the table and the
+" layout as their public attributes
 CLASS ltcl_app DEFINITION FINAL FOR TESTING.
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
@@ -28,6 +28,53 @@ CLASS ltcl_app IMPLEMENTATION.
   ENDMETHOD.
 ENDCLASS.
 
+" the cell controls: the structures of this addon, and structures of an
+" app's own that name some components differently (SIZE) and carry more
+" (COLOR, PRESS) - mapped by rollname
+CLASS ltcl_app_cells DEFINITION FINAL FOR TESTING.
+  PUBLIC SECTION.
+    INTERFACES z2ui5_if_app.
+
+    TYPES:
+      BEGIN OF ty_s_own_icon,
+        src         TYPE string,
+        size        TYPE string,
+        color       TYPE string,
+        press       TYPE string,
+        press_value TYPE string,
+      END OF ty_s_own_icon.
+    TYPES:
+      BEGIN OF ty_s_own_radial,
+        size         TYPE string,
+        percentage   TYPE i,
+        valuecolor   TYPE string,
+        hideonnodata TYPE abap_bool,
+      END OF ty_s_own_radial.
+    TYPES:
+      BEGIN OF ty_s_own_color,
+        color TYPE string,
+      END OF ty_s_own_color.
+    TYPES:
+      BEGIN OF ty_s_row,
+        matnr      TYPE c LENGTH 18,
+        switch     TYPE z2ui5_xml_s_switch,
+        input      TYPE z2ui5_xml_s_input,
+        button     TYPE z2ui5_xml_s_button,
+        own_icon   TYPE ty_s_own_icon,
+        own_radial TYPE ty_s_own_radial,
+        icon       TYPE z2ui5_xml_s_icon,
+        cell_color TYPE ty_s_own_color,
+      END OF ty_s_row.
+
+    DATA mt_data   TYPE STANDARD TABLE OF ty_s_row WITH EMPTY KEY.
+    DATA mo_layout TYPE REF TO z2ui5_cl_layo_manager.
+ENDCLASS.
+
+CLASS ltcl_app_cells IMPLEMENTATION.
+  METHOD z2ui5_if_app~main ##NEEDED.
+  ENDMETHOD.
+ENDCLASS.
+
 CLASS ltcl_xml_builder DEFINITION DEFERRED.
 CLASS z2ui5_cl_layo_xml_builder DEFINITION LOCAL FRIENDS ltcl_xml_builder.
 
@@ -47,6 +94,16 @@ CLASS ltcl_xml_builder DEFINITION FINAL FOR TESTING
     METHODS require_only_with_digits FOR TESTING.
     METHODS table_unchanged FOR TESTING.
     METHODS table_unchanged_options FOR TESTING.
+    METHODS cell_control_by_rollname FOR TESTING.
+    METHODS col_sort_header FOR TESTING.
+    METHODS col_sort_event FOR TESTING.
+    METHODS col_sort_other_layout FOR TESTING.
+    METHODS row_color FOR TESTING.
+    METHODS row_color_path FOR TESTING.
+    METHODS sel_event FOR TESTING.
+    METHODS switch_input_button FOR TESTING.
+    METHODS own_structures FOR TESTING.
+    METHODS sub_col_controls FOR TESTING.
 
     DATA mo_app    TYPE REF TO ltcl_app.
     DATA mi_client TYPE REF TO z2ui5_if_client.
@@ -66,8 +123,15 @@ CLASS ltcl_xml_builder DEFINITION FINAL FOR TESTING
       RETURNING
         VALUE(result) TYPE string.
 
-    "! the table as it is rendered today - the output every existing caller
-    "! keeps
+    "! the cells app with its layout, rendered
+    METHODS render_cells
+      IMPORTING
+        i_sub_col_controls TYPE abap_bool DEFAULT abap_false
+      RETURNING
+        VALUE(result)      TYPE string.
+
+    "! the table as it was rendered before the table options - the output
+    "! every existing caller keeps
     METHODS golden_default
       RETURNING
         VALUE(result) TYPE string.
@@ -251,6 +315,41 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD render_cells.
+
+    DATA(app) = NEW ltcl_app_cells( ).
+    app->mt_data = VALUE #( ( matnr = `M1` ) ).
+    app->mo_layout = NEW #( ).
+    app->mo_layout->ms_layout-s_head-guid = `GUID2`.
+    app->mo_layout->ms_layout-t_layout = VALUE #(
+        ( fname = `MATNR` rollname = `MATNR` tlabel = `Material`
+          t_sub_col = VALUE #( ( fname = `SWITCH` ) ( fname = `ICON` ) ) )
+        ( fname = `SWITCH` rollname = `Z2UI5_XML_S_SWITCH` tlabel = `Switch` )
+        ( fname = `INPUT` rollname = `Z2UI5_XML_S_INPUT` tlabel = `Input` )
+        ( fname = `BUTTON` rollname = `Z2UI5_XML_S_BUTTON` tlabel = `Button`
+          t_sub_col = VALUE #( ( fname = `MATNR` ) ) )
+        ( fname = `OWN_ICON` rollname = `TY_S_OWN_ICON` tlabel = `Own icon` )
+        ( fname = `OWN_RADIAL` rollname = `TY_S_OWN_RADIAL` tlabel = `Own radial` )
+        ( fname = `ICON` rollname = `Z2UI5_XML_S_ICON` tlabel = `Icon` ) ).
+
+    client_for( app ).
+
+    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
+
+    z2ui5_cl_layo_xml_builder=>xml_build_table(
+        i_data             = REF #( app->mt_data )
+        i_xml              = view
+        i_client           = mi_client
+        i_layout           = app->mo_layout
+        i_sub_col_controls = i_sub_col_controls
+        i_t_cell_control   = VALUE #(
+            ( rollname = `TY_S_OWN_ICON` control = z2ui5_cl_layo_xml_builder=>cs_cell_control-icon )
+            ( rollname = `TY_S_OWN_RAD*` control = z2ui5_cl_layo_xml_builder=>cs_cell_control-radial_chart ) ) ).
+
+    result = view->stringify( ).
+
+  ENDMETHOD.
+
   METHOD table_unchanged.
 
     cl_abap_unit_assert=>assert_equals( exp = golden_default( )
@@ -262,6 +361,205 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
     cl_abap_unit_assert=>assert_equals( exp = golden_options( )
                                         act = render_table( abap_true ) ).
+
+  ENDMETHOD.
+
+  METHOD cell_control_by_rollname.
+
+    " the built-in patterns
+    cl_abap_unit_assert=>assert_equals( exp = z2ui5_cl_layo_xml_builder=>cs_cell_control-icon
+                                        act = z2ui5_cl_layo_xml_builder=>cell_control( `Z2UI5_XML_S_ICON` ) ).
+    cl_abap_unit_assert=>assert_equals( exp = z2ui5_cl_layo_xml_builder=>cs_cell_control-switch
+                                        act = z2ui5_cl_layo_xml_builder=>cell_control( `ZMY_XML_S_SWITCH` ) ).
+    cl_abap_unit_assert=>assert_equals( exp = z2ui5_cl_layo_xml_builder=>cs_cell_control-text
+                                        act = z2ui5_cl_layo_xml_builder=>cell_control( `MATNR` ) ).
+
+    " the app's entries first - a rollname of its own, a namespace, and a
+    " built-in one drawn as text instead
+    DATA(t_cell_control) = VALUE z2ui5_cl_layo_xml_builder=>ty_t_cell_control(
+        ( rollname = `/ABC/S_SWITCH` control = z2ui5_cl_layo_xml_builder=>cs_cell_control-switch )
+        ( rollname = `Z2UI5_XML_S_ICON` control = z2ui5_cl_layo_xml_builder=>cs_cell_control-text ) ).
+
+    cl_abap_unit_assert=>assert_equals( exp = z2ui5_cl_layo_xml_builder=>cs_cell_control-switch
+                                        act = z2ui5_cl_layo_xml_builder=>cell_control(
+                                                  rollname       = `/ABC/S_SWITCH`
+                                                  t_cell_control = t_cell_control ) ).
+    cl_abap_unit_assert=>assert_equals( exp = z2ui5_cl_layo_xml_builder=>cs_cell_control-text
+                                        act = z2ui5_cl_layo_xml_builder=>cell_control(
+                                                  rollname       = `Z2UI5_XML_S_ICON`
+                                                  t_cell_control = t_cell_control ) ).
+
+  ENDMETHOD.
+
+  METHOD col_sort_header.
+
+    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
+    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data           = REF #( mo_app->mt_data )
+                                                i_xml            = view
+                                                i_client         = mi_client
+                                                i_layout         = mo_app->mo_layout
+                                                i_col_sort       = abap_true
+                                                i_col_sort_class = `myColSort` ).
+    DATA(xml) = view->stringify( ).
+
+    " the standard sort icon, bound to the sorting of the layout
+    cl_abap_unit_assert=>assert_char_cp(
+        exp = `*<Column *sortIndicator="{= ${/MO_LAYOUT/MS_LAYOUT/T_LAYOUT/0/SORTING} === 'ASCENDING' ? 'Ascending' : ${/MO_LAYOUT/MS_LAYOUT/T_LAYOUT/0/SORTING} === 'DESCENDING' ? 'Descending' : 'None' }"*`
+        act = xml ).
+    " the header is a link that sends the layout and the column
+    cl_abap_unit_assert=>assert_char_cp(
+        exp = `*<Link text="Order" wrapping="true" press=".eB(['LAYO_COLUMN_SORT'], 'GUID1', 'VBELN')" class="myColSort"/></Column>*`
+        act = xml ).
+    cl_abap_unit_assert=>assert_char_cp( exp = `*<Link text="Qty" *`
+                                         act = xml ).
+    " no plain header is left
+    cl_abap_unit_assert=>assert_false( xsdbool( xml CS `<Text text="Order"/>` ) ).
+
+  ENDMETHOD.
+
+  METHOD col_sort_event.
+
+    " the order of the rows is sort( )'s business - and the transpiled
+    " runtime drops its dynamic SORT BY (sortorder): checked here is what
+    " the event does to the layout
+    mo_app->mo_layout->ms_layout-t_layout[ fname = `VBELN` ]-sorting = `ASCENDING`.
+
+    mo_action->ms_actual-event       = z2ui5_cl_layo_xml_builder=>cv_event_column_sort.
+    mo_action->ms_actual-t_event_arg = VALUE #( ( `GUID1` ) ( `MATNR` ) ).
+
+    " the popup's event handler takes it as well - and opens no popup
+    z2ui5_cl_layo_pop=>on_event_layout( client = mi_client
+                                        layout = mo_app->mo_layout
+                                        data   = REF #( mo_app->mt_data ) ).
+
+    cl_abap_unit_assert=>assert_equals( exp = `ASCENDING`
+                                        act = mo_app->mo_layout->ms_layout-t_layout[ fname = `MATNR` ]-sorting ).
+    " sorted by the column clicked last only
+    cl_abap_unit_assert=>assert_initial( mo_app->mo_layout->ms_layout-t_layout[ fname = `VBELN` ]-sorting ).
+    cl_abap_unit_assert=>assert_initial( mo_action->ms_next-o_app_call ).
+
+    " the second click: descending
+    cl_abap_unit_assert=>assert_true( z2ui5_cl_layo_xml_builder=>on_event_column_sort(
+                                          client = mi_client
+                                          layout = mo_app->mo_layout
+                                          data   = REF #( mo_app->mt_data ) ) ).
+    cl_abap_unit_assert=>assert_equals( exp = `DESCENDING`
+                                        act = mo_app->mo_layout->ms_layout-t_layout[ fname = `MATNR` ]-sorting ).
+
+    " the third: no sorting
+    z2ui5_cl_layo_xml_builder=>on_event_column_sort( client = mi_client
+                                                     layout = mo_app->mo_layout
+                                                     data   = REF #( mo_app->mt_data ) ).
+    cl_abap_unit_assert=>assert_initial( mo_app->mo_layout->ms_layout-t_layout[ fname = `MATNR` ]-sorting ).
+
+  ENDMETHOD.
+
+  METHOD col_sort_other_layout.
+
+    " the column sort of another table, and an unknown column
+    mo_action->ms_actual-event       = z2ui5_cl_layo_xml_builder=>cv_event_column_sort.
+    mo_action->ms_actual-t_event_arg = VALUE #( ( `GUID2` ) ( `MATNR` ) ).
+
+    cl_abap_unit_assert=>assert_false( z2ui5_cl_layo_xml_builder=>on_event_column_sort(
+                                           client = mi_client
+                                           layout = mo_app->mo_layout ) ).
+
+    mo_action->ms_actual-t_event_arg = VALUE #( ( `GUID1` ) ( `NOPE` ) ).
+
+    cl_abap_unit_assert=>assert_false( z2ui5_cl_layo_xml_builder=>on_event_column_sort(
+                                           client = mi_client
+                                           layout = mo_app->mo_layout ) ).
+    cl_abap_unit_assert=>assert_false( mo_app->mo_layout->toggle_sorting( `NOPE` ) ).
+
+  ENDMETHOD.
+
+  METHOD row_color.
+
+    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
+    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data      = REF #( mo_app->mt_data )
+                                                i_xml       = view
+                                                i_client    = mi_client
+                                                i_layout    = mo_app->mo_layout
+                                                i_row_color = `CELL_COLOR-COLOR` ).
+
+    " on the row, before its cells
+    cl_abap_unit_assert=>assert_char_cp(
+        exp = `*<ColumnListItem *><customData><core:CustomData xmlns:core="sap.ui.core" key="color" value="{CELL_COLOR/COLOR}" writeToDom="true"/></customData><cells>*`
+        act = view->stringify( ) ).
+
+  ENDMETHOD.
+
+  METHOD row_color_path.
+
+    cl_abap_unit_assert=>assert_equals( exp = `{COLOR}`
+                                        act = z2ui5_cl_layo_xml_builder=>row_color_binding( `COLOR` ) ).
+    cl_abap_unit_assert=>assert_equals( exp = `{ABC/COLOR/KEY}`
+                                        act = z2ui5_cl_layo_xml_builder=>row_color_binding( `/ABC/COLOR-KEY` ) ).
+
+  ENDMETHOD.
+
+  METHOD sel_event.
+
+    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
+    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data      = REF #( mo_app->mt_data )
+                                                i_xml       = view
+                                                i_client    = mi_client
+                                                i_layout    = mo_app->mo_layout
+                                                i_sel_event = `ROW_SELECT` ).
+
+    cl_abap_unit_assert=>assert_char_cp( exp = `*selectionChange=".eB(['ROW_SELECT'])"*`
+                                         act = view->stringify( ) ).
+
+  ENDMETHOD.
+
+  METHOD switch_input_button.
+
+    DATA(xml) = render_cells( ).
+
+    cl_abap_unit_assert=>assert_char_cp(
+        exp = `*<Switch state="{SWITCH/STATE}" customTextOn="{SWITCH/CUSTOMTEXTON}" customTextOff="{SWITCH/CUSTOMTEXTOFF}" enabled="{SWITCH/ENABLED}" type="{SWITCH/TYPE}" change=".eB([${SWITCH/CHANGE}], ${SWITCH/CHANGE_VALUE})"/>*`
+        act = xml ).
+    cl_abap_unit_assert=>assert_char_cp(
+        exp = `*<Input value="{INPUT/VALUE}" placeholder="{INPUT/PLACEHOLDER}" enabled="{INPUT/ENABLED}" editable="{INPUT/EDITABLE}" visible="{INPUT/VISIBLE}"/>*`
+        act = xml ).
+    cl_abap_unit_assert=>assert_char_cp(
+        exp = `*<Button text="{BUTTON/TEXT}" icon="{BUTTON/ICON}" type="{BUTTON/TYPE}" press=".eB([${BUTTON/PRESS}], ${BUTTON/PRESS_VALUE})"/>*`
+        act = xml ).
+    " without i_sub_col_controls a control column shows the control only
+    cl_abap_unit_assert=>assert_false( xsdbool( xml CS `<VBox` ) ).
+
+  ENDMETHOD.
+
+  METHOD own_structures.
+
+    DATA(xml) = render_cells( ).
+
+    " SIZE instead of ICON_SIZE, and COLOR and PRESS because the structure has them
+    cl_abap_unit_assert=>assert_char_cp(
+        exp = `*<core:Icon src="{OWN_ICON/SRC}" size="{OWN_ICON/SIZE}" color="{OWN_ICON/COLOR}" press=".eB([${OWN_ICON/PRESS}], ${OWN_ICON/PRESS_VALUE})"/>*`
+        act = xml ).
+    cl_abap_unit_assert=>assert_char_cp( exp = `*<mchart:RadialMicroChart size="{OWN_RADIAL/SIZE}" percentage="{OWN_RADIAL/PERCENTAGE}"*`
+                                         act = xml ).
+    " the structure of this addon as before
+    cl_abap_unit_assert=>assert_char_cp( exp = `*<core:Icon src="{ICON/SRC}" size="{ICON/ICON_SIZE}"/>*`
+                                         act = xml ).
+
+  ENDMETHOD.
+
+  METHOD sub_col_controls.
+
+    DATA(xml) = render_cells( abap_true ).
+
+    " a text column with control subcolumns: its value, then the controls
+    cl_abap_unit_assert=>assert_char_cp(
+        exp = `*<cells><VBox><ObjectIdentifier text="{MATNR}"/><Switch *<core:Icon src="{ICON/SRC}" size="{ICON/ICON_SIZE}"/></VBox>*`
+        act = xml ).
+    " a control column with a text subcolumn: the control, then the text
+    cl_abap_unit_assert=>assert_char_cp(
+        exp = `*<VBox><Button *"/><ObjectIdentifier text="Material: {MATNR}"/></VBox>*`
+        act = xml ).
+    " the text of the subcolumns leaves the controls out
+    cl_abap_unit_assert=>assert_false( xsdbool( xml CS `Switch: ` ) ).
 
   ENDMETHOD.
 

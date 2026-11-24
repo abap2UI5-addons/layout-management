@@ -49,10 +49,16 @@ CLASS z2ui5_cl_layo_pop DEFINITION
     DATA mv_s_label     TYPE i.
     DATA mv_s_value     TYPE i.
 
+    "! The events of a layout: the settings button opens the layout popup,
+    "! a click on a column header (z2ui5_cl_layo_xml_builder=&gt;xml_build_table( )
+    "! with i_col_sort) sorts the table.
+    "! @parameter data | the table, for the column sort - see
+    "!   z2ui5_cl_layo_manager=&gt;set_data( )
     CLASS-METHODS on_event_layout
       IMPORTING
         !client TYPE REF TO z2ui5_if_client
-        !layout TYPE REF TO z2ui5_cl_layo_manager.
+        !layout TYPE REF TO z2ui5_cl_layo_manager
+        !data   TYPE REF TO data OPTIONAL.
 
     CLASS-METHODS render_layout_function
       IMPORTING
@@ -1079,6 +1085,12 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     ENDIF.
 
     IF layout->ms_layout IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    IF z2ui5_cl_layo_xml_builder=>on_event_column_sort( client = client
+                                                        layout = layout
+                                                        data   = data ) = abap_true.
       RETURN.
     ENDIF.
 

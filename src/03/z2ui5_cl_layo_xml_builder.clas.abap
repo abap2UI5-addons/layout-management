@@ -3,19 +3,111 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
+    " the controls a table cell is drawn with - the value of
+    " ty_s_cell_control-control
+    CONSTANTS:
+      BEGIN OF cs_cell_control,
+        " the value as text (sap.m.ObjectIdentifier) - every column that is
+        " no control
+        text         TYPE string VALUE `TEXT`,
+        " sap.ui.core.Icon: SRC, ICON_SIZE or SIZE, and COLOR, PRESS,
+        " PRESS_VALUE when the structure has them (z2ui5_xml_s_icon)
+        icon         TYPE string VALUE `ICON`,
+        " sap.suite.ui.microchart.RadialMicroChart (z2ui5_xml_s_radialchart)
+        radial_chart TYPE string VALUE `RADIAL_CHART`,
+        " sap.m.ProgressIndicator (z2ui5_xml_s_progressind)
+        progress_ind TYPE string VALUE `PROGRESS_IND`,
+        " sap.suite.ui.commons.statusindicator.StatusIndicator (z2ui5_xml_s_statusind)
+        status_ind   TYPE string VALUE `STATUS_IND`,
+        " sap.m.GenericTag (z2ui5_xml_s_generictag)
+        generic_tag  TYPE string VALUE `GENERIC_TAG`,
+        " sap.m.Switch (z2ui5_xml_s_switch)
+        switch       TYPE string VALUE `SWITCH`,
+        " sap.m.Input (z2ui5_xml_s_input)
+        input        TYPE string VALUE `INPUT`,
+        " sap.m.Button (z2ui5_xml_s_button)
+        button       TYPE string VALUE `BUTTON`,
+      END OF cs_cell_control.
+
+    TYPES:
+      "! The control the cells of a column are drawn with, by the rollname of
+      "! the column - its data element, or for a structured column its
+      "! structure type. rollname is a pattern (CP, e.g. `ZMY_S_ICON` or
+      "! `ZMY_*_SWITCH`), control one of cs_cell_control. The entries an app
+      "! passes come first, in their order; behind them the built-in ones:
+      "! `*_XML_S_ICON`, `*_XML_S_RADIALCHART`, `*_XML_S_PROGRESSIND`,
+      "! `*_XML_S_STATUSIND`, `*_XML_S_GENERICTAG`, `*_XML_S_SWITCH`,
+      "! `*_XML_S_INPUT`, `*_XML_S_BUTTON`
+      BEGIN OF ty_s_cell_control,
+        rollname TYPE string,
+        control  TYPE string,
+      END OF ty_s_cell_control.
+    TYPES ty_t_cell_control TYPE STANDARD TABLE OF ty_s_cell_control WITH EMPTY KEY.
+
+    "! the event of a column header clicked with i_col_sort - the arguments
+    "! are the guid of the layout and the name of the column; handled by
+    "! on_event_column_sort( ) and z2ui5_cl_layo_pop=&gt;on_event_layout( )
+    CONSTANTS cv_event_column_sort TYPE string VALUE `LAYO_COLUMN_SORT` ##NO_TEXT.
+
+    "! The table of a layout (sap.m.Table). Every parameter behind i_col_bind_to
+    "! is optional and changes nothing when it is not passed.
+    "! @parameter i_col_sort | abap_true: the header of a column is a link -
+    "!   clicking it sorts the table by that column (none, ascending,
+    "!   descending) through the layout, the column shows the sort order with
+    "!   its standard sort icon (sap.m.Column sortIndicator). The event is
+    "!   cv_event_column_sort - pass it to on_event_column_sort( ) or
+    "!   z2ui5_cl_layo_pop=&gt;on_event_layout( ) together with the table
+    "! @parameter i_col_sort_class | a style class for the links of the headers,
+    "!   for an app that styles them with CSS of its own
+    "! @parameter i_row_color | the field of the row that carries a colour key,
+    "!   relative to the row (`COLOR`, or `CELL_COLOR-COLOR` for a component of
+    "!   a structured column): every row gets it as custom data `color`,
+    "!   written to the DOM - `&lt;tr data-color="red_1"&gt;`. The CSS that
+    "!   turns the key into a colour is the app's
+    "! @parameter i_sub_col_controls | abap_true: a subcolumn that is a cell
+    "!   control (see ty_s_cell_control) is drawn as that control, and a
+    "!   column that is a control shows its subcolumns as well - several
+    "!   controls of one cell are stacked in a VBox. Without it a control
+    "!   column shows the control only, and every subcolumn is text
+    "! @parameter i_t_cell_control | the app's own mapping of rollnames to
+    "!   cell controls, checked before the built-in one - see ty_s_cell_control
+    "! @parameter i_sel_event | the event of selectionChange, SELECTION_CHANGE
+    "!   when empty
     CLASS-METHODS xml_build_table
       IMPORTING
         i_data             TYPE REF TO data
         i_xml              TYPE REF TO z2ui5_cl_ui5_view_builder
         i_client           TYPE REF TO z2ui5_if_client
         i_layout           TYPE REF TO z2ui5_cl_layo_manager
-        i_search_value     TYPE REF TO data OPTIONAL
-        i_growingthreshold TYPE string      OPTIONAL
-        i_headertext       TYPE string      OPTIONAL
-        i_sel_mode         TYPE string      OPTIONAL
-        i_sel_bind_to      TYPE string      OPTIONAL
-        i_col_type         TYPE string      OPTIONAL
-        i_col_bind_to      TYPE string      OPTIONAL.
+        i_search_value     TYPE REF TO data       OPTIONAL
+        i_growingthreshold TYPE string            OPTIONAL
+        i_headertext       TYPE string            OPTIONAL
+        i_sel_mode         TYPE string            OPTIONAL
+        i_sel_bind_to      TYPE string            OPTIONAL
+        i_col_type         TYPE string            OPTIONAL
+        i_col_bind_to      TYPE string            OPTIONAL
+        i_col_sort         TYPE abap_bool         DEFAULT abap_false
+        i_col_sort_class   TYPE string            OPTIONAL
+        i_row_color        TYPE string            OPTIONAL
+        i_sub_col_controls TYPE abap_bool         DEFAULT abap_false
+        i_t_cell_control   TYPE ty_t_cell_control OPTIONAL
+        i_sel_event        TYPE string            OPTIONAL.
+
+    "! The click on a column header of a table rendered with i_col_sort:
+    "! switches the sorting of the column in the layout (none -&gt; ascending
+    "! -&gt; descending -&gt; none, every other column loses its sorting) and
+    "! sorts the table. z2ui5_cl_layo_pop=&gt;on_event_layout( ) calls it as
+    "! well.
+    "! @parameter data | the table again - see z2ui5_cl_layo_manager=&gt;set_data( )
+    "! @parameter result | abap_true when the event was the column sort of
+    "!   this layout
+    CLASS-METHODS on_event_column_sort
+      IMPORTING
+        !client       TYPE REF TO z2ui5_if_client
+        !layout       TYPE REF TO z2ui5_cl_layo_manager
+        !data         TYPE REF TO data OPTIONAL
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 
     CLASS-METHODS xml_build_simple_form
       IMPORTING
@@ -56,6 +148,7 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
         i_client      TYPE REF TO z2ui5_if_client
         i_layout      TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
         i_xml         TYPE REF TO z2ui5_cl_ui5_view_builder
+        i_t_comp      TYPE string_table OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_ui5_view_builder.
 
@@ -74,6 +167,7 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
         i_client      TYPE REF TO z2ui5_if_client
         i_layout      TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
         i_xml         TYPE REF TO z2ui5_cl_ui5_view_builder
+        i_t_comp      TYPE string_table OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_ui5_view_builder.
 
@@ -83,6 +177,7 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
         i_client      TYPE REF TO z2ui5_if_client
         i_layout      TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
         i_xml         TYPE REF TO z2ui5_cl_ui5_view_builder
+        i_t_comp      TYPE string_table OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_ui5_view_builder.
 
@@ -94,6 +189,157 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
         i_xml         TYPE REF TO z2ui5_cl_ui5_view_builder
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_ui5_view_builder.
+
+    "! table case: sap.m.Switch over STATE, CUSTOMTEXTON, CUSTOMTEXTOFF,
+    "! ENABLED, TYPE and the event CHANGE / CHANGE_VALUE - each one the
+    "! structure has (all of them with no i_t_comp)
+    CLASS-METHODS xml_build_switch
+      IMPORTING
+        i_client TYPE REF TO z2ui5_if_client
+        i_layout TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
+        i_xml    TYPE REF TO z2ui5_cl_ui5_view_builder
+        i_t_comp TYPE string_table OPTIONAL.
+
+    "! table case: sap.m.Input over VALUE, PLACEHOLDER, ENABLED, EDITABLE,
+    "! VISIBLE - each one the structure has
+    CLASS-METHODS xml_build_input
+      IMPORTING
+        i_layout TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
+        i_xml    TYPE REF TO z2ui5_cl_ui5_view_builder
+        i_t_comp TYPE string_table OPTIONAL.
+
+    "! table case: sap.m.Button over TEXT, ICON, TYPE and the event PRESS /
+    "! PRESS_VALUE - each one the structure has
+    CLASS-METHODS xml_build_button
+      IMPORTING
+        i_client TYPE REF TO z2ui5_if_client
+        i_layout TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
+        i_xml    TYPE REF TO z2ui5_cl_ui5_view_builder
+        i_t_comp TYPE string_table OPTIONAL.
+
+    "! the control of a column - the app's entries first, then the
+    "! built-in patterns (see ty_s_cell_control); cs_cell_control-text for
+    "! every other column
+    CLASS-METHODS cell_control
+      IMPORTING
+        rollname       TYPE clike
+        t_cell_control TYPE ty_t_cell_control OPTIONAL
+      RETURNING
+        VALUE(result)  TYPE string.
+
+    "! one cell control of a table row - into a cell or a VBox
+    CLASS-METHODS xml_build_cell_control
+      IMPORTING
+        i_client  TYPE REF TO z2ui5_if_client
+        i_data    TYPE REF TO data
+        i_control TYPE string
+        i_layout  TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
+        i_xml     TYPE REF TO z2ui5_cl_ui5_view_builder.
+
+    "! the cell of a column with i_sub_col_controls: the value or the
+    "! control, the text subcolumns and the control subcolumns - in a VBox
+    "! when there is more than one control
+    CLASS-METHODS xml_build_cell_stacked
+      IMPORTING
+        i_client         TYPE REF TO z2ui5_if_client
+        i_data           TYPE REF TO data
+        i_layout         TYPE REF TO z2ui5_cl_layo_manager
+        !position        TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
+        i_t_cell_control TYPE ty_t_cell_control
+        i_xml            TYPE REF TO z2ui5_cl_ui5_view_builder.
+
+    "! the text of the subcolumns of a column (`Label: value`, one per line);
+    "! with skip_controls the subcolumns that are cell controls are left out
+    CLASS-METHODS sub_col_text
+      IMPORTING
+        i_layout         TYPE REF TO z2ui5_cl_layo_manager
+        !position        TYPE z2ui5_cl_layo_manager=>ty_s_positions
+        skip_controls    TYPE abap_bool DEFAULT abap_false
+        i_t_cell_control TYPE ty_t_cell_control OPTIONAL
+      RETURNING
+        VALUE(result)    TYPE string.
+
+    "! the header of a column: its label, with i_col_sort a link that sorts
+    "! the table by the column
+    CLASS-METHODS xml_build_column_header
+      IMPORTING
+        i_client  TYPE REF TO z2ui5_if_client
+        i_layout  TYPE REF TO z2ui5_cl_layo_manager
+        !position TYPE REF TO z2ui5_cl_layo_manager=>ty_s_positions
+        i_index   TYPE i
+        i_sort    TYPE abap_bool
+        i_class   TYPE string
+        i_column  TYPE REF TO z2ui5_cl_ui5_view_builder.
+
+    "! the sortIndicator of a column: an expression over the path of the
+    "! layout's SORTING of the column (ASCENDING / DESCENDING)
+    CLASS-METHODS sort_indicator
+      IMPORTING
+        path          TYPE string
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! the binding of the row colour - i_row_color as a path relative to
+    "! the row
+    CLASS-METHODS row_color_binding
+      IMPORTING
+        !field        TYPE string
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! the components of a structured column of the table (empty for any
+    "! other column, or when the type cannot be read)
+    CLASS-METHODS get_t_comp
+      IMPORTING
+        i_data        TYPE REF TO data
+        fname         TYPE clike
+      RETURNING
+        VALUE(result) TYPE string_table.
+
+    "! the component a property binds: the first of the candidates the
+    "! structure has; the first candidate when it has none of them or when
+    "! the components are unknown (t_comp empty) - what was bound before
+    "! the alternatives
+    CLASS-METHODS comp_name
+      IMPORTING
+        t_comp        TYPE string_table
+        primary       TYPE string
+        alternative   TYPE string OPTIONAL
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! abap_true when the structure has the component - or when the
+    "! components are unknown (t_comp empty)
+    CLASS-METHODS has_comp
+      IMPORTING
+        t_comp        TYPE string_table
+        !name         TYPE string
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
+    "! abap_true when the structure has the component; abap_false when the
+    "! components are unknown - for the optional properties a structure of
+    "! this addon does not carry
+    CLASS-METHODS has_comp_strict
+      IMPORTING
+        t_comp        TYPE string_table
+        !name         TYPE string
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
+    "! the event of a cell control whose name is a value of the row:
+    "! the framework's wire of an event (z2ui5_if_client=&gt;_event( )) with
+    "! the name replaced by the binding of PATH/EVENT and the binding of
+    "! PATH/VALUE as its argument
+    CLASS-METHODS row_event
+      IMPORTING
+        i_client      TYPE REF TO z2ui5_if_client
+        path          TYPE string
+        !event        TYPE string
+        !value        TYPE string
+        t_comp        TYPE string_table
+      RETURNING
+        VALUE(result) TYPE string.
 
     CLASS-METHODS get_grid_layout
       IMPORTING
@@ -440,10 +686,6 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD xml_build_table.
 
-    " the work areas of the subcolumns and reference fields below
-    DATA line TYPE z2ui5_cl_layo_manager=>ty_s_positions.
-    DATA ref  TYPE z2ui5_cl_layo_manager=>ty_s_positions.
-
     ASSIGN i_data->* TO FIELD-SYMBOL(<tab>).
 
     DATA(table) = i_xml->ele( `Table`
@@ -452,7 +694,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                       )->a( n = `width` v = `auto`
                       )->a( n = `mode` v = COND #( WHEN i_sel_mode = space THEN `None` ELSE i_sel_mode  )
                       )->a( n = `items` v = i_client->_bind( <tab> )
-                      )->a( n = `selectionChange` v = i_client->_event( 'SELECTION_CHANGE' ) ).
+                      )->a( n = `selectionChange` v = i_client->_event( COND string( WHEN i_sel_event IS INITIAL
+                                                                                     THEN `SELECTION_CHANGE`
+                                                                                     ELSE i_sel_event ) ) ).
 
     " the cells below bind digit sequences with a type their row template
     " inherits from here
@@ -492,18 +736,24 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO DATA(layout).
       DATA(lv_index) = sy-tabix.
 
-      columns->ele( `Column`
-          )->a( n = `visible` v = i_client->_bind( val       = layout->visible
-                                                          tab       = i_layout->ms_layout-t_layout
-                                                          tab_index = lv_index )
-          )->a( n = `mergeDuplicates` v = i_client->_bind( val       = layout->merge
-                                                          tab       = i_layout->ms_layout-t_layout
-                                                          tab_index = lv_index )
-          )->a( n = `width` v = i_client->_bind( val       = layout->width
-                                                          tab       = i_layout->ms_layout-t_layout
-                                                          tab_index = lv_index )
-          )->tag( `Text`
-          )->a( n = `text` t = layout->tlabel ).
+      DATA(column) = columns->ele( `Column`
+                             )->a( n = `visible` v = i_client->_bind( val       = layout->visible
+                                                                      tab       = i_layout->ms_layout-t_layout
+                                                                      tab_index = lv_index )
+                             )->a( n = `mergeDuplicates` v = i_client->_bind( val       = layout->merge
+                                                                              tab       = i_layout->ms_layout-t_layout
+                                                                              tab_index = lv_index )
+                             )->a( n = `width` v = i_client->_bind( val       = layout->width
+                                                                    tab       = i_layout->ms_layout-t_layout
+                                                                    tab_index = lv_index ) ).
+
+      xml_build_column_header( i_client = i_client
+                               i_layout = i_layout
+                               position = layout
+                               i_index  = lv_index
+                               i_sort   = i_col_sort
+                               i_class  = i_col_sort_class
+                               i_column = column ).
 
     ENDLOOP.
 
@@ -521,79 +771,48 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                                                           THEN ``
                                                                           ELSE |$\{{ z2ui5_cl_ui5_view_builder=>component_path( i_col_bind_to ) }\}| )  ) ) ) ).
 
+    " the row colour: custom data written to the DOM of the row (tr), the
+    " app's CSS colours it by the key
+    IF i_row_color IS NOT INITIAL.
+      column_list_item->ele( `customData`
+          )->tag( n = `CustomData` ns = `core`
+          )->a( n = `xmlns:core` v = `sap.ui.core`
+          )->a( n = `key` v = `color`
+          )->a( n = `value` v = row_color_binding( i_row_color )
+          )->a( n = `writeToDom` b = abap_true ).
+    ENDIF.
+
     DATA(cells) = column_list_item->ele( `cells` ).
 
     LOOP AT i_layout->ms_layout-t_layout REFERENCE INTO layout.
 
-      lv_index = sy-tabix.
+      DATA(control) = cell_control( rollname       = layout->rollname
+                                    t_cell_control = i_t_cell_control ).
 
-      IF layout->rollname CP `*_XML_S_ICON`.
+      IF i_sub_col_controls = abap_true.
 
-        xml_build_icon( i_client = i_client
-                        i_layout = layout
-                        i_xml    = cells ).
+        xml_build_cell_stacked( i_client         = i_client
+                                i_data           = i_data
+                                i_layout         = i_layout
+                                position         = layout
+                                i_t_cell_control = i_t_cell_control
+                                i_xml            = cells ).
 
-      ELSEIF layout->rollname CP `*_XML_S_RADIALCHART`.
+      ELSEIF control <> cs_cell_control-text.
 
-        xml_build_radial_microchart( i_layout = layout
-                                     i_client = i_client
-                                     i_xml    = cells ).
-
-      ELSEIF layout->rollname CP `*_XML_S_PROGRESSIND`.
-
-        xml_build_progress_indicator( i_layout = layout
-                                      i_client = i_client
-                                      i_xml    = cells ).
-
-      ELSEIF layout->rollname CP `*_XML_S_STATUSIND`.
-
-        xml_build_status_indicator( i_layout = layout
-                                    i_client = i_client
-                                    i_xml    = cells ).
-
-      ELSEIF layout->rollname CP `*_XML_S_GENERICTAG`.
-
-        xml_build_generic_tag( i_layout = layout
-                               i_client = i_client
-                               i_xml    = cells ).
+        xml_build_cell_control( i_client  = i_client
+                                i_data    = i_data
+                                i_control = control
+                                i_layout  = layout
+                                i_xml     = cells ).
 
       ELSEIF layout->t_sub_col IS NOT INITIAL.
-
-        DATA(sub_col) = ``.
-
-        LOOP AT layout->t_sub_col INTO DATA(subcol).
-
-          " a subcolumn that names no position (one added in the popup and
-          " left empty, or a field the structure no longer has) is left out -
-          " the work area kept the previous row and repeated it
-          READ TABLE i_layout->ms_layout-t_layout INTO line WITH KEY fname = subcol-fname.
-          IF sy-subrc <> 0.
-            CONTINUE.
-          ENDIF.
-
-          " the label is literal text inside a value that carries bindings
-          DATA(column) = |{ z2ui5_cl_ui5_view_builder=>escape_literal( line-tlabel ) }: { table_value_formatter( line ) }|.
-
-          IF line-reference_field IS NOT INITIAL.
-            " a reference field that is no column is left out - a failed READ
-            " kept the previous one in the work area
-            READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = line-reference_field.
-            IF sy-subrc = 0.
-              column = |{ column } { table_value_formatter( ref ) }|.
-            ENDIF.
-          ENDIF.
-
-          IF sub_col IS INITIAL.
-            sub_col = column.
-          ELSE.
-            sub_col = |{ sub_col }{ cl_abap_char_utilities=>cr_lf }{ column }|.
-          ENDIF.
-        ENDLOOP.
 
         cells->ele( `ObjectIdentifier`
             )->a( n = `title` v = cell_text( i_layout = i_layout
                                              position = layout->* )
-            )->a( n = `text` v = sub_col ).
+            )->a( n = `text` v = sub_col_text( i_layout = i_layout
+                                               position = layout->* ) ).
 
       ELSE.
         cells->ele( `ObjectIdentifier`
@@ -601,6 +820,439 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                             position = layout->* ) ).
       ENDIF.
     ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD on_event_column_sort.
+
+    IF layout IS NOT BOUND OR client IS NOT BOUND.
+      RETURN.
+    ENDIF.
+
+    IF client->get( )-event <> cv_event_column_sort.
+      RETURN.
+    ENDIF.
+
+    " the event of another table of the same view
+    IF client->get_event_arg( 1 ) <> layout->ms_layout-s_head-guid.
+      RETURN.
+    ENDIF.
+
+    IF layout->toggle_sorting( client->get_event_arg( 2 ) ) = abap_false.
+      RETURN.
+    ENDIF.
+
+    layout->sort( data = data ).
+
+    result = abap_true.
+
+  ENDMETHOD.
+
+  METHOD xml_build_column_header.
+
+    IF i_sort = abap_false.
+      i_column->tag( `Text`
+          )->a( n = `text` t = position->tlabel ).
+      RETURN.
+    ENDIF.
+
+    " the standard sort icon of the column, bound to the sorting of the
+    " layout - it follows the click without a new view
+    i_column->a( n = `sortIndicator` v = sort_indicator( i_client->_bind( val       = position->sorting
+                                                                         tab       = i_layout->ms_layout-t_layout
+                                                                         tab_index = i_index
+                                                                         path      = abap_true ) ) ).
+
+    DATA(link) = i_column->ele( `Link`
+                         )->a( n = `text` t = position->tlabel
+                         )->a( n = `wrapping` b = abap_true
+                         )->a( n = `press` v = i_client->_event( val   = cv_event_column_sort
+                                                                 t_arg = VALUE #( ( CONV #( i_layout->ms_layout-s_head-guid ) )
+                                                                                  ( CONV #( position->fname ) ) ) ) ).
+
+    IF i_class IS NOT INITIAL.
+      link->a( n = `class` v = i_class ).
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD sort_indicator.
+
+    result = |\{= $\{{ path }\} === 'ASCENDING' ? 'Ascending' : $\{{ path }\} === 'DESCENDING' ? 'Descending' : 'None' \}|.
+
+  ENDMETHOD.
+
+  METHOD row_color_binding.
+
+    " CELL_COLOR-COLOR is the level CELL_COLOR of the row and its member
+    " COLOR, a namespaced /ABC/COLOR the level ABC - relative to the row
+    result = |\{{ z2ui5_cl_ui5_view_builder=>component_path( replace( val  = field
+                                                                       sub  = `-`
+                                                                       with = `/`
+                                                                       occ  = 0 ) ) }\}|.
+
+  ENDMETHOD.
+
+  METHOD cell_control.
+
+    LOOP AT t_cell_control INTO DATA(entry).
+      IF rollname CP entry-rollname.
+        result = entry-control.
+        RETURN.
+      ENDIF.
+    ENDLOOP.
+
+    IF rollname CP `*_XML_S_ICON`.
+      result = cs_cell_control-icon.
+    ELSEIF rollname CP `*_XML_S_RADIALCHART`.
+      result = cs_cell_control-radial_chart.
+    ELSEIF rollname CP `*_XML_S_PROGRESSIND`.
+      result = cs_cell_control-progress_ind.
+    ELSEIF rollname CP `*_XML_S_STATUSIND`.
+      result = cs_cell_control-status_ind.
+    ELSEIF rollname CP `*_XML_S_GENERICTAG`.
+      result = cs_cell_control-generic_tag.
+    ELSEIF rollname CP `*_XML_S_SWITCH`.
+      result = cs_cell_control-switch.
+    ELSEIF rollname CP `*_XML_S_INPUT`.
+      result = cs_cell_control-input.
+    ELSEIF rollname CP `*_XML_S_BUTTON`.
+      result = cs_cell_control-button.
+    ELSE.
+      result = cs_cell_control-text.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD xml_build_cell_control.
+
+    " only the controls that bind optional or alternative components look
+    " at the structure
+    CASE i_control.
+
+      WHEN cs_cell_control-icon.
+
+        xml_build_icon( i_client = i_client
+                        i_layout = i_layout
+                        i_xml    = i_xml
+                        i_t_comp = get_t_comp( i_data = i_data
+                                               fname  = i_layout->fname ) ).
+
+      WHEN cs_cell_control-radial_chart.
+
+        xml_build_radial_microchart( i_layout = i_layout
+                                     i_client = i_client
+                                     i_xml    = i_xml
+                                     i_t_comp = get_t_comp( i_data = i_data
+                                                            fname  = i_layout->fname ) ).
+
+      WHEN cs_cell_control-progress_ind.
+
+        xml_build_progress_indicator( i_layout = i_layout
+                                      i_client = i_client
+                                      i_xml    = i_xml ).
+
+      WHEN cs_cell_control-status_ind.
+
+        xml_build_status_indicator( i_layout = i_layout
+                                    i_client = i_client
+                                    i_xml    = i_xml
+                                    i_t_comp = get_t_comp( i_data = i_data
+                                                           fname  = i_layout->fname ) ).
+
+      WHEN cs_cell_control-generic_tag.
+
+        xml_build_generic_tag( i_layout = i_layout
+                               i_client = i_client
+                               i_xml    = i_xml ).
+
+      WHEN cs_cell_control-switch.
+
+        xml_build_switch( i_client = i_client
+                          i_layout = i_layout
+                          i_xml    = i_xml
+                          i_t_comp = get_t_comp( i_data = i_data
+                                                 fname  = i_layout->fname ) ).
+
+      WHEN cs_cell_control-input.
+
+        xml_build_input( i_layout = i_layout
+                         i_xml    = i_xml
+                         i_t_comp = get_t_comp( i_data = i_data
+                                                fname  = i_layout->fname ) ).
+
+      WHEN cs_cell_control-button.
+
+        xml_build_button( i_client = i_client
+                          i_layout = i_layout
+                          i_xml    = i_xml
+                          i_t_comp = get_t_comp( i_data = i_data
+                                                 fname  = i_layout->fname ) ).
+
+    ENDCASE.
+
+  ENDMETHOD.
+
+  METHOD xml_build_cell_stacked.
+
+    DATA(control) = cell_control( rollname       = position->rollname
+                                  t_cell_control = i_t_cell_control ).
+    DATA(sub_col) = sub_col_text( i_layout         = i_layout
+                                  position         = position->*
+                                  skip_controls    = abap_true
+                                  i_t_cell_control = i_t_cell_control ).
+
+    " the subcolumns that are controls
+    DATA t_sub_control TYPE STANDARD TABLE OF REF TO z2ui5_cl_layo_manager=>ty_s_positions WITH EMPTY KEY.
+    LOOP AT position->t_sub_col INTO DATA(subcol).
+      READ TABLE i_layout->ms_layout-t_layout REFERENCE INTO DATA(line) WITH KEY fname = subcol-fname.
+      IF sy-subrc = 0 AND cell_control( rollname       = line->rollname
+                                        t_cell_control = i_t_cell_control ) <> cs_cell_control-text.
+        APPEND line TO t_sub_control.
+      ENDIF.
+    ENDLOOP.
+
+    " a cell takes one control - more than one are stacked in a VBox
+    DATA(cell) = i_xml.
+    IF t_sub_control IS NOT INITIAL OR ( control <> cs_cell_control-text AND sub_col IS NOT INITIAL ).
+      cell = i_xml->ele( `VBox` ).
+    ENDIF.
+
+    IF control <> cs_cell_control-text.
+
+      xml_build_cell_control( i_client  = i_client
+                              i_data    = i_data
+                              i_control = control
+                              i_layout  = position
+                              i_xml     = cell ).
+
+      IF sub_col IS NOT INITIAL.
+        cell->tag( `ObjectIdentifier`
+            )->a( n = `text` v = sub_col ).
+      ENDIF.
+
+    ELSEIF sub_col IS NOT INITIAL.
+
+      cell->tag( `ObjectIdentifier`
+          )->a( n = `title` v = cell_text( i_layout = i_layout
+                                           position = position->* )
+          )->a( n = `text` v = sub_col ).
+
+    ELSE.
+
+      cell->tag( `ObjectIdentifier`
+          )->a( n = `text` v = cell_text( i_layout = i_layout
+                                          position = position->* ) ).
+
+    ENDIF.
+
+    LOOP AT t_sub_control INTO line.
+      xml_build_cell_control( i_client  = i_client
+                              i_data    = i_data
+                              i_control = cell_control( rollname       = line->rollname
+                                                        t_cell_control = i_t_cell_control )
+                              i_layout  = line
+                              i_xml     = cell ).
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD sub_col_text.
+
+    " the work areas of the subcolumns and reference fields
+    DATA line TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    DATA ref  TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+
+    LOOP AT position-t_sub_col INTO DATA(subcol).
+
+      " a subcolumn that names no position (one added in the popup and
+      " left empty, or a field the structure no longer has) is left out -
+      " the work area kept the previous row and repeated it
+      READ TABLE i_layout->ms_layout-t_layout INTO line WITH KEY fname = subcol-fname.
+      IF sy-subrc <> 0.
+        CONTINUE.
+      ENDIF.
+
+      IF skip_controls = abap_true AND cell_control( rollname       = line-rollname
+                                                     t_cell_control = i_t_cell_control ) <> cs_cell_control-text.
+        CONTINUE.
+      ENDIF.
+
+      " the label is literal text inside a value that carries bindings
+      DATA(column) = |{ z2ui5_cl_ui5_view_builder=>escape_literal( line-tlabel ) }: { table_value_formatter( line ) }|.
+
+      IF line-reference_field IS NOT INITIAL.
+        " a reference field that is no column is left out - a failed READ
+        " kept the previous one in the work area
+        READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = line-reference_field.
+        IF sy-subrc = 0.
+          column = |{ column } { table_value_formatter( ref ) }|.
+        ENDIF.
+      ENDIF.
+
+      IF result IS INITIAL.
+        result = column.
+      ELSE.
+        result = |{ result }{ cl_abap_char_utilities=>cr_lf }{ column }|.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD get_t_comp.
+
+    TRY.
+        DATA(t_attri) = z2ui5_cl_layo_context=>rtti_get_t_attri_by_any( i_data ).
+        READ TABLE t_attri INTO DATA(attri) WITH KEY name = fname.
+        IF sy-subrc <> 0 OR attri-type->kind <> cl_abap_typedescr=>kind_struct.
+          RETURN.
+        ENDIF.
+        DATA(struct) = CAST cl_abap_structdescr( attri-type ).
+        LOOP AT struct->components INTO DATA(comp).
+          APPEND CONV string( comp-name ) TO result.
+        ENDLOOP.
+      CATCH cx_root.
+        CLEAR result.
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD comp_name.
+
+    result = primary.
+
+    IF t_comp IS INITIAL OR alternative IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    IF line_exists( t_comp[ table_line = primary ] ).
+      RETURN.
+    ENDIF.
+
+    IF line_exists( t_comp[ table_line = alternative ] ).
+      result = alternative.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD has_comp.
+
+    result = xsdbool( t_comp IS INITIAL OR line_exists( t_comp[ table_line = name ] ) ).
+
+  ENDMETHOD.
+
+  METHOD has_comp_strict.
+
+    result = xsdbool( line_exists( t_comp[ table_line = name ] ) ).
+
+  ENDMETHOD.
+
+  METHOD row_event.
+
+    " the framework writes the wire - its function and how it passes an
+    " argument; only the quoted name is replaced by the binding of the row's
+    " event name, which the framework cannot write
+    CONSTANTS placeholder TYPE string VALUE `LAYO_ROW_EVENT`.
+
+    DATA t_arg TYPE string_table.
+
+    IF has_comp( t_comp = t_comp
+                 name   = value ) = abap_true.
+      APPEND |$\{{ path }/{ value }\}| TO t_arg.
+    ENDIF.
+
+    result = i_client->_event( val   = placeholder
+                               t_arg = t_arg ).
+
+    result = replace( val  = result
+                      sub  = |'{ placeholder }'|
+                      with = |$\{{ path }/{ event }\}| ).
+
+  ENDMETHOD.
+
+  METHOD xml_build_switch.
+
+    " declared, not inline: the 702 downport needs the type
+    DATA path TYPE string.
+    path = z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ).
+
+    DATA(switch) = i_xml->ele( `Switch` ).
+
+    IF has_comp( t_comp = i_t_comp name = `STATE` ) = abap_true.
+      switch->a( n = `state` v = |\{{ path }/STATE\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `CUSTOMTEXTON` ) = abap_true.
+      switch->a( n = `customTextOn` v = |\{{ path }/CUSTOMTEXTON\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `CUSTOMTEXTOFF` ) = abap_true.
+      switch->a( n = `customTextOff` v = |\{{ path }/CUSTOMTEXTOFF\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `ENABLED` ) = abap_true.
+      switch->a( n = `enabled` v = |\{{ path }/ENABLED\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `TYPE` ) = abap_true.
+      switch->a( n = `type` v = |\{{ path }/TYPE\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `CHANGE` ) = abap_true.
+      switch->a( n = `change` v = row_event( i_client = i_client
+                                             path     = path
+                                             event    = `CHANGE`
+                                             value    = `CHANGE_VALUE`
+                                             t_comp   = i_t_comp ) ).
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD xml_build_input.
+
+    " declared, not inline: the 702 downport needs the type
+    DATA path TYPE string.
+    path = z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ).
+
+    DATA(input) = i_xml->ele( `Input` ).
+
+    IF has_comp( t_comp = i_t_comp name = `VALUE` ) = abap_true.
+      input->a( n = `value` v = |\{{ path }/VALUE\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `PLACEHOLDER` ) = abap_true.
+      input->a( n = `placeholder` v = |\{{ path }/PLACEHOLDER\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `ENABLED` ) = abap_true.
+      input->a( n = `enabled` v = |\{{ path }/ENABLED\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `EDITABLE` ) = abap_true.
+      input->a( n = `editable` v = |\{{ path }/EDITABLE\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `VISIBLE` ) = abap_true.
+      input->a( n = `visible` v = |\{{ path }/VISIBLE\}| ).
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD xml_build_button.
+
+    " declared, not inline: the 702 downport needs the type
+    DATA path TYPE string.
+    path = z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ).
+
+    DATA(button) = i_xml->ele( `Button` ).
+
+    IF has_comp( t_comp = i_t_comp name = `TEXT` ) = abap_true.
+      button->a( n = `text` v = |\{{ path }/TEXT\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `ICON` ) = abap_true.
+      button->a( n = `icon` v = |\{{ path }/ICON\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `TYPE` ) = abap_true.
+      button->a( n = `type` v = |\{{ path }/TYPE\}| ).
+    ENDIF.
+    IF has_comp( t_comp = i_t_comp name = `PRESS` ) = abap_true.
+      button->a( n = `press` v = row_event( i_client = i_client
+                                            path     = path
+                                            event    = `PRESS`
+                                            value    = `PRESS_VALUE`
+                                            t_comp   = i_t_comp ) ).
+    ENDIF.
 
   ENDMETHOD.
 
@@ -659,12 +1311,33 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD xml_build_icon.
 
+    " declared, not inline: the 702 downport needs the type
+    DATA path TYPE string.
+
     " Table case
     IF i_data IS NOT SUPPLIED.
 
-      i_xml->tag( n = `Icon` ns = `core`
-          )->a( n = `src` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/SRC\}|
-          )->a( n = `size` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/ICON_SIZE\}| ).
+      path = z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ).
+
+      " ICON_SIZE of z2ui5_xml_s_icon, or SIZE; COLOR and the event PRESS /
+      " PRESS_VALUE when the structure has them
+      DATA(icon) = i_xml->ele( n = `Icon` ns = `core`
+                       )->a( n = `src` v = |\{{ path }/SRC\}|
+                       )->a( n = `size` v = |\{{ path }/{ comp_name( t_comp      = i_t_comp
+                                                                      primary     = `ICON_SIZE`
+                                                                      alternative = `SIZE` ) }\}| ).
+
+      IF has_comp_strict( t_comp = i_t_comp name = `COLOR` ) = abap_true.
+        icon->a( n = `color` v = |\{{ path }/COLOR\}| ).
+      ENDIF.
+
+      IF has_comp_strict( t_comp = i_t_comp name = `PRESS` ) = abap_true.
+        icon->a( n = `press` v = row_event( i_client = i_client
+                                            path     = path
+                                            event    = `PRESS`
+                                            value    = `PRESS_VALUE`
+                                            t_comp   = i_t_comp ) ).
+      ENDIF.
 
     ELSE.
 
@@ -696,7 +1369,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     IF i_data IS NOT SUPPLIED.
 
       i_xml->tag( n = `RadialMicroChart` ns = `mchart`
-          )->a( n = `size` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/RADIALMICROCHART_SIZE\}|
+          )->a( n = `size` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/{ comp_name( t_comp      = i_t_comp
+                                                                                                                  primary     = `RADIALMICROCHART_SIZE`
+                                                                                                                  alternative = `SIZE` ) }\}|
           )->a( n = `percentage` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/PERCENTAGE\}|
           )->a( n = `valueColor` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/VALUECOLOR\}|
           )->a( n = `hideOnNoData` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/HIDEONNODATA\}| ).
@@ -790,7 +1465,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       DATA(status_indicator) = i_xml->ele( n = `StatusIndicator` ns = `si`
                                    )->a( n = `class` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/CLASS\}|
-                                   )->a( n = `size` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/STATUSINDICATOR_SIZE\}|
+                                   )->a( n = `size` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/{ comp_name( t_comp      = i_t_comp
+                                                                                                                                    primary     = `STATUSINDICATOR_SIZE`
+                                                                                                                                    alternative = `SIZE` ) }\}|
                                    )->a( n = `value` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/VALUE\}| ).
 
       DATA(thresholds) = status_indicator->ele( n = `propertyThresholds` ns = `si` ).
