@@ -73,6 +73,10 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
     "!   cell controls, checked before the built-in one - see ty_s_cell_control
     "! @parameter i_sel_event | the event of selectionChange, SELECTION_CHANGE
     "!   when empty
+    "! @parameter i_toolbar | abap_false: the table has no header toolbar - no
+    "!   layout settings button, no search field (i_search_value is ignored);
+    "!   i_headertext becomes the headerText of the table instead of a title
+    "!   in the toolbar
     CLASS-METHODS xml_build_table
       IMPORTING
         i_data             TYPE REF TO data
@@ -91,7 +95,8 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
         i_row_color        TYPE string            OPTIONAL
         i_sub_col_controls TYPE abap_bool         DEFAULT abap_false
         i_t_cell_control   TYPE ty_t_cell_control OPTIONAL
-        i_sel_event        TYPE string            OPTIONAL.
+        i_sel_event        TYPE string            OPTIONAL
+        i_toolbar          TYPE abap_bool         DEFAULT abap_true.
 
     "! The click on a column header of a table rendered with i_col_sort:
     "! switches the sorting of the column in the layout (none -&gt; ascending
@@ -704,32 +709,46 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       set_digit_type_require( table ).
     ENDIF.
 
-    DATA(toolbar) = table->ele( `headerToolbar`
-                        )->ele( `OverflowToolbar` ).
+    IF i_toolbar = abap_true.
 
-    IF i_headertext IS NOT INITIAL.
-      toolbar->tag( `Title`
-          )->a( n = `text` v = i_headertext
-          )->a( n = `level` v = `H2` ).
+      DATA(toolbar) = table->ele( `headerToolbar`
+                          )->ele( `OverflowToolbar` ).
+
+      IF i_headertext IS NOT INITIAL.
+        toolbar->tag( `Title`
+            )->a( n = `text` v = i_headertext
+            )->a( n = `level` v = `H2` ).
+      ENDIF.
+
+      toolbar->tag( `ToolbarSpacer` ).
+
+      IF i_search_value IS SUPPLIED.
+
+        ASSIGN i_search_value->* TO FIELD-SYMBOL(<search>).
+
+        toolbar->tag( `SearchField`
+            )->a( n = `value` v = i_client->_bind( <search> )
+            )->a( n = `search` v = i_client->_event( 'SEARCH' )
+            )->a( n = `change` v = i_client->_event( 'SEARCH' )
+            )->a( n = `id` v = `SEARCH`
+            )->a( n = `width` v = `17.5rem` ).
+      ENDIF.
+
+      z2ui5_cl_layo_pop=>render_layout_function( client = i_client
+                                                 xml    = toolbar
+                                                 layout = i_layout ).
+
+    ELSE.
+
+      " no toolbar: the header text is the table's own, set before its first
+      " child; the layout is prepared as the settings button would
+      IF i_headertext IS NOT INITIAL.
+        table->a( n = `headerText` v = i_headertext ).
+      ENDIF.
+
+      i_layout->prepare( ).
+
     ENDIF.
-
-    toolbar->tag( `ToolbarSpacer` ).
-
-    IF i_search_value IS SUPPLIED.
-
-      ASSIGN i_search_value->* TO FIELD-SYMBOL(<search>).
-
-      toolbar->tag( `SearchField`
-          )->a( n = `value` v = i_client->_bind( <search> )
-          )->a( n = `search` v = i_client->_event( 'SEARCH' )
-          )->a( n = `change` v = i_client->_event( 'SEARCH' )
-          )->a( n = `id` v = `SEARCH`
-          )->a( n = `width` v = `17.5rem` ).
-    ENDIF.
-
-    z2ui5_cl_layo_pop=>render_layout_function( client = i_client
-                                               xml    = toolbar
-                                               layout = i_layout ).
 
     DATA(columns) = table->ele( `columns` ).
 

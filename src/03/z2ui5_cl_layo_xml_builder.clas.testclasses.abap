@@ -104,6 +104,7 @@ CLASS ltcl_xml_builder DEFINITION FINAL FOR TESTING
     METHODS switch_input_button FOR TESTING.
     METHODS own_structures FOR TESTING.
     METHODS sub_col_controls FOR TESTING.
+    METHODS table_without_toolbar FOR TESTING.
 
     DATA mo_app    TYPE REF TO ltcl_app.
     DATA mi_client TYPE REF TO z2ui5_if_client.
@@ -560,6 +561,31 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
         act = xml ).
     " the text of the subcolumns leaves the controls out
     cl_abap_unit_assert=>assert_false( xsdbool( xml CS `Switch: ` ) ).
+
+  ENDMETHOD.
+
+  METHOD table_without_toolbar.
+
+    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
+    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data         = REF #( mo_app->mt_data )
+                                                i_xml          = view
+                                                i_client       = mi_client
+                                                i_layout       = mo_app->mo_layout
+                                                i_search_value = REF #( mo_app->mv_search )
+                                                i_headertext   = `Orders`
+                                                i_toolbar      = abap_false ).
+
+    " the default table without its toolbar - no title, no search field, no
+    " settings button - and the header text on the table itself
+    DATA(exp) = replace( val  = golden_default( )
+                         sub  = `<headerToolbar><OverflowToolbar><ToolbarSpacer/><Button icon="sap-icon://action-settings" press=".eB(['GUID1'])"/></OverflowToolbar></headerToolbar>`
+                         with = `` ).
+    exp = replace( val  = exp
+                   sub  = `core:require="{LayoDigitString:'sap/ui/model/odata/type/String'}">`
+                   with = `core:require="{LayoDigitString:'sap/ui/model/odata/type/String'}" headerText="Orders">` ).
+
+    cl_abap_unit_assert=>assert_equals( exp = exp
+                                        act = view->stringify( ) ).
 
   ENDMETHOD.
 

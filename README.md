@@ -212,6 +212,12 @@ z2ui5_cl_layo_xml_builder=>xml_build_table(
   order is saved with the layout like one chosen in the popup. The links
   look like links; `i_col_sort_class` puts a style class of the app on them
   for an app that styles them itself. No CSS comes with the table.
+- **Without toolbar** - `i_toolbar = abap_false` leaves the header toolbar
+  out: no layout settings button, no search field (`i_search_value` is
+  ignored), and `i_headertext` becomes the `headerText` of the table instead
+  of a title in the toolbar. For a table whose layout the user does not
+  change, or whose settings button sits somewhere else (e.g. a
+  `z2ui5_cl_layo_pop=>render_layout_function( )` of the app's own toolbar).
 - **Row colour** - `i_row_color` names the field of the row that carries a
   colour key, relative to the row (`COLOR`, or `CELL_COLOR-COLOR` for a
   component of a structured column). Every row gets it as custom data written
