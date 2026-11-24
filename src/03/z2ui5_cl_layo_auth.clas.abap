@@ -15,7 +15,7 @@ CLASS z2ui5_cl_layo_auth DEFINITION
     CLASS-METHODS check
       IMPORTING
         !action       TYPE string
-        !head         TYPE z2ui5_t_11
+        head          TYPE z2ui5_t_11
       RETURNING
         VALUE(result) TYPE abap_bool.
 
@@ -29,7 +29,7 @@ CLASS z2ui5_cl_layo_auth DEFINITION
     "! restores the lookup
     CLASS-METHODS set_instance
       IMPORTING
-        !val TYPE REF TO z2ui5_if_layo_auth OPTIONAL.
+        val TYPE REF TO z2ui5_if_layo_auth OPTIONAL.
 
   PROTECTED SECTION.
 
@@ -45,7 +45,7 @@ CLASS z2ui5_cl_layo_auth DEFINITION
 
     CLASS-METHODS type_name_of
       IMPORTING
-        !val          TYPE any
+        val           TYPE any
       RETURNING
         VALUE(result) TYPE string.
 

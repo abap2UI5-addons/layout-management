@@ -5,15 +5,16 @@ CLASS z2ui5_cl_layo_sample_01 DEFINITION
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
-    TYPES  BEGIN OF ty_s_tab.
-    TYPES:   names             TYPE string,
-             icon              TYPE z2ui5_xml_s_icon,
-             generictag        TYPE z2ui5_xml_s_generictag,
-             progressindicator TYPE z2ui5_xml_s_progressind,
-             radialmicrochart  TYPE z2ui5_xml_s_radialchart,
-             statusindicator   TYPE z2ui5_xml_s_statusind,
-             selkz             TYPE abap_bool,
-           END OF ty_s_tab.
+    TYPES:
+      BEGIN OF ty_s_tab,
+        names             TYPE string,
+        icon              TYPE z2ui5_xml_s_icon,
+        generictag        TYPE z2ui5_xml_s_generictag,
+        progressindicator TYPE z2ui5_xml_s_progressind,
+        radialmicrochart  TYPE z2ui5_xml_s_radialchart,
+        statusindicator   TYPE z2ui5_xml_s_statusind,
+        selkz             TYPE abap_bool,
+      END OF ty_s_tab.
     TYPES ty_t_table TYPE STANDARD TABLE OF ty_s_tab WITH EMPTY KEY.
 
     " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_table( ) binds it, handed over as REF #( mt_table )
@@ -79,15 +80,15 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
                      )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
                      )->a( n = `xmlns:si` v = `sap.suite.ui.commons.statusindicator`
                      " abap2ui5lint-enable unused-namespace-declaration
-                     )->a( n = `displayBlock` v = `true`
+                     )->a( n = `displayBlock` b = abap_true
                      )->a( n = `height` v = `100%`
                      )->ele( `Shell` ).
 
     DATA(page) = view->ele( `Page`
-                     )->a( n = `title` v = 'Layout'
+                     )->a( n = `title` v = `Layout`
                      )->a( n = `navButtonPress` v = client->_event( 'BACK' )
                      )->a( n = `showNavButton` b = client->check_app_prev_stack( )
-                     )->a( n = `class` v = 'sapUiContentPadding' ).
+                     )->a( n = `class` v = `sapUiContentPadding` ).
 
     z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = REF #( mt_table )
                                                 i_xml    = page

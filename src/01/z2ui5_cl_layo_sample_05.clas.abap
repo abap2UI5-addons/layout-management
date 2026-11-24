@@ -75,15 +75,15 @@ CLASS z2ui5_cl_layo_sample_05 IMPLEMENTATION.
                      )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
                      )->a( n = `xmlns:si` v = `sap.suite.ui.commons.statusindicator`
                      " abap2ui5lint-enable unused-namespace-declaration
-                     )->a( n = `displayBlock` v = `true`
+                     )->a( n = `displayBlock` b = abap_true
                      )->a( n = `height` v = `100%`
                      )->ele( `Shell` ).
 
     DATA(page) = view->ele( `Page`
-                     )->a( n = `title` v = 'Layout'
+                     )->a( n = `title` v = `Layout`
                      )->a( n = `navButtonPress` v = client->_event( 'BACK' )
                      )->a( n = `showNavButton` b = client->check_app_prev_stack( )
-                     )->a( n = `class` v = 'sapUiContentPadding' ).
+                     )->a( n = `class` v = `sapUiContentPadding` ).
 
     z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = REF #( mt_table )
                                                 i_xml    = page
@@ -114,7 +114,7 @@ CLASS z2ui5_cl_layo_sample_05 IMPLEMENTATION.
 
   METHOD get_data.
 
-    SELECT * FROM z2ui5_t_11 INTO TABLE @mt_table UP TO 5 ROWS.
+    SELECT * FROM z2ui5_t_11 ORDER BY PRIMARY KEY INTO TABLE @mt_table UP TO 5 ROWS ##SUBRC_OK.
 
     ms_struc = VALUE #( mt_table[ 1 ] OPTIONAL ).
 

@@ -122,6 +122,11 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
       RETURNING
         VALUE(result) TYPE ty_s_handles.
 
+    "! the type description of mr_tab, which factory( ) binds
+    METHODS get_table_descr
+      RETURNING
+        VALUE(result) TYPE REF TO cl_abap_tabledescr.
+
     METHODS init_layout
       IMPORTING
         handles TYPE ty_s_handles.
@@ -203,10 +208,25 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     " no handles: the layouts of this popup per line type. The class name is
     " read from the reference, never written - the namespace rename rewrites
     " references only
-    DATA(table_descr) = CAST cl_abap_tabledescr( cl_abap_typedescr=>describe_by_data_ref( mr_tab ) ).
+    DATA(table_descr) = get_table_descr( ).
     result-handle01 = z2ui5_cl_layo_context=>rtti_get_classname_by_ref( me ).
     DATA(line_descr) = table_descr->get_table_line_type( ).
     result-handle02 = line_descr->get_relative_name( ).
+
+  ENDMETHOD.
+
+  METHOD get_table_descr.
+
+    DATA descr TYPE REF TO cl_abap_typedescr.
+
+    cl_abap_typedescr=>describe_by_data_ref( EXPORTING  p_data_ref           = mr_tab
+                                             RECEIVING  p_descr_ref          = descr
+                                             EXCEPTIONS reference_is_initial = 1
+                                                        OTHERS               = 2 ).
+    " mr_tab is bound since factory( ) - an initial one ends in a runtime
+    " error, as the functional call before did
+    ASSERT sy-subrc = 0.
+    result = CAST #( descr ).
 
   ENDMETHOD.
 
@@ -217,7 +237,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     " the layout is built on the columns of the caller's line only - the row
     " id and the selection flag are no columns to choose
     IF check_table_line = abap_true.
-      DATA(table_descr) = CAST cl_abap_tabledescr( cl_abap_typedescr=>describe_by_data_ref( mr_tab ) ).
+      DATA(table_descr) = get_table_descr( ).
       DATA(layout_line) = cl_abap_structdescr=>create( VALUE #( ( name = cv_tab_line
                                                                   type = table_descr->get_table_line_type( ) ) ) ).
       DATA(layout_descr) = cl_abap_tabledescr=>create( layout_line ).
@@ -525,7 +545,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     TRY.
 
         IF check_table_line = abap_true.
-          DATA(table_descr) = CAST cl_abap_tabledescr( cl_abap_typedescr=>describe_by_data_ref( mr_tab ) ).
+          DATA(table_descr) = get_table_descr( ).
           comp = VALUE #( ( name = cv_tab_line
                             type = table_descr->get_table_line_type( ) ) ).
         ELSE.

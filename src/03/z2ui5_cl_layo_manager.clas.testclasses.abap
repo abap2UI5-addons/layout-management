@@ -67,11 +67,11 @@ CLASS ltcl_copy IMPLEMENTATION.
                        handle04      = `0002`
                        screen_format = z2ui5_cl_layo_manager=>screen_format_s
                        def           = abap_true ) ).
-    INSERT z2ui5_t_11 FROM TABLE @heads.
+    INSERT z2ui5_t_11 FROM TABLE @heads ##SUBRC_OK.
 
     positions = VALUE #( ( guid = c_source pos_guid = 'LTCLCOPYPOS000000000000000000001' fname = `MATNR` visible = abap_true sequence = 1 )
                          ( guid = c_source pos_guid = 'LTCLCOPYPOS000000000000000000002' fname = `MAKTX` visible = abap_true sequence = 2 ) ).
-    INSERT z2ui5_t_12 FROM TABLE @positions.
+    INSERT z2ui5_t_12 FROM TABLE @positions ##SUBRC_OK.
 
   ENDMETHOD.
 
@@ -82,8 +82,8 @@ CLASS ltcl_copy IMPLEMENTATION.
 
   METHOD cleanup.
 
-    DELETE FROM z2ui5_t_11 WHERE handle03 = `LTCL_FROM` OR handle03 = `LTCL_TO`.
-    DELETE FROM z2ui5_t_12 WHERE pos_guid LIKE 'LTCL%' OR guid = @c_source.
+    DELETE FROM z2ui5_t_11 WHERE handle03 = `LTCL_FROM` OR handle03 = `LTCL_TO` ##SUBRC_OK.
+    DELETE FROM z2ui5_t_12 WHERE pos_guid LIKE 'LTCL%' OR guid = @c_source ##SUBRC_OK.
     COMMIT WORK.
 
   ENDMETHOD.
@@ -112,7 +112,7 @@ CLASS ltcl_copy IMPLEMENTATION.
     cl_abap_unit_assert=>assert_equals( exp = `LTCL_TO`
                                         act = db_head-handle03 ).
 
-    SELECT * FROM z2ui5_t_12 WHERE guid = @head-guid INTO TABLE @DATA(db_positions).
+    SELECT * FROM z2ui5_t_12 WHERE guid = @head-guid ORDER BY PRIMARY KEY INTO TABLE @DATA(db_positions) ##SUBRC_OK.
     cl_abap_unit_assert=>assert_equals( exp = 2
                                         act = lines( db_positions ) ).
     LOOP AT db_positions INTO DATA(position).
@@ -121,10 +121,10 @@ CLASS ltcl_copy IMPLEMENTATION.
     ENDLOOP.
 
     " the original is untouched
-    SELECT SINGLE handle03 FROM z2ui5_t_11 WHERE guid = @c_source INTO @DATA(source_handle03).
+    SELECT SINGLE handle03 FROM z2ui5_t_11 WHERE guid = @c_source INTO @DATA(source_handle03) ##SUBRC_OK.
     cl_abap_unit_assert=>assert_equals( exp = `LTCL_FROM`
                                         act = source_handle03 ).
-    SELECT * FROM z2ui5_t_12 WHERE guid = @c_source INTO TABLE @DATA(source_positions).
+    SELECT * FROM z2ui5_t_12 WHERE guid = @c_source ORDER BY PRIMARY KEY INTO TABLE @DATA(source_positions) ##SUBRC_OK.
     cl_abap_unit_assert=>assert_equals( exp = 2
                                         act = lines( source_positions ) ).
 
@@ -137,11 +137,11 @@ CLASS ltcl_copy IMPLEMENTATION.
                                                                  handle04 = `0002` ) )
                                          check_auth = abap_false ).
 
-    SELECT SINGLE def FROM z2ui5_t_11 WHERE guid = @c_old_def INTO @DATA(old_def).
+    SELECT SINGLE def FROM z2ui5_t_11 WHERE guid = @c_old_def INTO @DATA(old_def) ##SUBRC_OK.
     cl_abap_unit_assert=>assert_equals( exp = abap_false
                                         act = old_def ).
 
-    SELECT SINGLE def FROM z2ui5_t_11 WHERE guid = @c_other_s INTO @DATA(other_def).
+    SELECT SINGLE def FROM z2ui5_t_11 WHERE guid = @c_other_s INTO @DATA(other_def) ##SUBRC_OK.
     cl_abap_unit_assert=>assert_equals( exp = abap_true
                                         act = other_def ).
 

@@ -29,7 +29,7 @@ INTERFACE z2ui5_if_layo_auth
   METHODS check_authorized
     IMPORTING
       !action       TYPE string
-      !head         TYPE z2ui5_t_11
+      head          TYPE z2ui5_t_11
     RETURNING
       VALUE(result) TYPE abap_bool.
 

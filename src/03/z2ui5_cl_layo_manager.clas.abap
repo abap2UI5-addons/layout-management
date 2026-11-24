@@ -135,7 +135,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     METHODS register
       IMPORTING
         !id           TYPE clike
-        !label        TYPE clike OPTIONAL
+        label         TYPE clike OPTIONAL
         label_attr    TYPE clike OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
@@ -145,7 +145,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     METHODS register_by_xml
       IMPORTING
         !xml          TYPE string
-        !prefix       TYPE clike OPTIONAL
+        prefix        TYPE clike OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
 
@@ -229,7 +229,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
 
     CLASS-METHODS sort_by_sequence
       IMPORTING
-        !pos          TYPE  ty_t_positions
+        pos           TYPE  ty_t_positions
       RETURNING
         VALUE(result) TYPE  ty_t_positions.
 
@@ -317,7 +317,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         handle01      TYPE clike
         layout_guid   TYPE clike
         !format       TYPE clike OPTIONAL
-        !head         TYPE  ty_t_head
+        head          TYPE  ty_t_head
       RETURNING
         VALUE(result) TYPE  ty_s_head.
 
@@ -418,8 +418,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = lv_id. "#EC CI_SORTSEQ
     IF sy-subrc <> 0.
-      APPEND VALUE #( id = lv_id ) TO mt_slots.
-      READ TABLE mt_slots REFERENCE INTO lr_slot INDEX lines( mt_slots ).
+      APPEND VALUE #( id = lv_id ) TO mt_slots REFERENCE INTO lr_slot.
     ENDIF.
 
     IF label IS NOT INITIAL.
@@ -594,6 +593,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
              uname
         FROM z2ui5_t_11
         WHERE guid = @layout_guid
+        ORDER BY PRIMARY KEY
         INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
 
     ELSE.
@@ -618,6 +618,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           " the user's own layouts and the shared ones (no user) - never
           " another user's personal layout
           AND ( uname = @sy-uname OR uname = @space )
+        ORDER BY PRIMARY KEY
         INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
 
     ENDIF.
@@ -670,6 +671,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
            sorting
       FROM z2ui5_t_12
       WHERE guid = @layout_guid
+      ORDER BY PRIMARY KEY
       INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
 
   ENDMETHOD.
@@ -1286,7 +1288,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
         CALL METHOD type->('GET_DDIC_OBJECT')
           RECEIVING  p_object     = <t_obj>
           EXCEPTIONS not_found    = 1
-                     no_ddic_type = 2.
+                     no_ddic_type = 2
+                     OTHERS       = 3.
         IF sy-subrc <> 0.
           RETURN.
         ENDIF.
@@ -1302,7 +1305,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           RETURN.
         ENDIF.
 
-        IF <conv> = `MDLPD`. " GUID to Product works but the way back will fail (not in SAP GUI).
+        " GUID to Product works but the way back will fail (not in SAP GUI).
+        IF <conv> = `MDLPD`.
           RETURN.
         ENDIF.
 
@@ -1350,11 +1354,13 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     SELECT * FROM z2ui5_t_11
       WHERE guid IN @source_guids
-      INTO TABLE @DATA(sources).
+      ORDER BY PRIMARY KEY
+      INTO TABLE @DATA(sources) ##SUBRC_OK.
 
     SELECT * FROM z2ui5_t_12
       WHERE guid IN @source_guids
-      INTO TABLE @DATA(source_positions).
+      ORDER BY PRIMARY KEY
+      INTO TABLE @DATA(source_positions) ##SUBRC_OK.
 
     LOOP AT t_copy INTO DATA(copy).
 
@@ -1425,7 +1431,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
         WHERE handle03 IN @scope03
           AND def       = @abap_true
           AND guid NOT IN @new_guids
-        INTO TABLE @DATA(candidates).
+        ORDER BY PRIMARY KEY
+        INTO TABLE @DATA(candidates) ##SUBRC_OK.
 
       LOOP AT candidates INTO DATA(candidate).
         LOOP AT defaults INTO head WHERE control  = candidate-control
@@ -1444,7 +1451,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       ENDLOOP.
 
       IF demote IS NOT INITIAL.
-        UPDATE z2ui5_t_11 SET def = @abap_false WHERE guid IN @demote.
+        UPDATE z2ui5_t_11 SET def = @abap_false WHERE guid IN @demote ##SUBRC_OK.
       ENDIF.
 
     ENDIF.

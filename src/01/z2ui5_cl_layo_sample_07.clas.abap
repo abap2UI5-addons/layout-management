@@ -111,7 +111,7 @@ CLASS z2ui5_cl_layo_sample_07 IMPLEMENTATION.
                      )->ele( n = `View` ns = `mvc`
                      )->a( n = `xmlns` v = `sap.m`
                      )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc`
-                     )->a( n = `displayBlock` v = `true`
+                     )->a( n = `displayBlock` b = abap_true
                      )->a( n = `height` v = `100%` ).
 
     DATA(page) = view->ele( `Shell`
