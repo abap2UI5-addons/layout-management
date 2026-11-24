@@ -594,10 +594,10 @@
     "align_parameters": false,
     "empty_line_in_statement": false,
     "in_statement_indentation": false,
-    "indentation": false,
+    "indentation": true, // 0 findings here - on, so none come back (off in the abap2UI5 core)
     "keep_single_parameter_on_one_line": false,
     "line_break_multiple_parameters": false,
-    "line_only_punc": false,
+    "line_only_punc": true, // 0 findings here - on, so none come back (off in the abap2UI5 core)
     // inlining a temporary into its single use would pull whole builder chains
     // (toolbar, header) into a parameter list
     "single_use_expression_temp": false,
@@ -609,7 +609,7 @@
     "no_prefixes": false,
     // style preferences abap2UI5 and the app rule set both keep off
     "abapdoc": false,
-    "generic_regex": false,
+    "generic_regex": true, // 0 findings here - on, so none come back (off in the abap2UI5 core)
     "no_inline_in_optional_branches": false,
     "prefer_corresponding": false,
     "prefer_inline": false,
