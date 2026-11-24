@@ -422,7 +422,7 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     ASSIGN i_data->* TO FIELD-SYMBOL(<tab>).
 
     DATA(table) = i_xml->ele( `Table`
-                      )->a( n = `growing` v = CONV #( xsdbool( i_growingthreshold <> space ) )
+                      )->a( n = `growing` b = xsdbool( i_growingthreshold <> space )
                       )->a( n = `growingThreshold` v = i_growingthreshold
                       )->a( n = `width` v = 'auto'
                       )->a( n = `mode` v = COND #( WHEN i_sel_mode = space THEN `None` ELSE i_sel_mode  )
