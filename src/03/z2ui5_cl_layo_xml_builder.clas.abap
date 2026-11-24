@@ -480,13 +480,13 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                  )->a( n = `vAlign` v = `Middle`
                                  )->a( n = `selected` v = COND #( WHEN i_sel_bind_to = space
                                                               THEN ``
-                                                              ELSE |\{{ i_sel_bind_to }\}| )
+                                                              ELSE |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_sel_bind_to ) }\}| )
                                  )->a( n = `type` v = COND #( WHEN i_col_type = space THEN `Inactive` ELSE i_col_type  )
                                  )->a( n = `press` v = i_client->_event(
                                                val   = 'ROW_SELECT'
                                                t_arg = VALUE #( ( COND #( WHEN i_col_bind_to = space
                                                                           THEN ``
-                                                                          ELSE |$\{{ i_col_bind_to }\}| )  ) ) ) ).
+                                                                          ELSE |$\{{ z2ui5_cl_ui5_view_builder=>component_path( i_col_bind_to ) }\}| )  ) ) ) ).
 
     DATA(cells) = column_list_item->ele( `cells` ).
 
@@ -590,7 +590,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD table_value_formatter.
 
-    result = |\{{ position-fname }\}|.
+    " relative to the row: a namespaced column (/CWM/XCWMAT) is a level of
+    " the row in the model, {CWM/XCWMAT} - {/CWM/XCWMAT} would be absolute
+    result = |\{{ z2ui5_cl_ui5_view_builder=>component_path( position-fname ) }\}|.
 
   ENDMETHOD.
 
@@ -600,8 +602,8 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     IF i_data IS NOT SUPPLIED.
 
       i_xml->tag( n = `Icon` ns = `core`
-          )->a( n = `src` v = |\{{ i_layout->fname }/SRC\}|
-          )->a( n = `size` v = |\{{ i_layout->fname }/ICON_SIZE\}| ).
+          )->a( n = `src` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/SRC\}|
+          )->a( n = `size` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/ICON_SIZE\}| ).
 
     ELSE.
 
@@ -633,10 +635,10 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     IF i_data IS NOT SUPPLIED.
 
       i_xml->tag( n = `RadialMicroChart` ns = `mchart`
-          )->a( n = `size` v = |\{{ i_layout->fname }/RADIALMICROCHART_SIZE\}|
-          )->a( n = `percentage` v = |\{{ i_layout->fname }/PERCENTAGE\}|
-          )->a( n = `valueColor` v = |\{{ i_layout->fname }/VALUECOLOR\}|
-          )->a( n = `hideOnNoData` v = |\{{ i_layout->fname }/HIDEONNODATA\}| ).
+          )->a( n = `size` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/RADIALMICROCHART_SIZE\}|
+          )->a( n = `percentage` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/PERCENTAGE\}|
+          )->a( n = `valueColor` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/VALUECOLOR\}|
+          )->a( n = `hideOnNoData` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/HIDEONNODATA\}| ).
 
     ELSE.
 
@@ -679,10 +681,10 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
       i_xml->tag( `ProgressIndicator`
           )->a( n = `class` v = `sapUiSmallMarginBottom`
-          )->a( n = `percentValue` v = |\{{ i_layout->fname }/PERCENTVALUE\}|
-          )->a( n = `displayValue` v = |\{{ i_layout->fname }/DISPLAYVALUE\}|
-          )->a( n = `showValue` v = |\{{ i_layout->fname }/SHOWVALUE\}|
-          )->a( n = `state` v = |\{{ i_layout->fname }/STATE\}| ).
+          )->a( n = `percentValue` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/PERCENTVALUE\}|
+          )->a( n = `displayValue` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/DISPLAYVALUE\}|
+          )->a( n = `showValue` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/SHOWVALUE\}|
+          )->a( n = `state` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/STATE\}| ).
 
     ELSE.
 
@@ -726,27 +728,27 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     IF i_data IS NOT SUPPLIED.
 
       DATA(status_indicator) = i_xml->ele( n = `StatusIndicator` ns = `si`
-                                   )->a( n = `class` v = |\{{ i_layout->fname }/CLASS\}|
-                                   )->a( n = `size` v = |\{{ i_layout->fname }/STATUSINDICATOR_SIZE\}|
-                                   )->a( n = `value` v = |\{{ i_layout->fname }/VALUE\}| ).
+                                   )->a( n = `class` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/CLASS\}|
+                                   )->a( n = `size` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/STATUSINDICATOR_SIZE\}|
+                                   )->a( n = `value` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/VALUE\}| ).
 
       DATA(thresholds) = status_indicator->ele( n = `propertyThresholds` ns = `si` ).
 
       thresholds->ele( n = `PropertyThreshold` ns = `si`
           )->a( n = `fillColor` v = `Good`
-          )->a( n = `toValue` v = |\{{ i_layout->fname }/FILLCOLOR_GOOD\}| ).
+          )->a( n = `toValue` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/FILLCOLOR_GOOD\}| ).
 
       thresholds->ele( n = `PropertyThreshold` ns = `si`
           )->a( n = `fillColor` v = `Critical`
-          )->a( n = `toValue` v = |\{{ i_layout->fname }/FILLCOLOR_CRITICAL\}| ).
+          )->a( n = `toValue` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/FILLCOLOR_CRITICAL\}| ).
 
       thresholds->ele( n = `PropertyThreshold` ns = `si`
           )->a( n = `fillColor` v = `Error`
-          )->a( n = `toValue` v = |\{{ i_layout->fname }/FILLCOLOR_ERROR\}| ).
+          )->a( n = `toValue` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/FILLCOLOR_ERROR\}| ).
 
       status_indicator->ele( n = `ShapeGroup` ns = `si`
           )->ele( n = `LibraryShape` ns = `si`
-          )->a( n = `shapeId` v = |\{{ i_layout->fname }/SHAPEID\}| ).
+          )->a( n = `shapeId` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/SHAPEID\}| ).
 
     ELSE.
 
@@ -820,9 +822,9 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     IF i_data IS NOT SUPPLIED.
 
       i_xml->ele( `GenericTag`
-          )->a( n = `text` v = |\{{ i_layout->fname }/TEXT\}|
-          )->a( n = `design` v = |\{{ i_layout->fname }/DESIGN\}|
-          )->a( n = `status` v = |\{{ i_layout->fname }/STATUS\}| ).
+          )->a( n = `text` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/TEXT\}|
+          )->a( n = `design` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/DESIGN\}|
+          )->a( n = `status` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( i_layout->fname ) }/STATUS\}| ).
 
     ELSE.
 
