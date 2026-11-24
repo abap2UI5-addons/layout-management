@@ -181,6 +181,37 @@ client->view_display( z2ui5_cl_layo_xml_builder=>xml_apply_layout( i_xml    = vi
 The XML handling is `z2ui5_cl_layo_xml_tree` - no dependency on the framework
 or the database, covered by ABAP Unit tests.
 
+### Popup to select rows
+
+`z2ui5_cl_layo_pop_w_sel` shows any table in a popup to pick rows from, with
+the settings button of a layout table: the user chooses, orders and sizes the
+columns, sets a sorting and saves the layout - it is offered again the next
+time. Single select confirms with the first click, `i_multiselect = abap_true`
+shows check boxes and an OK button; a search keeps what was selected before.
+
+```abap
+" in an event handler
+client->nav_app_call( z2ui5_cl_layo_pop_w_sel=>factory( i_tab         = mt_tab
+                                                        i_title       = `Select Products`
+                                                        i_multiselect = abap_true ) ).
+
+" back in check_on_navigated( )
+DATA(result) = CAST z2ui5_cl_layo_pop_w_sel( client->get_app_prev( ) )->result( ).
+IF result-check_confirmed = abap_true.
+  ASSIGN result-table->* TO <selected>.   " a table of the type of mt_tab
+ENDIF.
+```
+
+- `result-table` holds the selected rows in the order of `i_tab`,
+  `result-row` the first of them; `nav_app_leave( )` hands the same table to
+  the calling app as `r_data`, with the event `i_event_confirmed` (or
+  `i_event_canceled` on cancel) when given.
+- Without `i_handle01` to `i_handle04` the layouts are saved under the name of
+  the popup class and the type name of the line of `i_tab`; pass handles to
+  keep them apart per app.
+- `i_tab` may also be a table of an elementary type (`string_table`), its
+  column is `TAB_LINE`.
+
 ### Copy layouts
 
 Hand saved layouts on to other handles - for example from one app and
@@ -203,6 +234,7 @@ missing, a copy is not authorized or the database refuses it.
 ## Features
 
 * **Generic Output** - Universal table and form rendering
+* **Selection Popup** - Pick one or several rows of any table in a popup with a layout
 * **Layout Customization** - Flexible customization of table and form outputs
 * **Any View** - Hide, reorder within the parent aggregation and relabel the controls of any view built with the view builder (generic mode)
 * **Variant Persistence** - Save layout variants to database
@@ -219,6 +251,7 @@ missing, a copy is not authorized or the database refuses it.
 | `z2ui5_cl_layo_sample_04` | Simple form from a database record |
 | `z2ui5_cl_layo_sample_05` | Table and form with two layouts on one page |
 | `z2ui5_cl_layo_sample_06` | Generic mode: a page with a panel of inputs, a toolbar and a list, personalized by control id |
+| `z2ui5_cl_layo_sample_07` | Popup to select several rows of a table, with a layout the user arranges and saves |
 
 ## Demo
 
