@@ -231,6 +231,42 @@ the popup (`check_auth = abap_false` for an admin tool that checks itself), one
 LUW, committed; `z2ui5_cx_layo_error` and nothing written when an original is
 missing, a copy is not authorized or the database refuses it.
 
+### Select layouts by ranges
+
+`select_layouts( )` reads the layouts of one exact set of handles, as the
+layout popup offers them. A tool that copies or migrates layouts reads them by
+ranges with `select_layouts_by_range( )` instead - every parameter is an
+optional range (`guid`, `layout`, `control`, `handle01` to `handle04`,
+`format`, `uname`), an empty one selects everything:
+
+```abap
+DATA handle03 TYPE z2ui5_cl_layo_manager=>ty_r_handle.
+DATA handle04 TYPE z2ui5_cl_layo_manager=>ty_r_handle.
+handle03 = VALUE #( ( sign = `I` option = `CP` low = `MY_APP*` ) ).
+handle04 = VALUE #( ( sign = `I` option = `EQ` low = `0001` ) ).
+
+DATA(heads) = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03   = handle03
+                                                              handle04   = handle04
+                                                              all_users  = abap_true
+                                                              check_auth = abap_false ).
+
+z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( FOR h IN heads
+                                                           ( guid     = h-guid
+                                                             handle01 = h-handle01
+                                                             handle02 = h-handle02
+                                                             handle03 = `MY_NEW_APP`
+                                                             handle04 = `0002` ) )
+                                     check_auth = abap_false ).
+```
+
+- Without `all_users` it returns the user's own and the shared layouts, as
+  the popup does. With `all_users = abap_true` other users' personal layouts
+  come too - each of them only when `z2ui5_if_layo_auth` allows the action
+  `READ_OTHERS`, which the shipped default does not; `check_auth = abap_false`
+  skips the check, for an admin tool that checks itself.
+- The heads come as saved, ordered by guid - without the screen format
+  fallback and the default demotion of `select_layouts( )`.
+
 ## Features
 
 * **Generic Output** - Universal table and form rendering
@@ -239,6 +275,7 @@ missing, a copy is not authorized or the database refuses it.
 * **Any View** - Hide, reorder within the parent aggregation and relabel the controls of any view built with the view builder (generic mode)
 * **Variant Persistence** - Save layout variants to database
 * **Auto-Loading** - Load default layouts automatically at startup
+* **Select and Copy** - Read layouts by ranges, also of every user, and copy them under other handles
 * **Authorization Hook** - Shared layouts and deletions can be restricted with `z2ui5_if_layo_auth`; by default every user may save and delete shared layouts
 
 ## Samples
@@ -284,13 +321,14 @@ Ownership of the variants:
 ### Authorization concept
 
 Before every write the popup asks `z2ui5_cl_layo_auth=>check( action = ... head = ... )`
-with one of three actions of `z2ui5_if_layo_auth=>cs_action`:
+with one of the actions of `z2ui5_if_layo_auth=>cs_action`:
 
 | Action | Asked when | Shipped default |
 |---|---|---|
 | `SAVE_OWN` | a user specific layout is saved (`head-uname` = the user) | allowed |
 | `SAVE_SHARED` | a shared layout is saved, new or updated (`head-uname` empty) | allowed |
 | `DELETE` | a layout is deleted - `head` is read from the database, `uname` is its owner | allowed for the owner and for shared layouts, never another user's personal layout |
+| `READ_OTHERS` | `select_layouts_by_range( all_users = abap_true )` reads another user's personal layout - `uname` is its owner; a refused one is left out | refused - the popup never shows another user's personal layout |
 
 The decision goes to, in this order:
 

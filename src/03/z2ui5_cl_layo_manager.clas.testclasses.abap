@@ -13,6 +13,21 @@ CLASS ltd_deny_all IMPLEMENTATION.
 ENDCLASS.
 
 
+CLASS ltd_allow_all DEFINITION FINAL FOR TESTING.
+  PUBLIC SECTION.
+    INTERFACES z2ui5_if_layo_auth.
+ENDCLASS.
+
+
+CLASS ltd_allow_all IMPLEMENTATION.
+
+  METHOD z2ui5_if_layo_auth~check_authorized.
+    result = abap_true.
+  ENDMETHOD.
+
+ENDCLASS.
+
+
 CLASS ltcl_copy DEFINITION FINAL FOR TESTING
   DURATION SHORT
   RISK LEVEL HARMLESS.
@@ -188,6 +203,171 @@ CLASS ltcl_copy IMPLEMENTATION.
                                                                   handle04 = `0002` ) ) ).
 
     cl_abap_unit_assert=>assert_equals( exp = 1
+                                        act = lines( heads ) ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+CLASS ltcl_select_range DEFINITION FINAL FOR TESTING
+  DURATION SHORT
+  RISK LEVEL HARMLESS.
+
+  PRIVATE SECTION.
+    CONSTANTS c_shared   TYPE z2ui5_t_11-guid VALUE 'LTCLSELSHARED0000000000000000001'.
+    CONSTANTS c_own      TYPE z2ui5_t_11-guid VALUE 'LTCLSELOWN0000000000000000000001'.
+    CONSTANTS c_other    TYPE z2ui5_t_11-guid VALUE 'LTCLSELOTHER00000000000000000001'.
+    CONSTANTS c_elsewhere TYPE z2ui5_t_11-guid VALUE 'LTCLSELELSEWHERE0000000000000001'.
+    CONSTANTS c_other_user TYPE z2ui5_t_11-uname VALUE 'LTCL_OTHER'.
+
+    METHODS setup.
+    METHODS teardown.
+    METHODS own_and_shared_by_default FOR TESTING.
+    METHODS all_users_admin FOR TESTING.
+    METHODS all_users_default_auth FOR TESTING.
+    METHODS all_users_hook_allows FOR TESTING.
+    METHODS ranges_restrict FOR TESTING.
+    METHODS select_then_copy FOR TESTING.
+
+    METHODS cleanup.
+
+    "! the LTCL_SEL* handle03 range every test selects in
+    CLASS-METHODS scope
+      RETURNING
+        VALUE(result) TYPE z2ui5_cl_layo_manager=>ty_r_handle.
+ENDCLASS.
+
+
+CLASS ltcl_select_range IMPLEMENTATION.
+
+  METHOD setup.
+
+    DATA heads TYPE STANDARD TABLE OF z2ui5_t_11 WITH EMPTY KEY.
+
+    cleanup( ).
+
+    heads = VALUE #( control  = z2ui5_cl_layo_manager=>m_table
+                     handle01 = `LTCL_APP`
+                     ( guid = c_shared    layout = `SHARED` handle03 = `LTCL_SEL_A` handle04 = `0001` )
+                     ( guid = c_own       layout = `OWN`    handle03 = `LTCL_SEL_A` handle04 = `0001` uname = sy-uname )
+                     ( guid = c_other     layout = `OTHER`  handle03 = `LTCL_SEL_B` handle04 = `0001` uname = c_other_user )
+                     ( guid = c_elsewhere layout = `ELSE`   handle03 = `LTCL_SEL_B` handle04 = `0002` ) ).
+    INSERT z2ui5_t_11 FROM TABLE @heads ##SUBRC_OK.
+
+  ENDMETHOD.
+
+  METHOD teardown.
+    cleanup( ).
+    z2ui5_cl_layo_auth=>set_instance( ).
+  ENDMETHOD.
+
+  METHOD cleanup.
+
+    DELETE FROM z2ui5_t_11 WHERE handle03 LIKE 'LTCL_SEL%' ##SUBRC_OK.
+    COMMIT WORK.
+
+  ENDMETHOD.
+
+  METHOD scope.
+    result = VALUE #( ( sign = `I` option = `CP` low = `LTCL_SEL*` ) ).
+  ENDMETHOD.
+
+  METHOD own_and_shared_by_default.
+
+    DATA(heads) = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03 = scope( ) ).
+
+    cl_abap_unit_assert=>assert_equals( exp = 3
+                                        act = lines( heads ) ).
+    cl_abap_unit_assert=>assert_false( xsdbool( line_exists( heads[ guid = c_other ] ) ) ).
+
+  ENDMETHOD.
+
+  METHOD all_users_admin.
+
+    DATA(heads) = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03   = scope( )
+                                                                  all_users  = abap_true
+                                                                  check_auth = abap_false ).
+
+    cl_abap_unit_assert=>assert_equals( exp = 4
+                                        act = lines( heads ) ).
+    cl_abap_unit_assert=>assert_true( xsdbool( line_exists( heads[ guid  = c_other
+                                                                   uname = c_other_user ] ) ) ).
+
+  ENDMETHOD.
+
+  METHOD all_users_default_auth.
+
+    " the shipped default never hands out another user's personal layout
+    DATA(heads) = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03  = scope( )
+                                                                  all_users = abap_true ).
+
+    cl_abap_unit_assert=>assert_equals( exp = 3
+                                        act = lines( heads ) ).
+    cl_abap_unit_assert=>assert_false( xsdbool( line_exists( heads[ guid = c_other ] ) ) ).
+
+  ENDMETHOD.
+
+  METHOD all_users_hook_allows.
+
+    z2ui5_cl_layo_auth=>set_instance( NEW ltd_allow_all( ) ).
+
+    DATA(heads) = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03  = scope( )
+                                                                  all_users = abap_true ).
+
+    cl_abap_unit_assert=>assert_equals( exp = 4
+                                        act = lines( heads ) ).
+
+  ENDMETHOD.
+
+  METHOD ranges_restrict.
+
+    DATA lv_handle04 TYPE z2ui5_cl_layo_manager=>ty_r_handle.
+    DATA lv_layout   TYPE z2ui5_cl_layo_manager=>ty_r_layout.
+
+    lv_handle04 = VALUE #( ( sign = `I` option = `EQ` low = `0001` ) ).
+    DATA(heads) = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03   = scope( )
+                                                                  handle04   = lv_handle04
+                                                                  all_users  = abap_true
+                                                                  check_auth = abap_false ).
+    cl_abap_unit_assert=>assert_equals( exp = 3
+                                        act = lines( heads ) ).
+    cl_abap_unit_assert=>assert_false( xsdbool( line_exists( heads[ guid = c_elsewhere ] ) ) ).
+
+    lv_layout = VALUE #( ( sign = `E` option = `EQ` low = `SHARED` ) ).
+    heads = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03 = scope( )
+                                                            handle04 = lv_handle04
+                                                            layout   = lv_layout ).
+    cl_abap_unit_assert=>assert_equals( exp = 1
+                                        act = lines( heads ) ).
+    cl_abap_unit_assert=>assert_equals( exp = c_own
+                                        act = heads[ 1 ]-guid ).
+
+  ENDMETHOD.
+
+  METHOD select_then_copy.
+
+    DATA lv_handle03 TYPE z2ui5_cl_layo_manager=>ty_r_handle.
+
+    lv_handle03 = VALUE #( ( sign = `I` option = `EQ` low = `LTCL_SEL_A` ) ).
+    DATA(heads) = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03   = lv_handle03
+                                                                  all_users  = abap_true
+                                                                  check_auth = abap_false ).
+
+    DATA(copies) = z2ui5_cl_layo_manager=>copy_layouts(
+                       t_copy     = VALUE #( FOR h IN heads
+                                             ( guid     = h-guid
+                                               handle01 = h-handle01
+                                               handle02 = h-handle02
+                                               handle03 = `LTCL_SEL_C`
+                                               handle04 = h-handle04 ) )
+                       check_auth = abap_false ).
+
+    cl_abap_unit_assert=>assert_equals( exp = 2
+                                        act = lines( copies ) ).
+    lv_handle03 = VALUE #( ( sign = `I` option = `EQ` low = `LTCL_SEL_C` ) ).
+    heads = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03 = lv_handle03 ).
+    cl_abap_unit_assert=>assert_equals( exp = 2
                                         act = lines( heads ) ).
 
   ENDMETHOD.

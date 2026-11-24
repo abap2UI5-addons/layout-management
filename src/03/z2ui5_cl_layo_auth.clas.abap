@@ -159,6 +159,10 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
         result = abap_true.
       WHEN z2ui5_if_layo_auth=>cs_action-delete.
         result = xsdbool( head-uname IS INITIAL OR head-uname = sy-uname ).
+      WHEN z2ui5_if_layo_auth=>cs_action-read_others.
+        " the layout popup never shows another user's personal layout - a
+        " tool that reads them all implements the hook or passes check_auth
+        result = xsdbool( head-uname IS INITIAL OR head-uname = sy-uname ).
       WHEN OTHERS.
         result = abap_false.
     ENDCASE.

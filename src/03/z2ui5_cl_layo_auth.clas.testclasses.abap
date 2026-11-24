@@ -30,6 +30,8 @@ CLASS ltcl_default DEFINITION FINAL FOR TESTING
     METHODS delete_own_allowed FOR TESTING.
     METHODS delete_other_denied FOR TESTING.
     METHODS delete_shared_allowed FOR TESTING.
+    METHODS read_others_denied FOR TESTING.
+    METHODS read_own_allowed FOR TESTING.
     METHODS unknown_action_denied FOR TESTING.
     METHODS injected_instance_decides FOR TESTING.
     METHODS unset_restores_default FOR TESTING.
@@ -111,6 +113,30 @@ CLASS ltcl_default IMPLEMENTATION.
 
     cl_abap_unit_assert=>assert_equals(
       act = mi_cut->check_authorized( action = z2ui5_if_layo_auth=>cs_action-delete
+                                      head   = ls_head )
+      exp = abap_true ).
+
+  ENDMETHOD.
+
+  METHOD read_others_denied.
+
+    DATA ls_head TYPE z2ui5_t_11.
+    ls_head-uname = 'LTCL_OTHER'.
+
+    cl_abap_unit_assert=>assert_equals(
+      act = mi_cut->check_authorized( action = z2ui5_if_layo_auth=>cs_action-read_others
+                                      head   = ls_head )
+      exp = abap_false ).
+
+  ENDMETHOD.
+
+  METHOD read_own_allowed.
+
+    DATA ls_head TYPE z2ui5_t_11.
+    ls_head-uname = sy-uname.
+
+    cl_abap_unit_assert=>assert_equals(
+      act = mi_cut->check_authorized( action = z2ui5_if_layo_auth=>cs_action-read_others
                                       head   = ls_head )
       exp = abap_true ).
 

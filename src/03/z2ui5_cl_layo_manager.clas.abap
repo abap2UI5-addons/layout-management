@@ -44,6 +44,15 @@ CLASS z2ui5_cl_layo_manager DEFINITION
       END OF ty_s_copy.
     TYPES ty_t_copy TYPE STANDARD TABLE OF ty_s_copy WITH EMPTY KEY.
 
+    " the selection of select_layouts_by_range( ) - one range per column of
+    " the layout head
+    TYPES ty_r_guid    TYPE RANGE OF z2ui5_t_11-guid.
+    TYPES ty_r_layout  TYPE RANGE OF z2ui5_t_11-layout.
+    TYPES ty_r_control TYPE RANGE OF z2ui5_t_11-control.
+    TYPES ty_r_handle  TYPE RANGE OF z2ui5_t_11-handle01.
+    TYPES ty_r_format  TYPE RANGE OF z2ui5_t_11-screen_format.
+    TYPES ty_r_uname   TYPE RANGE OF z2ui5_t_11-uname.
+
     TYPES:
       BEGIN OF ty_s_sub_columns,
         key   TYPE string,
@@ -179,6 +188,36 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         !format       TYPE clike OPTIONAL
       RETURNING
         VALUE(result) TYPE  ty_t_head.
+
+    "! Reads layout heads by ranges - for tools that copy or migrate layouts
+    "! (select, then copy_layouts( )) without reading the layout tables
+    "! themselves. Every range is optional, an empty one selects everything;
+    "! the handles take the same range type (patterns with CP, e.g. APP*).
+    "! The heads come as saved - no screen format fallback and no default
+    "! demotion of select_layouts( ).
+    "! all_users: abap_false - the user's own and the shared layouts, as the
+    "! layout popup offers them; abap_true - also other users' personal ones
+    "! check_auth: with all_users, ask z2ui5_if_layo_auth for every personal
+    "! layout of another user (action READ_OTHERS) and leave out the ones it
+    "! refuses - the shipped default refuses them; abap_false only for an admin
+    "! tool that checks itself
+    "! result: the heads ordered by guid - the guids and handles copy_layouts( )
+    "! takes in its ty_s_copy
+    CLASS-METHODS select_layouts_by_range
+      IMPORTING
+        guid          TYPE ty_r_guid    OPTIONAL
+        !layout       TYPE ty_r_layout  OPTIONAL
+        !control      TYPE ty_r_control OPTIONAL
+        handle01      TYPE ty_r_handle  OPTIONAL
+        handle02      TYPE ty_r_handle  OPTIONAL
+        handle03      TYPE ty_r_handle  OPTIONAL
+        handle04      TYPE ty_r_handle  OPTIONAL
+        !format       TYPE ty_r_format  OPTIONAL
+        uname         TYPE ty_r_uname   OPTIONAL
+        all_users     TYPE abap_bool    DEFAULT abap_false
+        check_auth    TYPE abap_bool    DEFAULT abap_true
+      RETURNING
+        VALUE(result) TYPE ty_t_head.
 
     CLASS-METHODS select_layout_components
       IMPORTING
@@ -1336,6 +1375,62 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     mv_sel_mode      = sel_mode.
     mv_sel_field     = sel_field.
     mv_sel_key_field = sel_key_field.
+
+  ENDMETHOD.
+
+  METHOD select_layouts_by_range.
+
+    IF all_users = abap_true.
+
+      SELECT * FROM z2ui5_t_11
+        WHERE guid          IN @guid
+          AND layout        IN @layout
+          AND control       IN @control
+          AND handle01      IN @handle01
+          AND handle02      IN @handle02
+          AND handle03      IN @handle03
+          AND handle04      IN @handle04
+          AND screen_format IN @format
+          AND uname         IN @uname
+        ORDER BY PRIMARY KEY
+        INTO TABLE @result ##SUBRC_OK.
+
+    ELSE.
+
+      SELECT * FROM z2ui5_t_11
+        WHERE guid          IN @guid
+          AND layout        IN @layout
+          AND control       IN @control
+          AND handle01      IN @handle01
+          AND handle02      IN @handle02
+          AND handle03      IN @handle03
+          AND handle04      IN @handle04
+          AND screen_format IN @format
+          AND uname         IN @uname
+          " the user's own layouts and the shared ones (no user) - never
+          " another user's personal layout
+          AND ( uname = @sy-uname OR uname = @space )
+        ORDER BY PRIMARY KEY
+        INTO TABLE @result ##SUBRC_OK.
+
+    ENDIF.
+
+    IF all_users = abap_false OR check_auth = abap_false.
+      RETURN.
+    ENDIF.
+
+    " another user's personal layout only when the hook allows it - rebuilt
+    " instead of DELETE inside the loop
+    DATA(selected) = result.
+    CLEAR result.
+    LOOP AT selected INTO DATA(head).
+      IF    head-uname IS INITIAL
+         OR head-uname = sy-uname
+         OR z2ui5_cl_layo_auth=>check( action = z2ui5_if_layo_auth=>cs_action-read_others
+                                       head   = head ) = abap_true.
+        INSERT head INTO TABLE result.
+      ENDIF.
+    ENDLOOP.
 
   ENDMETHOD.
 
