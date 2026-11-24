@@ -207,7 +207,7 @@ missing, a copy is not authorized or the database refuses it.
 * **Any View** - Hide, reorder within the parent aggregation and relabel the controls of any view built with the view builder (generic mode)
 * **Variant Persistence** - Save layout variants to database
 * **Auto-Loading** - Load default layouts automatically at startup
-* **Authorization Hook** - Shared layouts and deletions are decided by `z2ui5_if_layo_auth`, with a safe default
+* **Authorization Hook** - Shared layouts and deletions can be restricted with `z2ui5_if_layo_auth`; by default every user may save and delete shared layouts
 
 ## Samples
 
@@ -256,8 +256,8 @@ with one of three actions of `z2ui5_if_layo_auth=>cs_action`:
 | Action | Asked when | Shipped default |
 |---|---|---|
 | `SAVE_OWN` | a user specific layout is saved (`head-uname` = the user) | allowed |
-| `SAVE_SHARED` | a shared layout is saved, new or updated (`head-uname` empty) | **denied** |
-| `DELETE` | a layout is deleted - `head` is read from the database, `uname` is its owner | allowed for the owner only, shared layouts never |
+| `SAVE_SHARED` | a shared layout is saved, new or updated (`head-uname` empty) | allowed |
+| `DELETE` | a layout is deleted - `head` is read from the database, `uname` is its owner | allowed for the owner and for shared layouts, never another user's personal layout |
 
 The decision goes to, in this order:
 
@@ -268,14 +268,15 @@ The decision goes to, in this order:
    if there are several, so keep it to one);
 3. `z2ui5_cl_layo_auth` itself, the default above.
 
-A denial ends in a message toast and nothing is written. Without an
-implementation the save popup starts on **User specific**, so the first save
-of every user just works.
+Without an implementation of its own the system behaves as before the hook
+existed: every user may save and delete his own and the shared layouts. A
+denial of an implementation ends in a message toast and nothing is written;
+when a shared save is denied, the save popup starts on **User specific**.
 
 The addon ships no authorization object on purpose: an `AUTHORITY-CHECK`
 against an object that does not exist in the customer system is always
-refused, and the right object differs per installation. To let key users
-maintain shared layouts, implement the interface with your own object:
+refused, and the right object differs per installation. To restrict shared
+layouts to key users, implement the interface with your own object:
 
 ```abap
 CLASS zcl_my_layo_auth DEFINITION PUBLIC FINAL CREATE PUBLIC.
@@ -300,8 +301,7 @@ ENDCLASS.
 ```
 
 Shared layouts written before an implementation existed, or by another tool,
-stay in table `z2ui5_t_11` (positions in `z2ui5_t_12`) and can be removed
-there.
+stay in table `z2ui5_t_11` (positions in `z2ui5_t_12`).
 
 ## Development
 

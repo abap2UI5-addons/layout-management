@@ -1,3 +1,18 @@
+CLASS ltd_deny_all DEFINITION FINAL FOR TESTING.
+  PUBLIC SECTION.
+    INTERFACES z2ui5_if_layo_auth.
+ENDCLASS.
+
+
+CLASS ltd_deny_all IMPLEMENTATION.
+
+  METHOD z2ui5_if_layo_auth~check_authorized.
+    result = abap_false.
+  ENDMETHOD.
+
+ENDCLASS.
+
+
 CLASS ltcl_copy DEFINITION FINAL FOR TESTING
   DURATION SHORT
   RISK LEVEL HARMLESS.
@@ -12,7 +27,8 @@ CLASS ltcl_copy DEFINITION FINAL FOR TESTING
     METHODS copy_with_positions FOR TESTING.
     METHODS copy_demotes_default FOR TESTING.
     METHODS copy_unknown_raises FOR TESTING.
-    METHODS copy_shared_denied FOR TESTING.
+    METHODS copy_denied_by_auth FOR TESTING.
+    METHODS copy_checked_by_default FOR TESTING.
 
     METHODS cleanup.
 ENDCLASS.
@@ -143,22 +159,36 @@ CLASS ltcl_copy IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD copy_shared_denied.
+  METHOD copy_denied_by_auth.
 
     DATA count TYPE i.
 
-    " the shipped default: nobody may save a layout for all users
+    " a system's own z2ui5_if_layo_auth that refuses - nothing is written
+    z2ui5_cl_layo_auth=>set_instance( NEW ltd_deny_all( ) ).
+
     TRY.
         z2ui5_cl_layo_manager=>copy_layouts( VALUE #( ( guid     = c_source
                                                         handle03 = `LTCL_TO`
                                                         handle04 = `0002` ) ) ).
-        cl_abap_unit_assert=>fail( `a shared copy was not checked` ).
+        cl_abap_unit_assert=>fail( `the copy was not checked` ).
       CATCH z2ui5_cx_layo_error ##NO_HANDLER.
     ENDTRY.
 
     SELECT COUNT(*) FROM z2ui5_t_11 WHERE handle03 = `LTCL_TO` INTO @count.
     cl_abap_unit_assert=>assert_equals( exp = 2
                                         act = count ).
+
+  ENDMETHOD.
+
+  METHOD copy_checked_by_default.
+
+    " the shipped default allows a shared layout - the copy goes through
+    DATA(heads) = z2ui5_cl_layo_manager=>copy_layouts( VALUE #( ( guid     = c_source
+                                                                  handle03 = `LTCL_TO`
+                                                                  handle04 = `0002` ) ) ).
+
+    cl_abap_unit_assert=>assert_equals( exp = 1
+                                        act = lines( heads ) ).
 
   ENDMETHOD.
 

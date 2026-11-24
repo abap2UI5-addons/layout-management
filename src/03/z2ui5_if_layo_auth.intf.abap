@@ -7,7 +7,7 @@
 "! (the way abap2UI5 finds its user exit), creates it and asks it before every
 "! write that reaches beyond the user's own layouts. Without such a class the
 "! shipped default z2ui5_cl_layo_auth applies: a user may save and delete his
-"! own layouts, and nobody may save a shared one.
+"! own layouts and the shared ones, never another user's personal layout.
 "! Only one implementing class may exist in a system - the lookup takes the
 "! first by name and the result is not what two authors intended.
 INTERFACE z2ui5_if_layo_auth

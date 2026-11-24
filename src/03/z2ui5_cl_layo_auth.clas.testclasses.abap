@@ -26,10 +26,10 @@ CLASS ltcl_default DEFINITION FINAL FOR TESTING
     METHODS teardown.
     METHODS own_save_allowed FOR TESTING.
     METHODS own_save_other_user_denied FOR TESTING.
-    METHODS shared_save_denied FOR TESTING.
+    METHODS shared_save_allowed FOR TESTING.
     METHODS delete_own_allowed FOR TESTING.
     METHODS delete_other_denied FOR TESTING.
-    METHODS delete_shared_denied FOR TESTING.
+    METHODS delete_shared_allowed FOR TESTING.
     METHODS unknown_action_denied FOR TESTING.
     METHODS injected_instance_decides FOR TESTING.
     METHODS unset_restores_default FOR TESTING.
@@ -70,14 +70,14 @@ CLASS ltcl_default IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD shared_save_denied.
+  METHOD shared_save_allowed.
 
     DATA ls_head TYPE z2ui5_t_11.
 
     cl_abap_unit_assert=>assert_equals(
       act = mi_cut->check_authorized( action = z2ui5_if_layo_auth=>cs_action-save_shared
                                       head   = ls_head )
-      exp = abap_false ).
+      exp = abap_true ).
 
   ENDMETHOD.
 
@@ -105,14 +105,14 @@ CLASS ltcl_default IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD delete_shared_denied.
+  METHOD delete_shared_allowed.
 
     DATA ls_head TYPE z2ui5_t_11.
 
     cl_abap_unit_assert=>assert_equals(
       act = mi_cut->check_authorized( action = z2ui5_if_layo_auth=>cs_action-delete
                                       head   = ls_head )
-      exp = abap_false ).
+      exp = abap_true ).
 
   ENDMETHOD.
 
@@ -152,8 +152,7 @@ CLASS ltcl_default IMPLEMENTATION.
     z2ui5_cl_layo_auth=>set_instance( ).
 
     " the default again - either the shipped class or a system's own
-    " implementation; the shipped one denies a shared save, and a system
-    " that allows it has made that decision itself
+    " implementation
     DATA(li_auth) = z2ui5_cl_layo_auth=>get_instance( ).
     cl_abap_unit_assert=>assert_bound( li_auth ).
     cl_abap_unit_assert=>assert_true( xsdbool( li_auth <> lo_allow ) ).
