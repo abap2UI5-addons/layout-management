@@ -181,6 +181,25 @@ client->view_display( z2ui5_cl_layo_xml_builder=>xml_apply_layout( i_xml    = vi
 The XML handling is `z2ui5_cl_layo_xml_tree` - no dependency on the framework
 or the database, covered by ABAP Unit tests.
 
+### Copy layouts
+
+Hand saved layouts on to other handles - for example from one app and
+warehouse to another - with `copy_layouts( )` instead of writing the layout
+tables yourself:
+
+```abap
+DATA(heads) = z2ui5_cl_layo_manager=>copy_layouts( VALUE #(
+    ( guid = ls_head-guid  handle01 = ls_head-handle01  handle02 = ls_head-handle02
+      handle03 = `NEW_APP` handle04 = `0002` ) ) ).
+```
+
+Every copy gets new guids for head and positions and keeps name, control,
+screen format, user and default flag; a copied default demotes the defaults of
+its new scope. The copies are checked with `z2ui5_if_layo_auth` like a save in
+the popup (`check_auth = abap_false` for an admin tool that checks itself), one
+LUW, committed; `z2ui5_cx_layo_error` and nothing written when an original is
+missing, a copy is not authorized or the database refuses it.
+
 ## Features
 
 * **Generic Output** - Universal table and form rendering

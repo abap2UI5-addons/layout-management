@@ -31,6 +31,19 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     TYPES ty_s_head TYPE z2ui5_t_11.
     TYPES ty_t_head TYPE STANDARD TABLE OF ty_s_head WITH EMPTY KEY.
 
+    " one layout to copy: the guid of the original and the handles (and,
+    " when not empty, the description) the copy is saved under
+    TYPES:
+      BEGIN OF ty_s_copy,
+        guid     TYPE z2ui5_t_11-guid,
+        handle01 TYPE z2ui5_t_11-handle01,
+        handle02 TYPE z2ui5_t_11-handle02,
+        handle03 TYPE z2ui5_t_11-handle03,
+        handle04 TYPE z2ui5_t_11-handle04,
+        descr    TYPE z2ui5_t_11-descr,
+      END OF ty_s_copy.
+    TYPES ty_t_copy TYPE STANDARD TABLE OF ty_s_copy WITH EMPTY KEY.
+
     TYPES:
       BEGIN OF ty_s_sub_columns,
         key   TYPE string,
@@ -172,6 +185,23 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         layout_guid   TYPE clike
       RETURNING
         VALUE(result) TYPE  ty_t_positions.
+
+    "! Copies saved layouts with their positions under other handles - for
+    "! example the layouts of one app and warehouse to another. Every copy
+    "! gets new guids and keeps name, control, screen format, user and the
+    "! default flag of its original; a copy flagged as default demotes the
+    "! defaults of its new scope. One LUW, committed.
+    "! check_auth: ask z2ui5_if_layo_auth for every copy as the layout popup
+    "! does for a save - abap_false only for an admin tool that checks itself
+    "! Raises z2ui5_cx_layo_error when an original does not exist, a copy is
+    "! not authorized or the database refuses the write - nothing is written.
+    "! result: the heads of the copies
+    CLASS-METHODS copy_layouts
+      IMPORTING
+        t_copy        TYPE ty_t_copy
+        check_auth    TYPE abap_bool DEFAULT abap_true
+      RETURNING
+        VALUE(result) TYPE ty_t_head.
 
     "! output: abap_true formats the values for the screen, abap_false back.
     "! data: the table again - see set_data( )
@@ -1302,6 +1332,124 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     mv_sel_mode      = sel_mode.
     mv_sel_field     = sel_field.
     mv_sel_key_field = sel_key_field.
+
+  ENDMETHOD.
+
+  METHOD copy_layouts.
+
+    DATA source_guids TYPE RANGE OF z2ui5_t_11-guid.
+    DATA new_guids    TYPE RANGE OF z2ui5_t_11-guid.
+    DATA positions    TYPE STANDARD TABLE OF z2ui5_t_12 WITH EMPTY KEY.
+
+    IF t_copy IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    source_guids = VALUE #( FOR c IN t_copy
+                            ( sign = `I` option = `EQ` low = c-guid ) ).
+
+    SELECT * FROM z2ui5_t_11
+      WHERE guid IN @source_guids
+      INTO TABLE @DATA(sources).
+
+    SELECT * FROM z2ui5_t_12
+      WHERE guid IN @source_guids
+      INTO TABLE @DATA(source_positions).
+
+    LOOP AT t_copy INTO DATA(copy).
+
+      DATA(head) = VALUE #( sources[ guid = copy-guid ] OPTIONAL ).
+      IF head IS INITIAL.
+        RAISE EXCEPTION TYPE z2ui5_cx_layo_error
+          EXPORTING val = |Layout { copy-guid } not found|.
+      ENDIF.
+
+      head-guid     = z2ui5_cl_layo_context=>uuid_get_c32( ).
+      head-handle01 = copy-handle01.
+      head-handle02 = copy-handle02.
+      head-handle03 = copy-handle03.
+      head-handle04 = copy-handle04.
+      IF copy-descr IS NOT INITIAL.
+        head-descr = copy-descr.
+      ENDIF.
+
+      IF check_auth = abap_true.
+        DATA(action) = COND string( WHEN head-uname IS INITIAL
+                                    THEN z2ui5_if_layo_auth=>cs_action-save_shared
+                                    ELSE z2ui5_if_layo_auth=>cs_action-save_own ).
+        IF z2ui5_cl_layo_auth=>check( action = action
+                                      head   = head ) = abap_false.
+          RAISE EXCEPTION TYPE z2ui5_cx_layo_error
+            EXPORTING val = |Not authorized to save layout { head-layout } for { head-handle01 } { head-handle03 } { head-handle04 }|.
+        ENDIF.
+      ENDIF.
+
+      LOOP AT source_positions INTO DATA(position) WHERE guid = copy-guid.
+        position-guid     = head-guid.
+        position-pos_guid = z2ui5_cl_layo_context=>uuid_get_c32( ).
+        INSERT position INTO TABLE positions.
+      ENDLOOP.
+
+      INSERT head INTO TABLE result.
+      INSERT VALUE #( sign = `I` option = `EQ` low = head-guid ) INTO TABLE new_guids.
+
+    ENDLOOP.
+
+    INSERT z2ui5_t_11 FROM TABLE @result.
+    IF sy-subrc <> 0.
+      ROLLBACK WORK.
+      RAISE EXCEPTION TYPE z2ui5_cx_layo_error
+        EXPORTING val = `Layouts could not be copied`.
+    ENDIF.
+
+    IF positions IS NOT INITIAL.
+      INSERT z2ui5_t_12 FROM TABLE @positions.
+      IF sy-subrc <> 0.
+        ROLLBACK WORK.
+        RAISE EXCEPTION TYPE z2ui5_cx_layo_error
+          EXPORTING val = `Layouts could not be copied`.
+      ENDIF.
+    ENDIF.
+
+    " a copied default demotes the defaults of its new scope, as a save does
+    " - a layout saved before the screen format existed has none and is a
+    " default of the same scope. One read of the candidates, one update.
+    DATA(defaults) = VALUE ty_t_head( FOR h IN result WHERE ( def = abap_true ) ( h ) ).
+    IF defaults IS NOT INITIAL.
+
+      DATA scope03 TYPE RANGE OF z2ui5_t_11-handle03.
+      DATA demote  TYPE RANGE OF z2ui5_t_11-guid.
+      scope03 = VALUE #( FOR d IN defaults ( sign = `I` option = `EQ` low = d-handle03 ) ).
+
+      SELECT * FROM z2ui5_t_11
+        WHERE handle03 IN @scope03
+          AND def       = @abap_true
+          AND guid NOT IN @new_guids
+        INTO TABLE @DATA(candidates).
+
+      LOOP AT candidates INTO DATA(candidate).
+        LOOP AT defaults INTO head WHERE control  = candidate-control
+                                     AND handle01 = candidate-handle01
+                                     AND handle02 = candidate-handle02
+                                     AND handle03 = candidate-handle03
+                                     AND handle04 = candidate-handle04
+                                     AND uname    = candidate-uname.
+          IF    candidate-screen_format = head-screen_format
+             OR ( head-screen_format = screen_format_l AND candidate-screen_format IS INITIAL )
+             OR ( head-screen_format IS INITIAL AND candidate-screen_format = screen_format_l ).
+            INSERT VALUE #( sign = `I` option = `EQ` low = candidate-guid ) INTO TABLE demote.
+            EXIT.
+          ENDIF.
+        ENDLOOP.
+      ENDLOOP.
+
+      IF demote IS NOT INITIAL.
+        UPDATE z2ui5_t_11 SET def = @abap_false WHERE guid IN @demote.
+      ENDIF.
+
+    ENDIF.
+
+    COMMIT WORK AND WAIT.
 
   ENDMETHOD.
 
