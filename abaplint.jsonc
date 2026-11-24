@@ -487,12 +487,9 @@
     "select_add_order_by": true,
     // added 2026-11 with their findings fixed and narrow exceptions:
     "check_subrc": {
-      // the vendored abap-util copy stays close to the master (AGENTS.md);
       // a statement whose sy-subrc does not matter carries ##SUBRC_OK, as in
-      // abap2UI5
-      "exclude": [
-        "/src/03/z2ui5_cl_layo_context\\."
-      ],
+      // abap2UI5. The vendored abap-util copy is checked too (SLIN reports
+      // an unchecked CALL FUNCTION ... EXCEPTIONS there as well)
       // every option named: an option left out of a rule object counts as off
       "openDataset": true,
       "authorityCheck": true,
