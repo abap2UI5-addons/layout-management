@@ -52,8 +52,10 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
 
       WHEN OTHERS.
 
+        " the settings button, and a click on a column header (i_col_sort)
         z2ui5_cl_layo_pop=>on_event_layout( client = client
-                                            layout = mo_layout ).
+                                            layout = mo_layout
+                                            data   = REF #( mt_table ) ).
 
     ENDCASE.
 
@@ -90,10 +92,11 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
                      )->a( n = `showNavButton` b = client->check_app_prev_stack( )
                      )->a( n = `class` v = `sapUiContentPadding` ).
 
-    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = REF #( mt_table )
-                                                i_xml    = page
-                                                i_client = client
-                                                i_layout = mo_layout ).
+    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data     = REF #( mt_table )
+                                                i_xml      = page
+                                                i_client   = client
+                                                i_layout   = mo_layout
+                                                i_col_sort = abap_true ).
 
     client->view_display( view->stringify( ) ).
 

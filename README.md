@@ -172,6 +172,90 @@ A view of its own gets the same with `z2ui5_cl_layo_manager=>digit_type( )`
 parent - on UI5 1.71 a type named in a binding is resolved only when its
 module is loaded already).
 
+### Table options - header sort, row colour, cell controls
+
+`xml_build_table( )` takes a few optional parameters on top of the ones
+above. Each one is off by default: a call without them renders the table
+exactly as before.
+
+```abap
+z2ui5_cl_layo_xml_builder=>xml_build_table(
+    i_data             = REF #( mt_table )
+    i_xml              = page
+    i_client           = client
+    i_layout           = mo_layout
+    i_col_sort         = abap_true                " sort by a click on a column header
+    i_row_color        = `CELL_COLOR-COLOR`       " data-color on every row
+    i_sub_col_controls = abap_true                " controls as subcolumns, stacked in a VBox
+    i_t_cell_control   = VALUE #(                 " rollnames of the app -> cell control
+        ( rollname = `ZMY_S_TRAFFIC_LIGHT` control = z2ui5_cl_layo_xml_builder=>cs_cell_control-icon )
+        ( rollname = `ZMY_*_TOGGLE`        control = z2ui5_cl_layo_xml_builder=>cs_cell_control-switch ) ) ).
+```
+
+- **Sorting by the column header** - `i_col_sort = abap_true` makes the
+  header of every column a link. A click sorts the table by that column
+  through the layout - none, ascending, descending, none again; the column
+  clicked last is the only sorted one - and the column shows the order with
+  the standard sort icon of `sap.m.Column` (`sortIndicator`, UI5 1.61),
+  bound to the layout, so no new view is needed. The event is
+  `z2ui5_cl_layo_xml_builder=>cv_event_column_sort`; `on_event_layout( )`
+  handles it when it gets the table:
+
+  ```abap
+  z2ui5_cl_layo_pop=>on_event_layout( client = client
+                                      layout = mo_layout
+                                      data   = REF #( mt_table ) ).
+  ```
+
+  or, next to other handling, `z2ui5_cl_layo_xml_builder=>on_event_column_sort( )`
+  with the same parameters (`abap_true` when it was the event). The sort
+  order is saved with the layout like one chosen in the popup. The links
+  look like links; `i_col_sort_class` puts a style class of the app on them
+  for an app that styles them itself. No CSS comes with the table.
+- **Row colour** - `i_row_color` names the field of the row that carries a
+  colour key, relative to the row (`COLOR`, or `CELL_COLOR-COLOR` for a
+  component of a structured column). Every row gets it as custom data written
+  to the DOM - `<tr data-color="red_1">` - and the app's CSS gives the key
+  its colour, e.g. `tr[data-color="red_1"] > td { background-color: #FFEAF4; }`.
+  The field has to be a string (`writeToDom` writes nothing else).
+- **Cell controls** - a column whose rollname (its data element, or for a
+  structured column its structure type) is one of the structures below is
+  drawn as that control instead of text. The cells bind the components of
+  the row; a component the structure does not have is left out, so an
+  app's own structure may carry fewer of them:
+
+  | Structure | Control | Components |
+  |---|---|---|
+  | `z2ui5_xml_s_icon` | `sap.ui.core.Icon` | `SRC`, `ICON_SIZE` (or `SIZE`), and `COLOR`, `PRESS`, `PRESS_VALUE` when the structure has them |
+  | `z2ui5_xml_s_generictag` | `sap.m.GenericTag` | `TEXT`, `DESIGN`, `STATUS` |
+  | `z2ui5_xml_s_progressind` | `sap.m.ProgressIndicator` | `PERCENTVALUE`, `DISPLAYVALUE`, `SHOWVALUE`, `STATE` |
+  | `z2ui5_xml_s_radialchart` | `sap.suite.ui.microchart.RadialMicroChart` | `RADIALMICROCHART_SIZE` (or `SIZE`), `PERCENTAGE`, `VALUECOLOR`, `HIDEONNODATA` |
+  | `z2ui5_xml_s_statusind` | `sap.suite.ui.commons.statusindicator.StatusIndicator` | `CLASS`, `STATUSINDICATOR_SIZE` (or `SIZE`), `VALUE`, `FILLCOLOR_GOOD` / `_CRITICAL` / `_ERROR`, `SHAPEID` |
+  | `z2ui5_xml_s_switch` | `sap.m.Switch` | `STATE`, `CUSTOMTEXTON`, `CUSTOMTEXTOFF`, `ENABLED`, `TYPE`, `CHANGE` / `CHANGE_VALUE` |
+  | `z2ui5_xml_s_input` | `sap.m.Input` | `VALUE`, `PLACEHOLDER`, `ENABLED`, `EDITABLE`, `VISIBLE` |
+  | `z2ui5_xml_s_button` | `sap.m.Button` | `TEXT`, `ICON`, `TYPE`, `PRESS` / `PRESS_VALUE` |
+
+  `PRESS` / `CHANGE` hold the **name of the event** of the row and
+  `PRESS_VALUE` / `CHANGE_VALUE` its argument - the click sends
+  `get( )-event = <PRESS>` and `get_event_arg( ) = <PRESS_VALUE>`. A
+  button `TYPE` such as `Critical` or `Success` needs UI5 1.73; on 1.71 the
+  button renders `Default`. An `Input` cell is bound to the row, so what
+  the user types travels back with the table.
+- **Cell controls of the app** - the controls are found by the rollname
+  pattern `*_XML_S_ICON`, `*_XML_S_SWITCH`, ... (any namespace). An app with
+  structures of its own maps them in `i_t_cell_control`: `rollname` is a
+  pattern (`CP`), `control` one of `z2ui5_cl_layo_xml_builder=>cs_cell_control`
+  (`cs_cell_control-text` draws a matching column as text). The app's
+  entries are checked first.
+- **Several controls in one cell** - `i_sub_col_controls = abap_true`: a
+  subcolumn (chosen in the layout popup) that is a cell control is drawn as
+  that control below the value of the column, and a control column shows its
+  text subcolumns below the control; a cell with more than one control
+  stacks them in a `VBox`. Without it a control column shows the control
+  only, and every subcolumn is text.
+- `i_sel_event` - the event of `selectionChange`, `SELECTION_CHANGE` when it
+  is empty.
+
 ### Any view - the generic mode
 
 For a view that is neither a table nor a form, the generic mode personalizes
@@ -307,6 +391,7 @@ z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( FOR h IN heads
 * **Layout Customization** - Flexible customization of table and form outputs
 * **Any View** - Hide, reorder within the parent aggregation and relabel the controls of any view built with the view builder (generic mode)
 * **Conversion in the Browser** - ALPHA and NUMC columns are formatted by UI5, the data stays internal
+* **Table Options** - Sort by a click on the column header, a colour key on every row, switches, inputs and buttons in cells, several controls in one cell, cell controls of the app's own structures
 * **Variant Persistence** - Save layout variants to database
 * **Auto-Loading** - Load default layouts automatically at startup
 * **Select and Copy** - Read layouts by ranges, also of every user, and copy them under other handles
@@ -316,7 +401,7 @@ z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( FOR h IN heads
 
 | Sample | Shows |
 |---|---|
-| `z2ui5_cl_layo_sample_01` | Table with icons, tags, progress indicators, radial charts and status indicators |
+| `z2ui5_cl_layo_sample_01` | Table with icons, tags, progress indicators, radial charts and status indicators, sorted by a click on a column header |
 | `z2ui5_cl_layo_sample_02` | Simple form with the same field types |
 | `z2ui5_cl_layo_sample_03` | Table from a database table |
 | `z2ui5_cl_layo_sample_04` | Simple form from a database record |
