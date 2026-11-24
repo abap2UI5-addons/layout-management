@@ -388,6 +388,215 @@
     // added 2026-11: newer abaplint rules that report nothing here
     "abapdoc_short_link": true,
     "boolean_flag_via_if": true,
-    "cast_via_generic_reference": true
+    "cast_via_generic_reference": true,
+    // added 2026-11 on abaplint 2.120.116: every remaining rule of
+    // `abaplint --default` is listed. Those that report nothing here, with
+    // abap2UI5's settings (or the app rule set's, .github/abaplint/app-rules.json,
+    // where abap2UI5 has none)
+    "align_type_expressions": true,
+    "bdef_check_syntax": true,
+    "bdef_parser_error": true,
+    "cds_check_syntax": true,
+    "cds_naming": {
+      "basicInterfaceView": "Z2UI5_",
+      "compositeInterfaceView": "Z2UI5_",
+      "consumptionView": "Z2UI5_",
+      "basicRestrictedReuseView": "Z2UI5_",
+      "compositeRestrictedReuseView": "Z2UI5_",
+      "privateView": "Z2UI5_",
+      "remoteAPIView": "Z2UI5_",
+      "viewExtend": "Z2UI5_",
+      "extensionIncludeView": "Z2UI5_",
+      "derivationFunction": "Z2UI5_",
+      "abstractEntity": "Z2UI5_"
+    },
+    "character_field_literal_blanks": true,
+    "copy_chain": true,
+    "field_symbol_never_assigned": true,
+    "forbidden_statement": true,
+    "function_module_parameter_names": true,
+    "inline_generic_source": true,
+    "keyword_case": {
+      "style": "upper",
+      "ignoreExceptions": true,
+      "ignoreLowerClassImplmentationStatement": true,
+      "ignoreKeywords": []
+    },
+    // 255: the longest line abapGit and the ABAP editor accept
+    "line_length": {
+      "length": 255
+    },
+    "loop_target_misuse": true,
+    "no_macros": true,
+    "no_yoda_conditions": {
+      "onlyConstants": true
+    },
+    "prefer_raise_message": true,
+    "selection_screen_texts_missing": true,
+    "sequential_read_sorted": true,
+    "sort_required": true,
+    "space_before_colon": true,
+    "space_before_dot": true,
+    "stale_subrc": true,
+    "start_at_tab": true,
+    "suspicious_loop": true,
+    "sy_read_restriction": true,
+    "try_cast_empty_catch": true,
+    "unit_test_assertions": true,
+    "unnecessary_copy": true,
+    // added 2026-11 with their findings fixed: an alias of a value that never
+    // changes, a pseudo comment aligned, end-of-line comments moved above
+    // their statement, a comment that read as code reworded, a double space,
+    // ORDER BY PRIMARY KEY on the table reads
+    "alias_never_reassigned": true,
+    "align_pseudo_comments": true,
+    "check_comments": true,
+    "commented_code": true,
+    "double_space": {
+      "keywords": false,
+      "startParen": true,
+      "endParen": false,
+      "afterColon": true
+    },
+    "select_add_order_by": true,
+    // added 2026-11 with their findings fixed and narrow exceptions:
+    "check_subrc": {
+      // the vendored abap-util copy stays close to the master (AGENTS.md);
+      // a statement whose sy-subrc does not matter carries ##SUBRC_OK, as in
+      // abap2UI5
+      "exclude": [
+        "/src/03/z2ui5_cl_layo_context\\."
+      ],
+      // every option named: an option left out of a rule object counts as off
+      "openDataset": true,
+      "authorityCheck": true,
+      "selectSingle": true,
+      "selectTable": true,
+      "updateDatabase": true,
+      "insertDatabase": true,
+      "modifyDatabase": true,
+      "deleteDatabase": true,
+      "readTable": true,
+      "assign": true,
+      "find": true,
+      "callFunction": true,
+      "callMethod": true
+    },
+    // the layout manager hands out its layout popup (layout_popup( )), and the
+    // popup works on a layout manager - the cycle is the API of today's merge
+    "cyclic_oo": {
+      "exclude": [
+        "/src/03/z2ui5_cl_layo_manager\\.",
+        "/src/03/z2ui5_cl_layo_pop_w_sel\\."
+      ],
+      "skip": [
+        "Z2UI5_IF_APP",
+        "Z2UI5_IF_CLIENT",
+        "Z2UI5_CL_UI5_ACTION",
+        "Z2UI5_CL_UI5_HANDLER"
+      ],
+      "skipSharedMemory": true,
+      "skipTestclasses": true
+    },
+    // the XML parser and builder (parse, get_grid_layout, xml_build_table, ...),
+    // save_layout / the popup view and data_conversion / copy_layouts / set_selkz:
+    // splitting them is a refactoring, not a lint fix
+    "cyclomatic_complexity": {
+      "exclude": [
+        "/src/03/z2ui5_cl_layo_xml_tree\\.",
+        "/src/03/z2ui5_cl_layo_xml_builder\\.",
+        "/src/03/z2ui5_cl_layo_pop\\.",
+        "/src/03/z2ui5_cl_layo_manager\\."
+      ],
+      "max": 10
+    },
+    "method_length": {
+      "exclude": [
+        "/src/03/z2ui5_cl_layo_xml_tree\\.",
+        "/src/03/z2ui5_cl_layo_xml_builder\\.",
+        "/src/03/z2ui5_cl_layo_pop\\.",
+        "/src/03/z2ui5_cl_layo_manager\\."
+      ],
+      "statements": 50,
+      "errorWhenEmpty": false,
+      "ignoreTestClasses": true,
+      "checkForms": true
+    },
+    // the test doubles of the authorization hook are LTD_ classes (Clean ABAP)
+    "local_class_naming": {
+      "patternKind": "required",
+      "local": "^LCL_.+$",
+      "exception": "^LCX_.+$",
+      "test": "^LT(CL|D)_.+$"
+    },
+    // z2ui5_cx_layo_error is the vendored abap-util copy, kept as-is (AGENTS.md)
+    "no_exclamation_escape": {
+      "exclude": [
+        "/src/03/z2ui5_cx_layo_error\\."
+      ]
+    },
+    // SELECT * stays: every such read fills rows of the table type
+    // (z2ui5_t_11 / z2ui5_t_12) - a copy, a display or the head handed to
+    // z2ui5_if_layo_auth; SELECT ... ENDSELECT is still reported
+    "select_performance": {
+      "endSelect": true,
+      "selectStar": false
+    },
+    // handle and control are public types of the manager that apps and
+    // z2ui5_cl_layo_pop_w_sel address as z2ui5_cl_layo_manager=>handle /
+    // =>control - renaming them breaks callers
+    "types_naming": {
+      "exclude": [
+        "/src/03/z2ui5_cl_layo_manager\\."
+      ],
+      "pattern": "^TY_"
+    },
+    "unhandled_classic_exception": {
+      // the vendored abap-util copy stays close to the master (AGENTS.md)
+      "exclude": [
+        "/src/03/z2ui5_cl_layo_context\\."
+      ],
+      "missingOthers": true,
+      "missingExceptions": true,
+      "missingErrorMessage": true,
+      "allowLiteralArguments": true
+    },
+    // kept off. Layout rules that would fight the view-builder chain layout
+    // (.claude/skills/view-chain-layout in abap2UI5) or the house alignment -
+    // off in abap2UI5 and in the app rule set as well
+    "align_parameters": false,
+    "empty_line_in_statement": false,
+    "in_statement_indentation": false,
+    "indentation": false,
+    "keep_single_parameter_on_one_line": false,
+    "line_break_multiple_parameters": false,
+    "line_only_punc": false,
+    // inlining a temporary into its single use would pull whole builder chains
+    // (toolbar, header) into a parameter list
+    "single_use_expression_temp": false,
+    // naming conventions this repository does not follow (no Hungarian
+    // prefixes required) - off in abap2UI5 and in the app rule set
+    "class_attribute_names": false,
+    "local_variable_names": false,
+    "method_parameter_names": false,
+    "no_prefixes": false,
+    // style preferences abap2UI5 and the app rule set both keep off
+    "abapdoc": false,
+    "generic_regex": false,
+    "no_inline_in_optional_branches": false,
+    "prefer_corresponding": false,
+    "prefer_inline": false,
+    "prefer_inline_cast": false,
+    "prefer_insert_into_table": false,
+    "prefer_string_template": false,
+    // the samples and the popups keep their state in public attributes the
+    // view binds to; the manager's ms_layout / mt_* are its API - off in
+    // abap2UI5 and the app rule set
+    "no_public_attributes": false,
+    // a layout for any table is dynamic by nature (ASSIGN COMPONENT, CREATE
+    // DATA TYPE HANDLE / TYPE (name), dynamic method calls on RTTI) - off in
+    // the app rule set
+    "no_dynamic_stuff": false
+
   }
 }
