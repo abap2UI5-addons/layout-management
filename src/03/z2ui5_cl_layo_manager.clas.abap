@@ -69,6 +69,12 @@ CLASS z2ui5_cl_layo_manager DEFINITION
              grid_layout_label TYPE string,
              show_convexit     TYPE abap_bool,
              convexit          TYPE string,
+             "! the length of a column the browser formats itself, 0 for
+             "! every other one: the conversion exit ALPHA on a CHAR or a
+             "! NUMC column. z2ui5_cl_layo_xml_builder binds it with the
+             "! type sap.ui.model.odata.type.String (isDigitSequence, this
+             "! as maxLength) - see digit_type( )
+             digits            TYPE i,
            END OF ty_s_positions.
     TYPES ty_t_positions TYPE STANDARD TABLE OF ty_s_positions WITH EMPTY KEY.
 
@@ -244,6 +250,8 @@ CLASS z2ui5_cl_layo_manager DEFINITION
 
     "! output: abap_true formats the values for the screen, abap_false back.
     "! data: the table again - see set_data( )
+    "! Leaves out the columns the view formats itself: NUMC always, ALPHA
+    "! on CHAR with mv_alpha_in_browser - see digit_type( )
     METHODS data_conversion
       IMPORTING
         !output TYPE abap_bool
@@ -316,6 +324,49 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     DATA mv_sel_field     TYPE string.
     DATA mv_sel_key_field TYPE string.
 
+    "! abap_true: data_conversion( ) leaves the ALPHA columns of CHAR type
+    "! alone, they stay internal - for an app whose view binds them with
+    "! the digit type, as z2ui5_cl_layo_xml_builder does (see digit_type( )).
+    "! Set it once after factory( ). Not for an app with an EDITABLE ALPHA
+    "! column: the type refuses a letter there, so such a column needs the
+    "! conversion in ABAP. NUMC columns are never converted in ABAP - there
+    "! is no conversion routine for them, the view formats them
+    DATA mv_alpha_in_browser TYPE abap_bool.
+
+    "! abap_true when the view formats the column itself: a digit sequence
+    "! (ALPHA on CHAR, NUMC) whose conversion the user did not switch off
+    "! in the layout popup
+    CLASS-METHODS digit_type
+      IMPORTING
+        !position     TYPE ty_s_positions
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
+    "! the binding of a column the view formats itself (digit_type( )): the
+    "! path with the type sap.ui.model.odata.type.String, isDigitSequence
+    "! and the column's length as maxLength - `000000004711` is shown as
+    "! `4711`, an input of `4711` parsed back to `000000004711`, a value
+    "! with letters shown as it is. The type is named by the alias
+    "! digit_type_alias; the view loads it with the core:require of
+    "! digit_type_require( ) on the control or one of its parents
+    CLASS-METHODS digit_type_binding
+      IMPORTING
+        path          TYPE clike
+        position      TYPE ty_s_positions
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! the value of the core:require a control needs for
+    "! digit_type_binding( ) inside it (the namespace sap.ui.core declared
+    "! as core). On UI5 1.71 a type named in a binding is resolved only when
+    "! its module is loaded already - nothing loads it for the binding
+    CLASS-METHODS digit_type_require
+      RETURNING
+        VALUE(result) TYPE string.
+
+    CONSTANTS digit_type_alias  TYPE string VALUE `LayoDigitString` ##NO_TEXT.
+    CONSTANTS digit_type_module TYPE string VALUE `sap/ui/model/odata/type/String` ##NO_TEXT.
+
   PROTECTED SECTION.
     CLASS-METHODS get_conversion_exit
       IMPORTING
@@ -323,6 +374,16 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         !layout       TYPE ty_s_positions
       RETURNING
         VALUE(result) TYPE ty_s_positions.
+
+    "! the length the column gets as maxLength of the digit type - for
+    "! ALPHA on a CHAR column and NUMC (convexit NUMC: ALPHA or ALPH0 on a
+    "! NUMC column), 0 for every other column
+    CLASS-METHODS get_digits
+      IMPORTING
+        !type         TYPE REF TO cl_abap_datadescr
+        convexit      TYPE clike
+      RETURNING
+        VALUE(result) TYPE i.
 
   PRIVATE SECTION.
     "! set by register( ), cleared by prepare( )
@@ -822,6 +883,12 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     LOOP AT result->ms_layout-t_layout REFERENCE INTO DATA(layout).
 
+      " what the type of the component says (conversion exit, digit type)
+      " is no part of the saved position - it is kept, not read back empty
+      DATA(convexit)      = layout->convexit.
+      DATA(show_convexit) = layout->show_convexit.
+      DATA(digits)        = layout->digits.
+
       IF line_exists( t_pos[ fname = layout->fname ] ).
 
         DATA(pos) = VALUE #( t_pos[ fname = layout->fname ] OPTIONAL ).
@@ -852,8 +919,11 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
       ENDIF.
 
-      layout->guid   = layout_guid.
-      layout->tlabel = result->text_of( layout->* ).
+      layout->guid          = layout_guid.
+      layout->tlabel        = result->text_of( layout->* ).
+      layout->convexit      = convexit.
+      layout->show_convexit = show_convexit.
+      layout->digits        = digits.
 
     ENDLOOP.
 
@@ -1221,6 +1291,15 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
          WHERE     no_convexit  = abap_false
                AND convexit    <> space.
 
+      " a digit sequence the view formats stays internal: NUMC always - no
+      " conversion routine exists for it, the call converted nothing - and
+      " ALPHA on CHAR when the app said its view formats it
+      IF     digit_type( layout ) = abap_true
+         AND (    layout-convexit   = `NUMC`
+               OR mv_alpha_in_browser = abap_true ).
+        CONTINUE.
+      ENDIF.
+
       IF layout-visible = abap_false.
 
         " is this a reference field?
@@ -1364,9 +1443,46 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           ENDIF.
         ENDIF.
 
+        result-digits = get_digits( type     = type
+                                    convexit = result-convexit ).
+
       CATCH cx_root.
         RETURN.
     ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD get_digits.
+
+    " the browser does what ALPHA does only for these two: a digit sequence
+    " loses its leading zeros on the screen and gets them back on input.
+    " Every other exit (CUNIT, MATN1, ...) stays a conversion in ABAP
+    IF NOT (    ( type->type_kind = cl_abap_elemdescr=>typekind_char AND convexit = `ALPHA` )
+             OR ( type->type_kind = cl_abap_elemdescr=>typekind_num  AND convexit = `NUMC` ) ).
+      RETURN.
+    ENDIF.
+
+    " the length in characters - a C10 or N10 has 10 of them
+    result = type->length / cl_abap_char_utilities=>charsize.
+
+  ENDMETHOD.
+
+  METHOD digit_type.
+
+    result = xsdbool( position-digits > 0 AND position-no_convexit = abap_false ).
+
+  ENDMETHOD.
+
+  METHOD digit_type_binding.
+
+    result = |\{path:'{ path }',type:'{ digit_type_alias }',|
+          && |constraints:\{isDigitSequence:true,maxLength:{ position-digits }\}\}|.
+
+  ENDMETHOD.
+
+  METHOD digit_type_require.
+
+    result = |\{{ digit_type_alias }:'{ digit_type_module }'\}|.
 
   ENDMETHOD.
 

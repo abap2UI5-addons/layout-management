@@ -139,6 +139,39 @@ or call `set_data( )` once:
 mo_layout->sort( data = REF #( mt_table ) ).
 ```
 
+### Conversion exits
+
+`data_conversion( output = abap_true )` runs the conversion exits of the
+columns over the data for the screen, `data_conversion( output = abap_false )`
+back - two calls of a function module per cell and roundtrip. Two of them the
+browser does itself: `z2ui5_cl_layo_xml_builder` binds a column with the
+conversion exit ALPHA on a CHAR type, and a NUMC column with ALPHA, with the
+UI5 type `sap.ui.model.odata.type.String` and `isDigitSequence` -
+`000000004711` is shown as `4711`, a value with letters as it is. The data
+stays internal:
+
+- NUMC columns are never converted in ABAP - there is no conversion routine
+  for them, the view formats them.
+- ALPHA columns of CHAR type are still converted by `data_conversion( )`,
+  unless the app says that its view formats them - set it once after
+  `factory( )`:
+
+  ```abap
+  mo_layout->mv_alpha_in_browser = abap_true.
+  ```
+
+  Not for an editable ALPHA column: the type refuses a letter in an input,
+  so such a column needs the conversion in ABAP.
+- Every other exit (`CUNIT`, `MATN1`, ...) is converted by
+  `data_conversion( )` as before, and a column whose conversion the user
+  switched off in the layout popup is shown as it is.
+
+A view of its own gets the same with `z2ui5_cl_layo_manager=>digit_type( )`
+(is the column one of them), `digit_type_binding( )` (its binding) and
+`digit_type_require( )` (the `core:require` of the type on the control or a
+parent - on UI5 1.71 a type named in a binding is resolved only when its
+module is loaded already).
+
 ### Any view - the generic mode
 
 For a view that is neither a table nor a form, the generic mode personalizes
@@ -273,6 +306,7 @@ z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( FOR h IN heads
 * **Selection Popup** - Pick one or several rows of any table in a popup with a layout
 * **Layout Customization** - Flexible customization of table and form outputs
 * **Any View** - Hide, reorder within the parent aggregation and relabel the controls of any view built with the view builder (generic mode)
+* **Conversion in the Browser** - ALPHA and NUMC columns are formatted by UI5, the data stays internal
 * **Variant Persistence** - Save layout variants to database
 * **Auto-Loading** - Load default layouts automatically at startup
 * **Select and Copy** - Read layouts by ranges, also of every user, and copy them under other handles

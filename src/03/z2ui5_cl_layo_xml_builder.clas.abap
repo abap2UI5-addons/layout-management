@@ -115,12 +115,29 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
         span  TYPE string
         i_xml TYPE REF TO z2ui5_cl_ui5_view_builder.
 
+    "! the binding of a form field - with the digit type when the view
+    "! formats the field itself (z2ui5_cl_layo_manager=&gt;digit_type( ))
     CLASS-METHODS value_formatter
       IMPORTING
         i_client      TYPE REF TO z2ui5_if_client
         !value        TYPE any
+        !position     TYPE z2ui5_cl_layo_manager=>ty_s_positions
       RETURNING
         VALUE(result) TYPE string.
+
+    "! the core:require of the digit type on a control whose bindings use
+    "! it, with the namespace declared on the control itself - the view of
+    "! the app may not declare core, or under another prefix
+    CLASS-METHODS set_digit_type_require
+      IMPORTING
+        i_xml TYPE REF TO z2ui5_cl_ui5_view_builder.
+
+    "! abap_true when a column of the layout is bound with the digit type
+    CLASS-METHODS check_digit_type
+      IMPORTING
+        i_layout      TYPE REF TO z2ui5_cl_layo_manager
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 
     CLASS-METHODS table_value_formatter
       IMPORTING
@@ -293,11 +310,16 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                                                    tab       = i_layout->ms_layout-t_layout
                                                                    tab_index = lv_index )
                           )->a( n = `value` v = value_formatter( i_client = i_client
-                                                                 value    = <value> )
+                                                                 value    = <value>
+                                                                 position = layout->* )
                           )->a( n = `enabled` b = abap_false
                           )->a( n = `width` v = i_client->_bind( val       = layout->width
                                                                  tab       = i_layout->ms_layout-t_layout
                                                                  tab_index = lv_index ) ).
+
+        IF z2ui5_cl_layo_manager=>digit_type( layout->* ) = abap_true.
+          set_digit_type_require( input ).
+        ENDIF.
 
         set_layout_for_element( i_xml = input
                                 span  = grid_layout-value ).
@@ -323,8 +345,13 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                                                        tab       = i_layout->ms_layout-t_layout
                                                                        tab_index = lv_index )
                               )->a( n = `value` v = value_formatter( i_client = i_client
-                                                                     value    = <ref_value> )
+                                                                     value    = <ref_value>
+                                                                     position = ref_field->* )
                               )->a( n = `enabled` b = abap_false ).
+
+        IF z2ui5_cl_layo_manager=>digit_type( ref_field->* ) = abap_true.
+          set_digit_type_require( ref_input ).
+        ENDIF.
 
         set_layout_for_element( i_xml = ref_input
                                 span  = grid_layout-ref_field ).
@@ -426,6 +453,12 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                       )->a( n = `mode` v = COND #( WHEN i_sel_mode = space THEN `None` ELSE i_sel_mode  )
                       )->a( n = `items` v = i_client->_bind( <tab> )
                       )->a( n = `selectionChange` v = i_client->_event( 'SELECTION_CHANGE' ) ).
+
+    " the cells below bind digit sequences with a type their row template
+    " inherits from here
+    IF check_digit_type( i_layout ) = abap_true.
+      set_digit_type_require( table ).
+    ENDIF.
 
     DATA(toolbar) = table->ele( `headerToolbar`
                         )->ele( `OverflowToolbar` ).
@@ -590,9 +623,37 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD table_value_formatter.
 
+    DATA path TYPE string.
+
     " relative to the row: a namespaced column (/CWM/XCWMAT) is a level of
     " the row in the model, {CWM/XCWMAT} - {/CWM/XCWMAT} would be absolute
-    result = |\{{ z2ui5_cl_ui5_view_builder=>component_path( position-fname ) }\}|.
+    path = z2ui5_cl_ui5_view_builder=>component_path( position-fname ).
+
+    IF z2ui5_cl_layo_manager=>digit_type( position ) = abap_true.
+      " 000000004711 shown as 4711 by the browser, the data stays internal
+      result = z2ui5_cl_layo_manager=>digit_type_binding( path     = path
+                                                          position = position ).
+    ELSE.
+      result = |\{{ path }\}|.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD set_digit_type_require.
+
+    i_xml->a( n = `xmlns:core` v = `sap.ui.core`
+        )->a( n = `core:require` v = z2ui5_cl_layo_manager=>digit_type_require( ) ).
+
+  ENDMETHOD.
+
+  METHOD check_digit_type.
+
+    LOOP AT i_layout->ms_layout-t_layout INTO DATA(position).
+      IF z2ui5_cl_layo_manager=>digit_type( position ) = abap_true.
+        result = abap_true.
+        RETURN.
+      ENDIF.
+    ENDLOOP.
 
   ENDMETHOD.
 
@@ -857,7 +918,12 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD value_formatter.
 
-    result = i_client->_bind( value ).
+    IF z2ui5_cl_layo_manager=>digit_type( position ) = abap_true.
+      result = z2ui5_cl_layo_manager=>digit_type_binding( path     = i_client->_bind_path( value )
+                                                          position = position ).
+    ELSE.
+      result = i_client->_bind( value ).
+    ENDIF.
 
   ENDMETHOD.
 

@@ -1,3 +1,6 @@
+CLASS ltcl_conv DEFINITION DEFERRED.
+CLASS z2ui5_cl_layo_manager DEFINITION LOCAL FRIENDS ltcl_conv.
+
 CLASS ltd_deny_all DEFINITION FINAL FOR TESTING.
   PUBLIC SECTION.
     INTERFACES z2ui5_if_layo_auth.
@@ -369,6 +372,212 @@ CLASS ltcl_select_range IMPLEMENTATION.
     heads = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03 = lv_handle03 ).
     cl_abap_unit_assert=>assert_equals( exp = 2
                                         act = lines( heads ) ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+CLASS ltcl_conv DEFINITION FINAL FOR TESTING
+  DURATION SHORT
+  RISK LEVEL HARMLESS.
+
+  PRIVATE SECTION.
+    TYPES:
+      BEGIN OF ty_s_row,
+        id    TYPE c LENGTH 10,
+        nr    TYPE n LENGTH 10,
+        langu TYPE c LENGTH 2,
+      END OF ty_s_row.
+    TYPES ty_t_row TYPE STANDARD TABLE OF ty_s_row WITH EMPTY KEY.
+
+    CONSTANTS c_guid TYPE z2ui5_t_11-guid VALUE 'LTCLCONVHEAD00000000000000000001'.
+
+    DATA mt_row TYPE ty_t_row.
+
+    METHODS digits_alpha_char FOR TESTING.
+    METHODS digits_numc FOR TESTING.
+    METHODS digits_other_exits FOR TESTING.
+    METHODS digit_type_switched_off FOR TESTING.
+    METHODS binding_with_length FOR TESTING.
+    METHODS conversion_default FOR TESTING.
+    METHODS conversion_alpha_in_browser FOR TESTING.
+    METHODS opened_layout_keeps_type FOR TESTING.
+
+    METHODS layout
+      RETURNING
+        VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
+
+    METHODS cleanup.
+ENDCLASS.
+
+
+CLASS ltcl_conv IMPLEMENTATION.
+
+  METHOD layout.
+
+    mt_row = VALUE #( ( id = `0000004711` nr = `0000004711` langu = `E` ) ).
+
+    result = NEW #( ).
+    result->ms_layout-s_head-control = z2ui5_cl_layo_manager=>m_table.
+    result->ms_layout-t_layout = VALUE #( visible = abap_true
+                                          ( fname = `ID`    convexit = `ALPHA` digits = 10 )
+                                          ( fname = `NR`    convexit = `NUMC`  digits = 10 )
+                                          ( fname = `LANGU` convexit = `ISOLA` ) ).
+    result->set_data( REF #( mt_row ) ).
+
+  ENDMETHOD.
+
+  METHOD digits_alpha_char.
+
+    cl_abap_unit_assert=>assert_equals(
+        exp = 10
+        act = z2ui5_cl_layo_manager=>get_digits( type     = cl_abap_elemdescr=>get_c( 10 )
+                                                 convexit = `ALPHA` ) ).
+
+  ENDMETHOD.
+
+  METHOD digits_numc.
+
+    " ALPHA or ALPH0 on a NUMC column is kept as NUMC by get_conversion_exit( )
+    cl_abap_unit_assert=>assert_equals(
+        exp = 12
+        act = z2ui5_cl_layo_manager=>get_digits( type     = cl_abap_elemdescr=>get_n( 12 )
+                                                 convexit = `NUMC` ) ).
+
+  ENDMETHOD.
+
+  METHOD digits_other_exits.
+
+    " every other exit stays a conversion in ABAP
+    cl_abap_unit_assert=>assert_equals(
+        exp = 0
+        act = z2ui5_cl_layo_manager=>get_digits( type     = cl_abap_elemdescr=>get_c( 40 )
+                                                 convexit = `MATN1` ) ).
+    cl_abap_unit_assert=>assert_equals(
+        exp = 0
+        act = z2ui5_cl_layo_manager=>get_digits( type     = cl_abap_elemdescr=>get_c( 3 )
+                                                 convexit = `CUNIT` ) ).
+    " a NUMC column without an exit shows its zeros, as in the SAP GUI
+    cl_abap_unit_assert=>assert_equals(
+        exp = 0
+        act = z2ui5_cl_layo_manager=>get_digits( type     = cl_abap_elemdescr=>get_n( 6 )
+                                                 convexit = `` ) ).
+
+  ENDMETHOD.
+
+  METHOD digit_type_switched_off.
+
+    cl_abap_unit_assert=>assert_true(
+        z2ui5_cl_layo_manager=>digit_type( VALUE #( digits = 10 ) ) ).
+    " the user switched the conversion off in the layout popup
+    cl_abap_unit_assert=>assert_false(
+        z2ui5_cl_layo_manager=>digit_type( VALUE #( digits = 10 no_convexit = abap_true ) ) ).
+    cl_abap_unit_assert=>assert_false(
+        z2ui5_cl_layo_manager=>digit_type( VALUE #( convexit = `CUNIT` ) ) ).
+
+  ENDMETHOD.
+
+  METHOD binding_with_length.
+
+    cl_abap_unit_assert=>assert_equals(
+        exp = `{path:'VBELN',type:'LayoDigitString',constraints:{isDigitSequence:true,maxLength:10}}`
+        act = z2ui5_cl_layo_manager=>digit_type_binding( path     = `VBELN`
+                                                         position = VALUE #( digits = 10 ) ) ).
+    cl_abap_unit_assert=>assert_equals(
+        exp = `{LayoDigitString:'sap/ui/model/odata/type/String'}`
+        act = z2ui5_cl_layo_manager=>digit_type_require( ) ).
+
+  ENDMETHOD.
+
+  METHOD conversion_default.
+
+    DATA(layout) = layout( ).
+
+    layout->data_conversion( abap_true ).
+
+    " ALPHA on CHAR converted as before, NUMC never, every other exit as before
+    cl_abap_unit_assert=>assert_equals( exp = `4711`
+                                        act = condense( mt_row[ 1 ]-id ) ).
+    cl_abap_unit_assert=>assert_equals( exp = `0000004711`
+                                        act = mt_row[ 1 ]-nr ).
+    cl_abap_unit_assert=>assert_equals( exp = `EN`
+                                        act = mt_row[ 1 ]-langu ).
+
+    layout->data_conversion( abap_false ).
+
+    cl_abap_unit_assert=>assert_equals( exp = `0000004711`
+                                        act = mt_row[ 1 ]-id ).
+    cl_abap_unit_assert=>assert_equals( exp = `E`
+                                        act = mt_row[ 1 ]-langu ).
+
+  ENDMETHOD.
+
+  METHOD conversion_alpha_in_browser.
+
+    DATA(layout) = layout( ).
+    layout->mv_alpha_in_browser = abap_true.
+
+    layout->data_conversion( abap_true ).
+
+    " the view formats ID and NR - they stay internal; LANGU is converted
+    cl_abap_unit_assert=>assert_equals( exp = `0000004711`
+                                        act = mt_row[ 1 ]-id ).
+    cl_abap_unit_assert=>assert_equals( exp = `0000004711`
+                                        act = mt_row[ 1 ]-nr ).
+    cl_abap_unit_assert=>assert_equals( exp = `EN`
+                                        act = mt_row[ 1 ]-langu ).
+
+    " switched off in the layout popup: neither the view nor ABAP converts
+    layout->ms_layout-t_layout[ fname = `ID` ]-no_convexit = abap_true.
+    layout->data_conversion( abap_false ).
+    cl_abap_unit_assert=>assert_equals( exp = `0000004711`
+                                        act = mt_row[ 1 ]-id ).
+    cl_abap_unit_assert=>assert_equals( exp = `E`
+                                        act = mt_row[ 1 ]-langu ).
+
+  ENDMETHOD.
+
+  METHOD opened_layout_keeps_type.
+
+    DATA head      TYPE z2ui5_t_11.
+    DATA positions TYPE STANDARD TABLE OF z2ui5_t_12 WITH EMPTY KEY.
+
+    cleanup( ).
+
+    head = VALUE #( guid     = c_guid
+                    layout   = `LTCL`
+                    control  = z2ui5_cl_layo_manager=>m_table
+                    handle03 = `LTCL_CONV` ).
+    INSERT z2ui5_t_11 FROM @head ##SUBRC_OK.
+    positions = VALUE #( ( guid = c_guid pos_guid = 'LTCLCONVPOS000000000000000000001' fname = `ID` visible = abap_true ) ).
+    INSERT z2ui5_t_12 FROM TABLE @positions ##SUBRC_OK.
+
+    DATA(opened) = z2ui5_cl_layo_manager=>factory_by_guid( layout_guid = c_guid
+                                                           t_comps     = layout( )->ms_layout-t_layout ).
+
+    cleanup( ).
+
+    " the saved position (ID) and the one saved without it (NR) keep what
+    " the type of their component says
+    DATA(id) = opened->ms_layout-t_layout[ fname = `ID` ].
+    cl_abap_unit_assert=>assert_equals( exp = `ALPHA`
+                                        act = id-convexit ).
+    cl_abap_unit_assert=>assert_equals( exp = 10
+                                        act = id-digits ).
+    DATA(nr) = opened->ms_layout-t_layout[ fname = `NR` ].
+    cl_abap_unit_assert=>assert_equals( exp = `NUMC`
+                                        act = nr-convexit ).
+    cl_abap_unit_assert=>assert_equals( exp = 10
+                                        act = nr-digits ).
+
+  ENDMETHOD.
+
+  METHOD cleanup.
+
+    DELETE FROM z2ui5_t_11 WHERE guid = @c_guid ##SUBRC_OK.
+    DELETE FROM z2ui5_t_12 WHERE guid = @c_guid ##SUBRC_OK.
+    COMMIT WORK.
 
   ENDMETHOD.
 
