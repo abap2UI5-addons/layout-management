@@ -78,6 +78,8 @@
     "constructor_visibility_public": true,
     "contains_tab": true,
     "dangerous_statement": {
+      "editorCallForReport": true,
+      "ignoreRAPQueryProvider": true,
       "deleteDynpro": true,
       "deleteReport": true,
       "deleteTextpool": true,
@@ -101,6 +103,7 @@
     "empty_event": true,
     "empty_statement": true,
     "empty_structure": {
+      "loopAllowIfSubrc": true,
       "loop": false,
       "if": true,
       "while": true,
@@ -267,6 +270,7 @@
     "select_single_full_key": true,
     "selection_screen_naming": true,
     "sequential_blank": {
+      "lines": 4,
       "exclude": [],
       "severity": "Warning"
     },
@@ -332,6 +336,20 @@
     "inline_packed_computation": true,
     "no_mandt_in_database_operations": true,
     "object_naming": {
+      "sxci": "^Z",
+      "enhs": "^Z",
+      "enho": "^Z",
+      "cmod": "^Z",
+      "form": "^Z",
+      "sfpf": "^Z",
+      "sfpi": "^Z",
+      "aqqu": "^Z",
+      "aqsg": "^Z",
+      "aqbg": "^Z",
+      "suso": "^Z",
+      "sucu": "^Z",
+      "wdya": "^Z",
+      "wdyn": "^Z",
       "severity": "Error",
       "patternKind": "required",
       "ignoreNames": [],
@@ -372,6 +390,7 @@
     "unnecessary_chaining": true,
     "unnecessary_return": true,
     "unused_variables": {
+      "skipAbstract": false,
       "severity": "Error",
       "skipNames": [
         "lv_dummy",
@@ -417,6 +436,11 @@
     "function_module_parameter_names": true,
     "inline_generic_source": true,
     "keyword_case": {
+      "ignoreGlobalClassDefinition": false,
+      "ignoreGlobalInterface": false,
+      "ignoreFunctionModuleName": false,
+      "ignoreGlobalClassBoundaries": false,
+      "maxIssuesPerFile": 10,
       "style": "upper",
       "ignoreExceptions": true,
       "ignoreLowerClassImplmentationStatement": true,
@@ -424,6 +448,7 @@
     },
     // 255: the longest line abapGit and the ABAP editor accept
     "line_length": {
+      "maxIssuesPerFile": 10,
       "length": 255
     },
     "loop_target_misuse": true,
@@ -453,6 +478,7 @@
     "check_comments": true,
     "commented_code": true,
     "double_space": {
+      "skipKeywords": ["CHANGING","EXPORTING","OTHERS"],
       "keywords": false,
       "startParen": true,
       "endParen": false,
@@ -511,6 +537,7 @@
       "max": 10
     },
     "method_length": {
+      "checkFunctionModules": true,
       "exclude": [
         "/src/03/z2ui5_cl_layo_xml_tree\\.",
         "/src/03/z2ui5_cl_layo_xml_builder\\.",
@@ -524,6 +551,8 @@
     },
     // the test doubles of the authorization hook are LTD_ classes (Clean ABAP)
     "local_class_naming": {
+      "ignoreNames": [],
+      "ignorePatterns": [],
       "patternKind": "required",
       "local": "^LCL_.+$",
       "exception": "^LCX_.+$",
@@ -539,6 +568,7 @@
     // (z2ui5_t_11 / z2ui5_t_12) - a copy, a display or the head handed to
     // z2ui5_if_layo_auth; SELECT ... ENDSELECT is still reported
     "select_performance": {
+      "starOkayIfFewColumns": 10,
       "endSelect": true,
       "selectStar": false
     },
