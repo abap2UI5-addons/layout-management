@@ -1653,26 +1653,21 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     ENDLOOP.
 
     " with iv_commit = abap_false the LUW is the caller's: no ROLLBACK here,
-    " the exception tells the caller to roll back
-    INSERT z2ui5_t_11 FROM TABLE @result.
-    IF sy-subrc <> 0.
-      IF iv_commit = abap_true.
-        ROLLBACK WORK.
-      ENDIF.
-      RAISE EXCEPTION TYPE z2ui5_cx_layo_error
-        EXPORTING val = `Layouts could not be copied`.
-    ENDIF.
-
-    IF positions IS NOT INITIAL.
-      INSERT z2ui5_t_12 FROM TABLE @positions.
-      IF sy-subrc <> 0.
+    " the exception tells the caller to roll back. INSERT FROM TABLE does
+    " not set sy-subrc on a duplicate key - it raises cx_sy_open_sql_db
+    TRY.
+        INSERT z2ui5_t_11 FROM TABLE @result ##SUBRC_OK.
+        IF positions IS NOT INITIAL.
+          INSERT z2ui5_t_12 FROM TABLE @positions ##SUBRC_OK.
+        ENDIF.
+      CATCH cx_sy_open_sql_db INTO DATA(x_sql).
         IF iv_commit = abap_true.
           ROLLBACK WORK.
         ENDIF.
         RAISE EXCEPTION TYPE z2ui5_cx_layo_error
-          EXPORTING val = `Layouts could not be copied`.
-      ENDIF.
-    ENDIF.
+          EXPORTING val      = `Layouts could not be copied`
+                    previous = x_sql.
+    ENDTRY.
 
     " a copied default demotes the defaults of its new scope, as a save does
     " - a layout saved before the screen format existed has none and is a
