@@ -1044,15 +1044,16 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA(head) = REF #( mt_head[ guid = mo_layout->ms_layout-s_head-guid ] OPTIONAL ).
-    IF head IS BOUND.
-      head->selkz  = abap_true.
-      head->active = abap_true.
+    " ASSIGN, not REF #( ... OPTIONAL ): the 702 downport drops the OPTIONAL
+    ASSIGN mt_head[ guid = mo_layout->ms_layout-s_head-guid ] TO FIELD-SYMBOL(<head>).
+    IF <head> IS ASSIGNED.
+      <head>-selkz  = abap_true.
+      <head>-active = abap_true.
       RETURN.
     ENDIF.
 
-    head = REF #( mt_head[ 1 ] OPTIONAL ).
-    head->selkz = abap_true.
+    ASSIGN mt_head[ 1 ] TO <head>.
+    <head>-selkz = abap_true.
 
   ENDMETHOD.
 

@@ -426,6 +426,8 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
   METHOD xml_build_simple_form.
 
+    FIELD-SYMBOLS <ref_field> LIKE LINE OF i_layout->ms_layout-t_layout.
+
     z2ui5_cl_layo_pop=>render_layout_function( client = i_client
                                                xml    = i_xml
                                                layout = i_layout ).
@@ -586,8 +588,10 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
           CONTINUE.
         ENDIF.
 
-        DATA(ref_field) = REF #( i_layout->ms_layout-t_layout[ fname = layout->reference_field ] OPTIONAL ).
-        IF ref_field IS INITIAL.
+        " ASSIGN, not REF #( ... OPTIONAL ): the 702 downport drops the OPTIONAL
+        UNASSIGN <ref_field>.
+        ASSIGN i_layout->ms_layout-t_layout[ fname = layout->reference_field ] TO <ref_field>.
+        IF <ref_field> IS NOT ASSIGNED.
           CONTINUE.
         ENDIF.
 
@@ -597,10 +601,10 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
                                                                        tab_index = lv_index )
                               )->a( n = `value` v = value_formatter( i_client = i_client
                                                                      value    = <ref_value>
-                                                                     position = ref_field->* )
+                                                                     position = <ref_field> )
                               )->a( n = `enabled` b = abap_false ).
 
-        IF z2ui5_cl_layo_manager=>digit_type( ref_field->* ) = abap_true.
+        IF z2ui5_cl_layo_manager=>digit_type( <ref_field> ) = abap_true.
           set_digit_type_require( ref_input ).
         ENDIF.
 
