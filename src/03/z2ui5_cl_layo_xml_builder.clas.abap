@@ -1210,7 +1210,8 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       switch->a( n = `enabled` v = |\{{ path }/ENABLED\}| ).
     ENDIF.
     IF has_comp( t_comp = i_t_comp name = `TYPE` ) = abap_true.
-      switch->a( n = `type` v = |\{{ path }/TYPE\}| ).
+      " an empty TYPE is no value of the enum - UI5 rejects it and the view breaks
+      switch->a( n = `type` v = |\{= $\{{ path }/TYPE\} \|\| 'Default' \}| ).
     ENDIF.
     IF has_comp( t_comp = i_t_comp name = `CHANGE` ) = abap_true.
       switch->a( n = `change` v = row_event( i_client = i_client
@@ -1263,7 +1264,8 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       button->a( n = `icon` v = |\{{ path }/ICON\}| ).
     ENDIF.
     IF has_comp( t_comp = i_t_comp name = `TYPE` ) = abap_true.
-      button->a( n = `type` v = |\{{ path }/TYPE\}| ).
+      " an empty TYPE is no value of the enum - UI5 rejects it and the view breaks
+      button->a( n = `type` v = |\{= $\{{ path }/TYPE\} \|\| 'Default' \}| ).
     ENDIF.
     IF has_comp( t_comp = i_t_comp name = `PRESS` ) = abap_true.
       button->a( n = `press` v = row_event( i_client = i_client

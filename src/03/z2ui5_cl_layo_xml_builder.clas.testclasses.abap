@@ -518,13 +518,13 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
     DATA(xml) = render_cells( ).
 
     cl_abap_unit_assert=>assert_char_cp(
-        exp = `*<Switch state="{SWITCH/STATE}" customTextOn="{SWITCH/CUSTOMTEXTON}" customTextOff="{SWITCH/CUSTOMTEXTOFF}" enabled="{SWITCH/ENABLED}" type="{SWITCH/TYPE}" change=".eB([${SWITCH/CHANGE}], ${SWITCH/CHANGE_VALUE})"/>*`
+        exp = `*<Switch state="{SWITCH/STATE}" customTextOn="{SWITCH/CUSTOMTEXTON}" customTextOff="{SWITCH/CUSTOMTEXTOFF}" enabled="{SWITCH/ENABLED}" type="{= ${SWITCH/TYPE} || 'Default' }" change=".eB([${SWITCH/CHANGE}], ${SWITCH/CHANGE_VALUE})"/>*`
         act = xml ).
     cl_abap_unit_assert=>assert_char_cp(
         exp = `*<Input value="{INPUT/VALUE}" placeholder="{INPUT/PLACEHOLDER}" enabled="{INPUT/ENABLED}" editable="{INPUT/EDITABLE}" visible="{INPUT/VISIBLE}"/>*`
         act = xml ).
     cl_abap_unit_assert=>assert_char_cp(
-        exp = `*<Button text="{BUTTON/TEXT}" icon="{BUTTON/ICON}" type="{BUTTON/TYPE}" press=".eB([${BUTTON/PRESS}], ${BUTTON/PRESS_VALUE})"/>*`
+        exp = `*<Button text="{BUTTON/TEXT}" icon="{BUTTON/ICON}" type="{= ${BUTTON/TYPE} || 'Default' }" press=".eB([${BUTTON/PRESS}], ${BUTTON/PRESS_VALUE})"/>*`
         act = xml ).
     " without i_sub_col_controls a control column shows the control only
     cl_abap_unit_assert=>assert_false( xsdbool( xml CS `<VBox` ) ).

@@ -245,7 +245,8 @@ z2ui5_cl_layo_xml_builder=>xml_build_table(
   `PRESS_VALUE` / `CHANGE_VALUE` its argument - the click sends
   `get( )-event = <PRESS>` and `get_event_arg( ) = <PRESS_VALUE>`. A
   button `TYPE` such as `Critical` or `Success` needs UI5 1.73; on 1.71 the
-  button renders `Default`. An `Input` cell is bound to the row, so what
+  value is rejected and the view fails to render. An empty `TYPE` renders
+  `Default`. An `Input` cell is bound to the row, so what
   the user types travels back with the table.
 - **Cell controls of the app** - the controls are found by the rollname
   pattern `*_XML_S_ICON`, `*_XML_S_SWITCH`, ... (any namespace). An app with
