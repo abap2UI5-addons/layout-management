@@ -9,7 +9,7 @@ name: ci
 #   rename        the namespace rename check (npm run rename)
 #   abap2ui5lint  the app classes and their views (abap2ui5lint.jsonc)
 #
-# layout-management builds on abap2UI5 and abap2UI5-ext, no sibling addon -
+# layout-management builds on abap2UI5 alone, no sibling addon -
 # there is no .github/deps.json. The weekly run notices an upstream rename
 # while no pull request is open.
 
