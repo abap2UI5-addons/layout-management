@@ -31,10 +31,33 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     TYPES ty_s_head TYPE z2ui5_t_11.
     TYPES ty_t_head TYPE STANDARD TABLE OF ty_s_head WITH EMPTY KEY.
 
+    " one layout to copy: the guid of the original and the handles (and,
+    " when not empty, the description) the copy is saved under
+    TYPES:
+      BEGIN OF ty_s_copy,
+        guid     TYPE z2ui5_t_11-guid,
+        handle01 TYPE z2ui5_t_11-handle01,
+        handle02 TYPE z2ui5_t_11-handle02,
+        handle03 TYPE z2ui5_t_11-handle03,
+        handle04 TYPE z2ui5_t_11-handle04,
+        descr    TYPE z2ui5_t_11-descr,
+      END OF ty_s_copy.
+    TYPES ty_t_copy TYPE STANDARD TABLE OF ty_s_copy WITH EMPTY KEY.
+
+    " the selection of select_layouts_by_range( ) - one range per column of
+    " the layout head
+    TYPES ty_r_guid    TYPE RANGE OF z2ui5_t_11-guid.
+    TYPES ty_r_layout  TYPE RANGE OF z2ui5_t_11-layout.
+    TYPES ty_r_control TYPE RANGE OF z2ui5_t_11-control.
+    TYPES ty_r_handle  TYPE RANGE OF z2ui5_t_11-handle01.
+    TYPES ty_r_format  TYPE RANGE OF z2ui5_t_11-screen_format.
+    TYPES ty_r_uname   TYPE RANGE OF z2ui5_t_11-uname.
+
     TYPES:
       BEGIN OF ty_s_sub_columns,
         key   TYPE string,
         fname TYPE string,
+        descr TYPE abap_bool,
       END OF ty_s_sub_columns.
     TYPES ty_t_sub_columns TYPE STANDARD TABLE OF ty_s_sub_columns WITH EMPTY KEY.
 
@@ -46,6 +69,12 @@ CLASS z2ui5_cl_layo_manager DEFINITION
              grid_layout_label TYPE string,
              show_convexit     TYPE abap_bool,
              convexit          TYPE string,
+             "! the length of a column the browser formats itself, 0 for
+             "! every other one: the conversion exit ALPHA on a CHAR or a
+             "! NUMC column. z2ui5_cl_layo_xml_builder binds it with the
+             "! type sap.ui.model.odata.type.String (isDigitSequence, this
+             "! as maxLength) - see digit_type( )
+             digits            TYPE i,
            END OF ty_s_positions.
     TYPES ty_t_positions TYPE STANDARD TABLE OF ty_s_positions WITH EMPTY KEY.
 
@@ -121,7 +150,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     METHODS register
       IMPORTING
         !id           TYPE clike
-        !label        TYPE clike OPTIONAL
+        label         TYPE clike OPTIONAL
         label_attr    TYPE clike OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
@@ -131,7 +160,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     METHODS register_by_xml
       IMPORTING
         !xml          TYPE string
-        !prefix       TYPE clike OPTIONAL
+        prefix        TYPE clike OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
 
@@ -162,8 +191,39 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         handle02      TYPE clike OPTIONAL
         handle03      TYPE clike OPTIONAL
         handle04      TYPE clike OPTIONAL
+        !format       TYPE clike OPTIONAL
       RETURNING
         VALUE(result) TYPE  ty_t_head.
+
+    "! Reads layout heads by ranges - for tools that copy or migrate layouts
+    "! (select, then copy_layouts( )) without reading the layout tables
+    "! themselves. Every range is optional, an empty one selects everything;
+    "! the handles take the same range type (patterns with CP, e.g. APP*).
+    "! The heads come as saved - no screen format fallback and no default
+    "! demotion of select_layouts( ).
+    "! all_users: abap_false - the user's own and the shared layouts, as the
+    "! layout popup offers them; abap_true - also other users' personal ones
+    "! check_auth: with all_users, ask z2ui5_if_layo_auth for every personal
+    "! layout of another user (action READ_OTHERS) and leave out the ones it
+    "! refuses - the shipped default refuses them; abap_false only for an admin
+    "! tool that checks itself
+    "! result: the heads ordered by guid - the guids and handles copy_layouts( )
+    "! takes in its ty_s_copy
+    CLASS-METHODS select_layouts_by_range
+      IMPORTING
+        guid          TYPE ty_r_guid    OPTIONAL
+        !layout       TYPE ty_r_layout  OPTIONAL
+        !control      TYPE ty_r_control OPTIONAL
+        handle01      TYPE ty_r_handle  OPTIONAL
+        handle02      TYPE ty_r_handle  OPTIONAL
+        handle03      TYPE ty_r_handle  OPTIONAL
+        handle04      TYPE ty_r_handle  OPTIONAL
+        !format       TYPE ty_r_format  OPTIONAL
+        uname         TYPE ty_r_uname   OPTIONAL
+        all_users     TYPE abap_bool    DEFAULT abap_false
+        check_auth    TYPE abap_bool    DEFAULT abap_true
+      RETURNING
+        VALUE(result) TYPE ty_t_head.
 
     CLASS-METHODS select_layout_components
       IMPORTING
@@ -171,9 +231,50 @@ CLASS z2ui5_cl_layo_manager DEFINITION
       RETURNING
         VALUE(result) TYPE  ty_t_positions.
 
+    "! Copies saved layouts with their positions under other handles - for
+    "! example the layouts of one app and warehouse to another. Every copy
+    "! gets new guids and keeps name, control, screen format, user and the
+    "! default flag of its original; a copy flagged as default demotes the
+    "! defaults of its new scope. One LUW.
+    "! check_auth: ask z2ui5_if_layo_auth for every copy as the layout popup
+    "! does for a save - abap_false only for an admin tool that checks itself
+    "! iv_commit: abap_true (the default) ends with COMMIT WORK AND WAIT - and
+    "! so also commits whatever the caller has open; abap_false neither
+    "! commits nor rolls back, the copies are part of the caller's LUW and
+    "! the caller commits them together with its own changes
+    "! Raises z2ui5_cx_layo_error when an original does not exist or a copy
+    "! is not authorized - checked before the first write, nothing is written
+    "! - or when the database refuses the write: with iv_commit = abap_true
+    "! after a ROLLBACK WORK, with abap_false without one - what was written
+    "! is then still in the caller's LUW, the caller rolls it back.
+    "! result: the heads of the copies
+    CLASS-METHODS copy_layouts
+      IMPORTING
+        t_copy        TYPE ty_t_copy
+        check_auth    TYPE abap_bool DEFAULT abap_true
+        iv_commit     TYPE abap_bool DEFAULT abap_true
+      RETURNING
+        VALUE(result) TYPE ty_t_head.
+
+    "! output: abap_true formats the values for the screen, abap_false back.
+    "! data: the table again - see set_data( )
+    "! Leaves out the columns the view formats itself: NUMC always, ALPHA
+    "! on CHAR with mv_alpha_in_browser - see digit_type( )
     METHODS data_conversion
       IMPORTING
-        !output TYPE abap_bool.
+        !output TYPE abap_bool
+        !data   TYPE REF TO data OPTIONAL.
+
+    "! Point the layout at the app's table again. Call it in every
+    "! roundtrip before sort( ), set_selkz( ) or data_conversion( ), or pass
+    "! the table to them directly: the draft of an app is serialized and
+    "! restored between two roundtrips, and a data reference comes back as a
+    "! reference to a COPY of the table, no longer to the app's attribute -
+    "! so without it the layout sorts and converts a copy nobody sees.
+    "! (A sticky session keeps the reference; then it is merely redundant.)
+    METHODS set_data
+      IMPORTING
+        !data TYPE REF TO data.
 
     CLASS-METHODS set_text
       IMPORTING
@@ -183,7 +284,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
 
     CLASS-METHODS sort_by_sequence
       IMPORTING
-        !pos          TYPE  ty_t_positions
+        pos           TYPE  ty_t_positions
       RETURNING
         VALUE(result) TYPE  ty_t_positions.
 
@@ -204,12 +305,27 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         handle02      TYPE clike   OPTIONAL
         handle03      TYPE clike   OPTIONAL
         handle04      TYPE clike   OPTIONAL
+        !format       TYPE clike   OPTIONAL
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_layo_pop_w_sel.
 
+    "! data: the table again - see set_data( )
     METHODS sort
       IMPORTING
-        no_selkz_sort TYPE abap_bool OPTIONAL.
+        no_selkz_sort TYPE abap_bool    OPTIONAL
+        !data         TYPE REF TO data OPTIONAL
+          PREFERRED PARAMETER no_selkz_sort.
+
+    "! The sorting of one column clicked in the table header: none -&gt;
+    "! ascending -&gt; descending -&gt; none. Every other column loses its
+    "! sorting, so the table is sorted by the column clicked last. Changes the
+    "! layout only - sort( ) applies it to the data.
+    "! result: abap_false when the layout has no column fname
+    METHODS toggle_sorting
+      IMPORTING
+        fname         TYPE clike
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 
     METHODS set_selektion_criteria
       IMPORTING
@@ -217,11 +333,58 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         sel_field     TYPE string
         sel_key_field TYPE string.
 
-    METHODS set_selkz IMPORTING t_event_arg TYPE string_table.
+    "! data: the table again - see set_data( )
+    METHODS set_selkz
+      IMPORTING
+        t_event_arg TYPE string_table
+        !data       TYPE REF TO data OPTIONAL.
 
     DATA mv_sel_mode      TYPE string.
     DATA mv_sel_field     TYPE string.
     DATA mv_sel_key_field TYPE string.
+
+    "! abap_true: data_conversion( ) leaves the ALPHA columns of CHAR type
+    "! alone, they stay internal - for an app whose view binds them with
+    "! the digit type, as z2ui5_cl_layo_xml_builder does (see digit_type( )).
+    "! Set it once after factory( ). Not for an app with an EDITABLE ALPHA
+    "! column: the type refuses a letter there, so such a column needs the
+    "! conversion in ABAP. NUMC columns are never converted in ABAP - there
+    "! is no conversion routine for them, the view formats them
+    DATA mv_alpha_in_browser TYPE abap_bool.
+
+    "! abap_true when the view formats the column itself: a digit sequence
+    "! (ALPHA on CHAR, NUMC) whose conversion the user did not switch off
+    "! in the layout popup
+    CLASS-METHODS digit_type
+      IMPORTING
+        !position     TYPE ty_s_positions
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
+    "! the binding of a column the view formats itself (digit_type( )): the
+    "! path with the type sap.ui.model.odata.type.String, isDigitSequence
+    "! and the column's length as maxLength - `000000004711` is shown as
+    "! `4711`, an input of `4711` parsed back to `000000004711`, a value
+    "! with letters shown as it is. The type is named by the alias
+    "! digit_type_alias; the view loads it with the core:require of
+    "! digit_type_require( ) on the control or one of its parents
+    CLASS-METHODS digit_type_binding
+      IMPORTING
+        path          TYPE clike
+        position      TYPE ty_s_positions
+      RETURNING
+        VALUE(result) TYPE string.
+
+    "! the value of the core:require a control needs for
+    "! digit_type_binding( ) inside it (the namespace sap.ui.core declared
+    "! as core). On UI5 1.71 a type named in a binding is resolved only when
+    "! its module is loaded already - nothing loads it for the binding
+    CLASS-METHODS digit_type_require
+      RETURNING
+        VALUE(result) TYPE string.
+
+    CONSTANTS digit_type_alias  TYPE string VALUE `LayoDigitString` ##NO_TEXT.
+    CONSTANTS digit_type_module TYPE string VALUE `sap/ui/model/odata/type/String` ##NO_TEXT.
 
   PROTECTED SECTION.
     CLASS-METHODS get_conversion_exit
@@ -230,6 +393,16 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         !layout       TYPE ty_s_positions
       RETURNING
         VALUE(result) TYPE ty_s_positions.
+
+    "! the length the column gets as maxLength of the digit type - for
+    "! ALPHA on a CHAR column and NUMC (convexit NUMC: ALPHA or ALPH0 on a
+    "! NUMC column), 0 for every other column
+    CLASS-METHODS get_digits
+      IMPORTING
+        !type         TYPE REF TO cl_abap_datadescr
+        convexit      TYPE clike
+      RETURNING
+        VALUE(result) TYPE i.
 
   PRIVATE SECTION.
     "! set by register( ), cleared by prepare( )
@@ -263,7 +436,7 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         handle01      TYPE clike
         layout_guid   TYPE clike
         !format       TYPE clike OPTIONAL
-        !head         TYPE  ty_t_head
+        head          TYPE  ty_t_head
       RETURNING
         VALUE(result) TYPE  ty_s_head.
 
@@ -362,10 +535,11 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = lv_id. "#EC CI_SORTSEQ
-    IF sy-subrc <> 0.
-      APPEND VALUE #( id = lv_id ) TO mt_slots.
-      READ TABLE mt_slots REFERENCE INTO lr_slot INDEX lines( mt_slots ).
+    DATA lr_slot TYPE REF TO ty_s_slot.
+    IF line_exists( mt_slots[ id = lv_id ] ).           "#EC CI_SORTSEQ
+      lr_slot = REF #( mt_slots[ id = lv_id ] ).        "#EC CI_SORTSEQ
+    ELSE.
+      INSERT VALUE #( id = lv_id ) INTO TABLE mt_slots REFERENCE INTO lr_slot.
     ENDIF.
 
     IF label IS NOT INITIAL.
@@ -433,17 +607,15 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     LOOP AT mt_slots REFERENCE INTO DATA(lr_slot).
 
-      READ TABLE lt_pos INTO DATA(ls_pos) WITH KEY fname = lr_slot->id. "#EC CI_SORTSEQ
-      IF sy-subrc = 0.
+      IF line_exists( lt_pos[ fname = lr_slot->id ] ).  "#EC CI_SORTSEQ
         " a saved position - a control registered since the save is new and visible
-        CLEAR ls_layout.
-        MOVE-CORRESPONDING ls_pos TO ls_layout.
+        ls_layout = CORRESPONDING #( lt_pos[ fname = lr_slot->id ] ). "#EC CI_SORTSEQ
       ELSE.
         ls_layout = build_slot_position( slot = lr_slot->*
                                          guid = lv_guid ).
       ENDIF.
       ls_layout-tlabel = text_of( ls_layout ).
-      APPEND ls_layout TO lt_layout.
+      INSERT ls_layout INTO TABLE lt_layout.
 
     ENDLOOP.
 
@@ -477,11 +649,10 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       IF lr_layout->alternative_text IS NOT INITIAL.
         ls_slot-label = lr_layout->tlabel.
       ENDIF.
-      READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = ls_slot-id. "#EC CI_SORTSEQ
-      IF sy-subrc = 0.
-        ls_slot-label_attr = lr_slot->label_attr.
+      IF line_exists( mt_slots[ id = ls_slot-id ] ).    "#EC CI_SORTSEQ
+        ls_slot-label_attr = mt_slots[ id = ls_slot-id ]-label_attr. "#EC CI_SORTSEQ
       ENDIF.
-      APPEND ls_slot TO result.
+      INSERT ls_slot INTO TABLE result.
     ENDLOOP.
 
   ENDMETHOD.
@@ -501,9 +672,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     ENDIF.
 
     lv_id = layout-fname.
-    READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = lv_id. "#EC CI_SORTSEQ
-    IF sy-subrc = 0.
-      result = lr_slot->label.
+    IF line_exists( mt_slots[ id = lv_id ] ).           "#EC CI_SORTSEQ
+      result = mt_slots[ id = lv_id ]-label.            "#EC CI_SORTSEQ
     ENDIF.
     IF result IS INITIAL.
       result = lv_id.
@@ -540,6 +710,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
              uname
         FROM z2ui5_t_11
         WHERE guid = @layout_guid
+        ORDER BY PRIMARY KEY
         INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
 
     ELSE.
@@ -564,13 +735,28 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           " the user's own layouts and the shared ones (no user) - never
           " another user's personal layout
           AND ( uname = @sy-uname OR uname = @space )
+        ORDER BY PRIMARY KEY
         INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
 
     ENDIF.
 
-    " FALLBACK - Screen format was added later! We are changing an empty format to L.
+    " FALLBACK - Screenformat was added! Layouts without a format are taken
+    " for the requested format (L when none is requested). The check for an
+    " existing default runs against that same format - with the raw, empty
+    " format it found the format-less default itself and demoted it.
+    DATA(fmt) = COND string( WHEN format IS INITIAL THEN screen_format_l ELSE format ).
+
+    DATA(other_default) = xsdbool( line_exists( result[ screen_format = fmt
+                                                        def           = abap_true ] ) ).
+
     LOOP AT result REFERENCE INTO DATA(line) WHERE screen_format IS INITIAL.
-      line->screen_format = screen_format_l.
+
+      IF other_default = abap_true.
+        line->def = abap_false.
+      ENDIF.
+
+      line->screen_format = fmt.
+
     ENDLOOP.
 
   ENDMETHOD.
@@ -602,6 +788,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
            sorting
       FROM z2ui5_t_12
       WHERE guid = @layout_guid
+      ORDER BY PRIMARY KEY
       INTO CORRESPONDING FIELDS OF TABLE @result ##SUBRC_OK.
 
   ENDMETHOD.
@@ -636,7 +823,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       index = index + 1.
 
       LOOP AT tab INTO DATA(line) WHERE sequence = index.
-        APPEND line TO result.
+        INSERT line INTO TABLE result.
       ENDLOOP.
       " delete after the loop: deleting inside LOOP AT ... WHERE skips the
       " row that shifts into the current position, dropping duplicates
@@ -644,7 +831,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     ENDDO.
 
-    APPEND LINES OF tab TO result.
+    INSERT LINES OF tab INTO TABLE result.
 
   ENDMETHOD.
 
@@ -669,7 +856,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                                     handle01 = handle01
                                     handle02 = handle02
                                     handle03 = handle03
-                                    handle04 = handle04  ).
+                                    handle04 = handle04
+                                    format   = format  ).
 
     result = z2ui5_cl_layo_pop_w_sel=>factory( i_tab   = layouts
                                                i_title = 'Layouts' ).
@@ -712,10 +900,16 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     LOOP AT result->ms_layout-t_layout REFERENCE INTO DATA(layout).
 
+      " what the type of the component says (conversion exit, digit type)
+      " is no part of the saved position - it is kept, not read back empty
+      DATA(convexit)      = layout->convexit.
+      DATA(show_convexit) = layout->show_convexit.
+      DATA(digits)        = layout->digits.
+
       IF line_exists( t_pos[ fname = layout->fname ] ).
 
         DATA(pos) = VALUE #( t_pos[ fname = layout->fname ] OPTIONAL ).
-        MOVE-CORRESPONDING pos TO layout->*.
+        layout->* = CORRESPONDING #( BASE ( layout->* ) pos ).
 
       ELSE.
 
@@ -742,8 +936,11 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
       ENDIF.
 
-      layout->guid   = layout_guid.
-      layout->tlabel = result->text_of( layout->* ).
+      layout->guid          = layout_guid.
+      layout->tlabel        = result->text_of( layout->* ).
+      layout->convexit      = convexit.
+      layout->show_convexit = show_convexit.
+      layout->digits        = digits.
 
     ENDLOOP.
 
@@ -769,7 +966,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                                  handle01    = handle01
                                  handle02    = handle02
                                  handle03    = handle03
-                                 handle04    = handle04 ).
+                                 handle04    = handle04
+                                 format      = format  ).
 
     DATA(def) = get_default_layout( handle04    = handle04
                                     handle03    = handle03
@@ -788,18 +986,15 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
         IF NOT line_exists( t_pos[ fname = r_comp->name ] ).
 
-          APPEND build_default_positions( comp  = r_comp
+          INSERT build_default_positions( comp  = r_comp
                                           guid  = def-guid
-                                          index = 99 ) TO result->ms_layout-t_layout.
+                                          index = 99 ) INTO TABLE result->ms_layout-t_layout.
 
         ELSE.
 
-          DATA(pos) = REF #( t_pos[ fname = r_comp->name ] OPTIONAL ).
-
-          " Structure was changed - Field no longer exists
-          IF NOT line_exists( t_comp[ name = pos->fname ] ).
-            CONTINUE.
-          ENDIF.
+          " positions of fields that no longer exist are never reached - the
+          " loop runs over the fields of the structure
+          DATA(pos) = REF #( t_pos[ fname = r_comp->name ] ).
 
           DATA(layout) = VALUE ty_s_positions( ).
 
@@ -810,7 +1005,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           layout = get_conversion_exit( layout = layout
                                         type   = r_comp->type ).
 
-          APPEND layout TO result->ms_layout-t_layout.
+          INSERT layout INTO TABLE result->ms_layout-t_layout.
 
         ENDIF.
 
@@ -834,9 +1029,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
         index = index + 1.
 
-        APPEND build_default_positions( comp  = r_comp
+        INSERT build_default_positions( comp  = r_comp
                                         guid  = guid
-                                        index = index ) TO result->ms_layout-t_layout.
+                                        index = index ) INTO TABLE result->ms_layout-t_layout.
 
       ENDLOOP.
 
@@ -913,8 +1108,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    " select_layouts( ) reads a layout without a format as L, so no format
-    " asked for is L as well - compared as is, a default never matched
+    " select_layouts( ) reads a layout without a format as the requested one,
+    " L when none is requested - so no format asked for is L as well;
+    " compared as is, a default never matched
     DATA(lv_format) = CONV string( format ).
     IF lv_format IS INITIAL.
       lv_format = screen_format_l.
@@ -943,11 +1139,34 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                             def           = abap_true
                             uname         = space ] OPTIONAL ).
 
+    IF result IS NOT INITIAL.
+      RETURN.
+    ENDIF.
+
+    " no default at all - the first global layout of the handles and format
+    result = VALUE #( head[ handle01      = handle01
+                            handle02      = handle02
+                            handle03      = handle03
+                            handle04      = handle04
+                            screen_format = lv_format
+                            uname         = space ] OPTIONAL ).
+
+  ENDMETHOD.
+
+  METHOD set_data.
+
+    mr_data = data.
+
   ENDMETHOD.
 
   METHOD sort.
 
     FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
+
+    " the table again - see set_data( )
+    IF data IS BOUND.
+      mr_data = data.
+    ENDIF.
 
     " the generic mode has no data to sort
     IF mr_data IS NOT BOUND.
@@ -964,8 +1183,12 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    IF no_selkz_sort = abap_false.
-      DATA(selkz) = VALUE #( ms_layout-t_layout[ fname = 'SELKZ' ] OPTIONAL ).
+    " SELKZ first - but only when the table has it: a sort order naming a
+    " component the table lacks raises, and the CATCH below then dropped
+    " every sort the user had configured
+    IF     no_selkz_sort = abap_false
+       AND line_exists( ms_layout-t_layout[ fname = 'SELKZ' ] ).
+      DATA(selkz) = ms_layout-t_layout[ fname = 'SELKZ' ].
 
       IF selkz-sorting = space.
 
@@ -1000,6 +1223,11 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
 
+    " the table again - see set_data( )
+    IF data IS BOUND.
+      mr_data = data.
+    ENDIF.
+
     IF mv_sel_mode = space.
       RETURN.
     ENDIF.
@@ -1010,7 +1238,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     ASSIGN mr_data->* TO <table>.
 
-    IF <table> IS INITIAL.
+    IF <table> IS NOT ASSIGNED OR <table> IS INITIAL.
       RETURN.
     ENDIF.
 
@@ -1057,6 +1285,11 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     FIELD-SYMBOLS <tab> TYPE ANY TABLE.
 
+    " the table again - see set_data( )
+    IF data IS BOUND.
+      mr_data = data.
+    ENDIF.
+
     IF mr_data IS NOT BOUND.
       RETURN.
     ENDIF.
@@ -1074,6 +1307,15 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     LOOP AT ms_layout-t_layout INTO DATA(layout)
          WHERE     no_convexit  = abap_false
                AND convexit    <> space.
+
+      " a digit sequence the view formats stays internal: NUMC always - no
+      " conversion routine exists for it, the call converted nothing - and
+      " ALPHA on CHAR when the app said its view formats it
+      IF     digit_type( layout ) = abap_true
+         AND (    layout-convexit   = `NUMC`
+               OR mv_alpha_in_browser = abap_true ).
+        CONTINUE.
+      ENDIF.
 
       IF layout-visible = abap_false.
 
@@ -1107,6 +1349,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
       ENDIF.
 
+      " a failed ASSIGN COMPONENT leaves the field symbol on what it pointed
+      " to before - test sy-subrc, or a column missing in the data converts
+      " the previous column a second time
       CASE ms_layout-s_head-control.
         WHEN ui_table OR m_table.
 
@@ -1178,7 +1423,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
         CALL METHOD type->('GET_DDIC_OBJECT')
           RECEIVING  p_object     = <t_obj>
           EXCEPTIONS not_found    = 1
-                     no_ddic_type = 2.
+                     no_ddic_type = 2
+                     OTHERS       = 3.
         IF sy-subrc <> 0.
           RETURN.
         ENDIF.
@@ -1194,7 +1440,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           RETURN.
         ENDIF.
 
-        IF <conv> = `MDLPD`. " GUID to Product works but the way back will fail (not in SAP GUI).
+        " GUID to Product works but the way back will fail (not in SAP GUI).
+        IF <conv> = `MDLPD`.
           RETURN.
         ENDIF.
 
@@ -1213,9 +1460,67 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           ENDIF.
         ENDIF.
 
+        result-digits = get_digits( type     = type
+                                    convexit = result-convexit ).
+
       CATCH cx_root.
         RETURN.
     ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD get_digits.
+
+    " the browser does what ALPHA does only for these two: a digit sequence
+    " loses its leading zeros on the screen and gets them back on input.
+    " Every other exit (CUNIT, MATN1, ...) stays a conversion in ABAP
+    IF NOT (    ( type->type_kind = cl_abap_elemdescr=>typekind_char AND convexit = `ALPHA` )
+             OR ( type->type_kind = cl_abap_elemdescr=>typekind_num  AND convexit = `NUMC` ) ).
+      RETURN.
+    ENDIF.
+
+    " the length in characters - a C10 or N10 has 10 of them
+    result = type->length / cl_abap_char_utilities=>charsize.
+
+  ENDMETHOD.
+
+  METHOD digit_type.
+
+    result = xsdbool( position-digits > 0 AND position-no_convexit = abap_false ).
+
+  ENDMETHOD.
+
+  METHOD digit_type_binding.
+
+    result = |\{path:'{ path }',type:'{ digit_type_alias }',|
+          && |constraints:\{isDigitSequence:true,maxLength:{ position-digits }\}\}|.
+
+  ENDMETHOD.
+
+  METHOD digit_type_require.
+
+    result = |\{{ digit_type_alias }:'{ digit_type_module }'\}|.
+
+  ENDMETHOD.
+
+  METHOD toggle_sorting.
+
+    IF NOT line_exists( ms_layout-t_layout[ fname = fname ] ).
+      RETURN.
+    ENDIF.
+    DATA(column) = REF #( ms_layout-t_layout[ fname = fname ] ).
+
+    DATA(sorting) = SWITCH string( column->sorting
+                                   WHEN space        THEN `ASCENDING`
+                                   WHEN `ASCENDING`  THEN `DESCENDING`
+                                   ELSE `` ).
+
+    LOOP AT ms_layout-t_layout REFERENCE INTO DATA(position) WHERE sorting IS NOT INITIAL.
+      CLEAR position->sorting.
+    ENDLOOP.
+
+    column->sorting = sorting.
+    result = abap_true.
 
   ENDMETHOD.
 
@@ -1224,6 +1529,186 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     mv_sel_mode      = sel_mode.
     mv_sel_field     = sel_field.
     mv_sel_key_field = sel_key_field.
+
+  ENDMETHOD.
+
+  METHOD select_layouts_by_range.
+
+    IF all_users = abap_true.
+
+      SELECT * FROM z2ui5_t_11
+        WHERE guid          IN @guid
+          AND layout        IN @layout
+          AND control       IN @control
+          AND handle01      IN @handle01
+          AND handle02      IN @handle02
+          AND handle03      IN @handle03
+          AND handle04      IN @handle04
+          AND screen_format IN @format
+          AND uname         IN @uname
+        ORDER BY PRIMARY KEY
+        INTO TABLE @result ##SUBRC_OK.
+
+    ELSE.
+
+      SELECT * FROM z2ui5_t_11
+        WHERE guid          IN @guid
+          AND layout        IN @layout
+          AND control       IN @control
+          AND handle01      IN @handle01
+          AND handle02      IN @handle02
+          AND handle03      IN @handle03
+          AND handle04      IN @handle04
+          AND screen_format IN @format
+          AND uname         IN @uname
+          " the user's own layouts and the shared ones (no user) - never
+          " another user's personal layout
+          AND ( uname = @sy-uname OR uname = @space )
+        ORDER BY PRIMARY KEY
+        INTO TABLE @result ##SUBRC_OK.
+
+    ENDIF.
+
+    IF all_users = abap_false OR check_auth = abap_false.
+      RETURN.
+    ENDIF.
+
+    " another user's personal layout only when the hook allows it - rebuilt
+    " instead of DELETE inside the loop
+    DATA(selected) = result.
+    CLEAR result.
+    LOOP AT selected INTO DATA(head).
+      IF    head-uname IS INITIAL
+         OR head-uname = sy-uname
+         OR z2ui5_cl_layo_auth=>check( action = z2ui5_if_layo_auth=>cs_action-read_others
+                                       head   = head ) = abap_true.
+        INSERT head INTO TABLE result.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD copy_layouts.
+
+    DATA source_guids TYPE RANGE OF z2ui5_t_11-guid.
+    DATA new_guids    TYPE RANGE OF z2ui5_t_11-guid.
+    DATA positions    TYPE STANDARD TABLE OF z2ui5_t_12 WITH EMPTY KEY.
+
+    IF t_copy IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    source_guids = VALUE #( FOR c IN t_copy
+                            ( sign = `I` option = `EQ` low = c-guid ) ).
+
+    SELECT * FROM z2ui5_t_11
+      WHERE guid IN @source_guids
+      ORDER BY PRIMARY KEY
+      INTO TABLE @DATA(sources) ##SUBRC_OK.
+
+    SELECT * FROM z2ui5_t_12
+      WHERE guid IN @source_guids
+      ORDER BY PRIMARY KEY
+      INTO TABLE @DATA(source_positions) ##SUBRC_OK.
+
+    LOOP AT t_copy INTO DATA(copy).
+
+      DATA(head) = VALUE #( sources[ guid = copy-guid ] OPTIONAL ).
+      IF head IS INITIAL.
+        RAISE EXCEPTION TYPE z2ui5_cx_layo_error
+          EXPORTING val = |Layout { copy-guid } not found|.
+      ENDIF.
+
+      head-guid     = z2ui5_cl_layo_context=>uuid_get_c32( ).
+      head-handle01 = copy-handle01.
+      head-handle02 = copy-handle02.
+      head-handle03 = copy-handle03.
+      head-handle04 = copy-handle04.
+      IF copy-descr IS NOT INITIAL.
+        head-descr = copy-descr.
+      ENDIF.
+
+      IF check_auth = abap_true.
+        DATA(action) = COND string( WHEN head-uname IS INITIAL
+                                    THEN z2ui5_if_layo_auth=>cs_action-save_shared
+                                    ELSE z2ui5_if_layo_auth=>cs_action-save_own ).
+        IF z2ui5_cl_layo_auth=>check( action = action
+                                      head   = head ) = abap_false.
+          RAISE EXCEPTION TYPE z2ui5_cx_layo_error
+            EXPORTING val = |Not authorized to save layout { head-layout } for { head-handle01 } { head-handle03 } { head-handle04 }|.
+        ENDIF.
+      ENDIF.
+
+      LOOP AT source_positions INTO DATA(position) WHERE guid = copy-guid.
+        position-guid     = head-guid.
+        position-pos_guid = z2ui5_cl_layo_context=>uuid_get_c32( ).
+        INSERT position INTO TABLE positions.
+      ENDLOOP.
+
+      INSERT head INTO TABLE result.
+      INSERT VALUE #( sign = `I` option = `EQ` low = head-guid ) INTO TABLE new_guids.
+
+    ENDLOOP.
+
+    " with iv_commit = abap_false the LUW is the caller's: no ROLLBACK here,
+    " the exception tells the caller to roll back. INSERT FROM TABLE does
+    " not set sy-subrc on a duplicate key - it raises cx_sy_open_sql_db
+    TRY.
+        INSERT z2ui5_t_11 FROM TABLE @result ##SUBRC_OK.
+        IF positions IS NOT INITIAL.
+          INSERT z2ui5_t_12 FROM TABLE @positions ##SUBRC_OK.
+        ENDIF.
+      CATCH cx_sy_open_sql_db INTO DATA(x_sql).
+        IF iv_commit = abap_true.
+          ROLLBACK WORK.
+        ENDIF.
+        RAISE EXCEPTION TYPE z2ui5_cx_layo_error
+          EXPORTING val      = `Layouts could not be copied`
+                    previous = x_sql.
+    ENDTRY.
+
+    " a copied default demotes the defaults of its new scope, as a save does
+    " - a layout saved before the screen format existed has none and is a
+    " default of the same scope. One read of the candidates, one update.
+    DATA(defaults) = VALUE ty_t_head( FOR h IN result WHERE ( def = abap_true ) ( h ) ).
+    IF defaults IS NOT INITIAL.
+
+      DATA scope03 TYPE RANGE OF z2ui5_t_11-handle03.
+      DATA demote  TYPE RANGE OF z2ui5_t_11-guid.
+      scope03 = VALUE #( FOR d IN defaults ( sign = `I` option = `EQ` low = d-handle03 ) ).
+
+      SELECT * FROM z2ui5_t_11
+        WHERE handle03 IN @scope03
+          AND def       = @abap_true
+          AND guid NOT IN @new_guids
+        ORDER BY PRIMARY KEY
+        INTO TABLE @DATA(candidates) ##SUBRC_OK.
+
+      LOOP AT candidates INTO DATA(candidate).
+        LOOP AT defaults INTO head WHERE control  = candidate-control
+                                     AND handle01 = candidate-handle01
+                                     AND handle02 = candidate-handle02
+                                     AND handle03 = candidate-handle03
+                                     AND handle04 = candidate-handle04
+                                     AND uname    = candidate-uname.
+          IF    candidate-screen_format = head-screen_format
+             OR ( head-screen_format = screen_format_l AND candidate-screen_format IS INITIAL )
+             OR ( head-screen_format IS INITIAL AND candidate-screen_format = screen_format_l ).
+            INSERT VALUE #( sign = `I` option = `EQ` low = candidate-guid ) INTO TABLE demote.
+            EXIT.
+          ENDIF.
+        ENDLOOP.
+      ENDLOOP.
+
+      IF demote IS NOT INITIAL.
+        UPDATE z2ui5_t_11 SET def = @abap_false WHERE guid IN @demote ##SUBRC_OK.
+      ENDIF.
+
+    ENDIF.
+
+    IF iv_commit = abap_true.
+      COMMIT WORK AND WAIT.
+    ENDIF.
 
   ENDMETHOD.
 

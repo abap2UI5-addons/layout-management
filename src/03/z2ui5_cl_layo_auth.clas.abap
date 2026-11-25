@@ -2,8 +2,8 @@
 "! system has not made one of its own. check( ) is what the layout popup asks;
 "! it goes to the instance set with set_instance( ), else to the one class in
 "! the system that implements z2ui5_if_layo_auth (found by its interface, like
-"! abap2UI5's user exit), else to this class: own layouts yes, shared layouts
-"! no, deleting only what one owns.
+"! abap2UI5's user exit), else to this class: everything the popup offers is
+"! allowed - saving own and shared layouts, deleting own and shared ones.
 CLASS z2ui5_cl_layo_auth DEFINITION
   PUBLIC FINAL
   CREATE PUBLIC.
@@ -15,7 +15,7 @@ CLASS z2ui5_cl_layo_auth DEFINITION
     CLASS-METHODS check
       IMPORTING
         !action       TYPE string
-        !head         TYPE z2ui5_t_11
+        head          TYPE z2ui5_t_11
       RETURNING
         VALUE(result) TYPE abap_bool.
 
@@ -29,7 +29,7 @@ CLASS z2ui5_cl_layo_auth DEFINITION
     "! restores the lookup
     CLASS-METHODS set_instance
       IMPORTING
-        !val TYPE REF TO z2ui5_if_layo_auth OPTIONAL.
+        val TYPE REF TO z2ui5_if_layo_auth OPTIONAL.
 
   PROTECTED SECTION.
 
@@ -45,7 +45,7 @@ CLASS z2ui5_cl_layo_auth DEFINITION
 
     CLASS-METHODS type_name_of
       IMPORTING
-        !val          TYPE any
+        val           TYPE any
       RETURNING
         VALUE(result) TYPE string.
 
@@ -148,16 +148,21 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
 
   METHOD z2ui5_if_layo_auth~check_authorized.
 
-    " the default: a user owns his layouts and nothing else. Shared layouts
-    " belong to every user of the app, so saving one needs a decision the
-    " addon cannot make - a class implementing z2ui5_if_layo_auth makes it
+    " the default, as before the hook existed: every user may save his own
+    " and shared layouts and delete his own and shared ones - never another
+    " user's personal layout. A system that wants to restrict shared layouts
+    " implements z2ui5_if_layo_auth with its own authorization object
     CASE action.
       WHEN z2ui5_if_layo_auth=>cs_action-save_own.
         result = xsdbool( head-uname = sy-uname ).
       WHEN z2ui5_if_layo_auth=>cs_action-save_shared.
-        result = abap_false.
+        result = abap_true.
       WHEN z2ui5_if_layo_auth=>cs_action-delete.
-        result = xsdbool( head-uname IS NOT INITIAL AND head-uname = sy-uname ).
+        result = xsdbool( head-uname IS INITIAL OR head-uname = sy-uname ).
+      WHEN z2ui5_if_layo_auth=>cs_action-read_others.
+        " the layout popup never shows another user's personal layout - a
+        " tool that reads them all implements the hook or passes check_auth
+        result = xsdbool( head-uname IS INITIAL OR head-uname = sy-uname ).
       WHEN OTHERS.
         result = abap_false.
     ENDCASE.

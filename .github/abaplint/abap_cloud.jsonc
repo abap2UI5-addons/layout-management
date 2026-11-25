@@ -10,12 +10,10 @@
     },
     {
       "url": "https://github.com/abap2UI5/abap2UI5",
-      // the framework's main branch, declared rather than left off (abap2UI5
-      // CONVENTIONS §9): this repository has no release pin and no bump
-      // workflow for one yet
+      // abap2UI5 main - the client API of 1.151.0 (see abaplint.jsonc)
       "branch": "main",
       "folder": "/abap2UI5",
-      "files": "/src/**/*.*"
+      "files": "/src/0[0-2]/**/*.*"
     }
   ],
   "syntax": {

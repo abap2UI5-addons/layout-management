@@ -1,5 +1,6 @@
 "! The authorization hook of layout-management: who may save a layout that
-"! every user sees, and who may delete one. The addon ships no authorization
+"! every user sees, who may delete one, and whose personal layouts a tool may
+"! read. The addon ships no authorization
 "! object - an AUTHORITY-CHECK against an object that does not exist in the
 "! customer system is always refused, and a .suso cannot be written by hand for
 "! every release the addon runs on. Instead a system decides through a class
@@ -7,7 +8,7 @@
 "! (the way abap2UI5 finds its user exit), creates it and asks it before every
 "! write that reaches beyond the user's own layouts. Without such a class the
 "! shipped default z2ui5_cl_layo_auth applies: a user may save and delete his
-"! own layouts, and nobody may save a shared one.
+"! own layouts and the shared ones, never another user's personal layout.
 "! Only one implementing class may exist in a system - the lookup takes the
 "! first by name and the result is not what two authors intended.
 INTERFACE z2ui5_if_layo_auth
@@ -21,6 +22,9 @@ INTERFACE z2ui5_if_layo_auth
       save_shared TYPE string VALUE `SAVE_SHARED`,
       "! head-uname carries the owner as the database has it - blank for a shared layout
       delete      TYPE string VALUE `DELETE`,
+      "! another user's personal layout is read - select_layouts_by_range( )
+      "! with all_users; head-uname is its owner. A denied layout is left out
+      read_others TYPE string VALUE `READ_OTHERS`,
     END OF cs_action.
 
   "! abap_true when the current user may perform the action on the layout
@@ -29,7 +33,7 @@ INTERFACE z2ui5_if_layo_auth
   METHODS check_authorized
     IMPORTING
       !action       TYPE string
-      !head         TYPE z2ui5_t_11
+      head          TYPE z2ui5_t_11
     RETURNING
       VALUE(result) TYPE abap_bool.
 

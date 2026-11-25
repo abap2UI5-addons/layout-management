@@ -77,7 +77,7 @@ CLASS z2ui5_cl_layo_sample_06 IMPLEMENTATION.
     ENDIF.
 
     DATA(class) = cl_abap_classdescr=>get_class_name( me ).
-    SHIFT class LEFT DELETING LEADING '\CLASS='.
+    class = shift_left( val = class sub = `\CLASS=` ).
 
     " the handles are the key the variants are saved under - the app class
     " and a name for the view
@@ -118,7 +118,7 @@ CLASS z2ui5_cl_layo_sample_06 IMPLEMENTATION.
                 )->ele( `Page`
                     )->a( n = `title`          v = `Layout - any view`
                     )->a( n = `navButtonPress` v = client->_event( `BACK` )
-                    )->a( n = `showNavButton`  b = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL )
+                    )->a( n = `showNavButton`  b = client->check_app_prev_stack( )
                     )->a( n = `class`          v = `sapUiContentPadding` ).
 
     " the settings button of the layout - the same popup as for a table
@@ -195,7 +195,7 @@ CLASS z2ui5_cl_layo_sample_06 IMPLEMENTATION.
     CASE client->get( )-event.
 
       WHEN `BACK`.
-        client->nav_app_leave( client->get_app( client->get( )-s_draft-id_prev_app_stack ) ).
+        client->nav_app_leave( ).
 
       WHEN `SAVE`.
         client->message_toast_display( |Saved { mv_name }| ).
@@ -220,7 +220,7 @@ CLASS z2ui5_cl_layo_sample_06 IMPLEMENTATION.
     " back from the layout popup: take over the chosen layout and render
     " again - the generic mode writes it into the view
     TRY.
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
         mo_layout = app->mo_layout.
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.

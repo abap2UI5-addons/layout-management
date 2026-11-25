@@ -37,7 +37,7 @@ CLASS z2ui5_cl_layo_sample_03 IMPLEMENTATION.
     CASE client->get( )-event.
 
       WHEN 'BACK'.
-        client->nav_app_leave( client->get_app( client->get( )-s_draft-id_prev_app_stack ) ).
+        client->nav_app_leave( ).
 
       WHEN OTHERS.
 
@@ -68,15 +68,15 @@ CLASS z2ui5_cl_layo_sample_03 IMPLEMENTATION.
                      )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
                      )->a( n = `xmlns:si` v = `sap.suite.ui.commons.statusindicator`
                      " abap2ui5lint-enable unused-namespace-declaration
-                     )->a( n = `displayBlock` v = `true`
+                     )->a( n = `displayBlock` b = abap_true
                      )->a( n = `height` v = `100%`
                      )->ele( `Shell` ).
 
     DATA(page) = view->ele( `Page`
-                     )->a( n = `title` v = 'Layout'
+                     )->a( n = `title` v = `Layout`
                      )->a( n = `navButtonPress` v = client->_event( 'BACK' )
-                     )->a( n = `showNavButton` b = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL )
-                     )->a( n = `class` v = 'sapUiContentPadding' ).
+                     )->a( n = `showNavButton` b = client->check_app_prev_stack( )
+                     )->a( n = `class` v = `sapUiContentPadding` ).
 
     z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = REF #( mt_table )
                                                 i_xml    = page
@@ -92,19 +92,17 @@ CLASS z2ui5_cl_layo_sample_03 IMPLEMENTATION.
 
     IF client->check_on_init( ).
       on_init( ).
-    ENDIF.
-
-    on_event( ).
-
-    IF client->get( )-check_on_navigated = abap_true.
+    ELSEIF client->check_on_navigated( ).
       on_after_navigation( ).
+    ELSEIF client->check_on_event( ).
+      on_event( ).
     ENDIF.
 
   ENDMETHOD.
 
   METHOD get_data.
 
-    SELECT * FROM z2ui5_t_11 INTO TABLE @mt_table UP TO 10 ROWS.
+    SELECT * FROM z2ui5_t_11 ORDER BY PRIMARY KEY INTO TABLE @mt_table UP TO 10 ROWS ##SUBRC_OK.
 
   ENDMETHOD.
 
@@ -115,7 +113,7 @@ CLASS z2ui5_cl_layo_sample_03 IMPLEMENTATION.
     ENDIF.
 
     DATA(class) = cl_abap_classdescr=>get_class_name( me ).
-    SHIFT class LEFT DELETING LEADING '\CLASS='.
+    class = shift_left( val = class sub = `\CLASS=` ).
 
     " the draft table's name behind this class's own prefix (Z2UI5_, or the
     " one a namespace rename gave it) - the rename rewrites the class name,
@@ -136,17 +134,19 @@ CLASS z2ui5_cl_layo_sample_03 IMPLEMENTATION.
 
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
         mo_layout = app->mo_layout.
 
         IF app->mv_rerender = abap_true.
           " e.g. subcolumns need rerendering to work ..
           render_main( ).
-        ELSE.
-          "  for all other changes in Layout View Model Update is enough.
-          client->view_model_update( ).
         ENDIF.
-      CATCH cx_root ##NO_HANDLER.
+        " for all other changes the changed model is enough - the framework
+        " sends it by itself
+      CATCH cx_root.
+        " not back from the layout popup (e.g. a restored draft) - the
+        " view still has to be displayed
+        render_main( ).
     ENDTRY.
 
   ENDMETHOD.

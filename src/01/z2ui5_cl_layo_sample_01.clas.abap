@@ -5,15 +5,16 @@ CLASS z2ui5_cl_layo_sample_01 DEFINITION
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
-    TYPES  BEGIN OF ty_s_tab.
-    TYPES:   names             TYPE string,
-             icon              TYPE z2ui5_xml_s_icon,
-             generictag        TYPE z2ui5_xml_s_generictag,
-             progressindicator TYPE z2ui5_xml_s_progressind,
-             radialmicrochart  TYPE z2ui5_xml_s_radialchart,
-             statusindicator   TYPE z2ui5_xml_s_statusind,
-             selkz             TYPE abap_bool,
-           END OF ty_s_tab.
+    TYPES:
+      BEGIN OF ty_s_tab,
+        names             TYPE string,
+        icon              TYPE z2ui5_xml_s_icon,
+        generictag        TYPE z2ui5_xml_s_generictag,
+        progressindicator TYPE z2ui5_xml_s_progressind,
+        radialmicrochart  TYPE z2ui5_xml_s_radialchart,
+        statusindicator   TYPE z2ui5_xml_s_statusind,
+        selkz             TYPE abap_bool,
+      END OF ty_s_tab.
     TYPES ty_t_table TYPE STANDARD TABLE OF ty_s_tab WITH EMPTY KEY.
 
     " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_table( ) binds it, handed over as REF #( mt_table )
@@ -43,19 +44,20 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
 
       WHEN 'ROW_SELECT'.
 
-        mo_layout->set_selkz( client->get( )-t_event_arg ).
+        mo_layout->set_selkz( t_event_arg = client->get( )-t_event_arg
+                               data        = REF #( mt_table ) ).
 
       WHEN 'BACK'.
-        client->nav_app_leave( client->get_app( client->get( )-s_draft-id_prev_app_stack ) ).
+        client->nav_app_leave( ).
 
       WHEN OTHERS.
 
+        " the settings button, and a click on a column header (i_col_sort)
         z2ui5_cl_layo_pop=>on_event_layout( client = client
-                                            layout = mo_layout ).
+                                            layout = mo_layout
+                                            data   = REF #( mt_table ) ).
 
     ENDCASE.
-
-    client->view_model_update( ).
 
   ENDMETHOD.
 
@@ -80,20 +82,21 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
                      )->a( n = `xmlns:mchart` v = `sap.suite.ui.microchart`
                      )->a( n = `xmlns:si` v = `sap.suite.ui.commons.statusindicator`
                      " abap2ui5lint-enable unused-namespace-declaration
-                     )->a( n = `displayBlock` v = `true`
+                     )->a( n = `displayBlock` b = abap_true
                      )->a( n = `height` v = `100%`
                      )->ele( `Shell` ).
 
     DATA(page) = view->ele( `Page`
-                     )->a( n = `title` v = 'Layout'
+                     )->a( n = `title` v = `Layout`
                      )->a( n = `navButtonPress` v = client->_event( 'BACK' )
-                     )->a( n = `showNavButton` b = xsdbool( client->get( )-s_draft-id_prev_app_stack IS NOT INITIAL )
-                     )->a( n = `class` v = 'sapUiContentPadding' ).
+                     )->a( n = `showNavButton` b = client->check_app_prev_stack( )
+                     )->a( n = `class` v = `sapUiContentPadding` ).
 
-    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = REF #( mt_table )
-                                                i_xml    = page
-                                                i_client = client
-                                                i_layout = mo_layout ).
+    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data     = REF #( mt_table )
+                                                i_xml      = page
+                                                i_client   = client
+                                                i_layout   = mo_layout
+                                                i_col_sort = abap_true ).
 
     client->view_display( view->stringify( ) ).
 
@@ -104,15 +107,15 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
 
     IF client->check_on_init( ).
       on_init( ).
-    ENDIF.
-
-    on_event( ).
-
-    mo_layout->sort( ).
-
-    IF client->get( )-check_on_navigated = abap_true.
+    ELSEIF client->check_on_navigated( ).
       on_after_navigation( ).
+    ELSEIF client->check_on_event( ).
+      on_event( ).
     ENDIF.
+
+    " the table again: the restored draft holds the layout's reference to a
+    " copy of it (z2ui5_cl_layo_manager=>set_data)
+    mo_layout->sort( data = REF #( mt_table ) ).
 
   ENDMETHOD.
 
@@ -162,7 +165,7 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
     ENDIF.
 
     DATA(class) = cl_abap_classdescr=>get_class_name( me ).
-    SHIFT class LEFT DELETING LEADING '\CLASS='.
+    class = shift_left( val = class sub = `\CLASS=` ).
 
     " the draft table's name behind this class's own prefix (Z2UI5_, or the
     " one a namespace rename gave it) - the rename rewrites the class name,
@@ -181,18 +184,17 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
 
   METHOD on_after_navigation.
 
-    IF NOT client->check_on_navigated( ).
-      RETURN.
-    ENDIF.
-
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
         mo_layout = app->mo_layout.
 
         render_main( ).
 
-      CATCH cx_root ##NO_HANDLER.
+      CATCH cx_root.
+        " not back from the layout popup (e.g. a restored draft) - the
+        " view still has to be displayed
+        render_main( ).
     ENDTRY.
 
   ENDMETHOD.

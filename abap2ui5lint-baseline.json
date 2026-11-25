@@ -1,14 +1,4 @@
 {
   "note": "abap2ui5-linter baseline: findings that existed when the linter was adopted. Suppressed on every run; NEW findings still fail, a STALE entry fails too. Regenerate with --update-baseline.",
-  "findings": {
-    "src/01/z2ui5_cl_layo_sample_01.clas.abap|obsolete-model-update||view_model_update|": 1,
-    "src/01/z2ui5_cl_layo_sample_02.clas.abap|obsolete-model-update||view_model_update|": 1,
-    "src/01/z2ui5_cl_layo_sample_03.clas.abap|obsolete-model-update||view_model_update|": 1,
-    "src/01/z2ui5_cl_layo_sample_04.clas.abap|obsolete-model-update||view_model_update|": 1,
-    "src/01/z2ui5_cl_layo_sample_05.clas.abap|obsolete-model-update||view_model_update|": 1,
-    "src/03/z2ui5_cl_layo_pop.clas.abap|duplicate-aggregation|sap.ui.layout.form.SimpleForm|content|": 1,
-    "src/03/z2ui5_cl_layo_pop.clas.abap|obsolete-binder||_bind_edit|": 1,
-    "src/03/z2ui5_cl_layo_pop.clas.abap|obsolete-model-update||popup_model_update|": 1,
-    "src/03/z2ui5_cl_layo_pop_w_sel.clas.abap|obsolete-model-update||popup_model_update|": 1
-  }
+  "findings": {}
 }

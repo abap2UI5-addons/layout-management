@@ -530,6 +530,11 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
 
         ENDIF.
 
+        IF sy-subrc <> 0.
+          " the exit refused the value (MESSAGE ... RAISING) - it stays as it was
+          RETURN.
+        ENDIF.
+
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
 

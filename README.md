@@ -95,7 +95,7 @@ METHOD z2ui5_if_app~main.
   ELSEIF client->check_on_navigated( ).
     " back from the layout popup - take over the chosen layout
     TRY.
-        mo_layout = CAST z2ui5_cl_layo_pop( client->get_app( client->get( )-s_draft-id_prev_app ) )->mo_layout.
+        mo_layout = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) )->mo_layout.
         render( client ).
       CATCH cx_root.
     ENDTRY.
@@ -125,6 +125,143 @@ ENDMETHOD.
 
 The samples below are complete apps, `z2ui5_cl_layo_sample_03` is the table
 above with the namespaces of the view.
+
+### The table after a roundtrip
+
+The layout keeps a data reference to your table (`factory( data = REF #( mt_table ) )`).
+Between two roundtrips abap2UI5 serializes the app into its draft, and a data
+reference comes back pointing at a **copy** of the table, not at your
+attribute. Hand the table over again in every roundtrip before the layout
+works on it - pass it to `sort( )`, `set_selkz( )` and `data_conversion( )`,
+or call `set_data( )` once:
+
+```abap
+mo_layout->sort( data = REF #( mt_table ) ).
+```
+
+### Conversion exits
+
+`data_conversion( output = abap_true )` runs the conversion exits of the
+columns over the data for the screen, `data_conversion( output = abap_false )`
+back - two calls of a function module per cell and roundtrip. Two of them the
+browser does itself: `z2ui5_cl_layo_xml_builder` binds a column with the
+conversion exit ALPHA on a CHAR type, and a NUMC column with ALPHA, with the
+UI5 type `sap.ui.model.odata.type.String` and `isDigitSequence` -
+`000000004711` is shown as `4711`, a value with letters as it is. The data
+stays internal:
+
+- NUMC columns are never converted in ABAP - there is no conversion routine
+  for them, the view formats them.
+- ALPHA columns of CHAR type are still converted by `data_conversion( )`,
+  unless the app says that its view formats them - set it once after
+  `factory( )`:
+
+  ```abap
+  mo_layout->mv_alpha_in_browser = abap_true.
+  ```
+
+  Not for an editable ALPHA column: the type refuses a letter in an input,
+  so such a column needs the conversion in ABAP.
+- Every other exit (`CUNIT`, `MATN1`, ...) is converted by
+  `data_conversion( )` as before, and a column whose conversion the user
+  switched off in the layout popup is shown as it is.
+
+A view of its own gets the same with `z2ui5_cl_layo_manager=>digit_type( )`
+(is the column one of them), `digit_type_binding( )` (its binding) and
+`digit_type_require( )` (the `core:require` of the type on the control or a
+parent - on UI5 1.71 a type named in a binding is resolved only when its
+module is loaded already).
+
+### Table options - header sort, row colour, cell controls
+
+`xml_build_table( )` takes a few optional parameters on top of the ones
+above. Each one is off by default: a call without them renders the table
+exactly as before.
+
+```abap
+z2ui5_cl_layo_xml_builder=>xml_build_table(
+    i_data             = REF #( mt_table )
+    i_xml              = page
+    i_client           = client
+    i_layout           = mo_layout
+    i_col_sort         = abap_true                " sort by a click on a column header
+    i_row_color        = `CELL_COLOR-COLOR`       " data-color on every row
+    i_sub_col_controls = abap_true                " controls as subcolumns, stacked in a VBox
+    i_t_cell_control   = VALUE #(                 " rollnames of the app -> cell control
+        ( rollname = `ZMY_S_TRAFFIC_LIGHT` control = z2ui5_cl_layo_xml_builder=>cs_cell_control-icon )
+        ( rollname = `ZMY_*_TOGGLE`        control = z2ui5_cl_layo_xml_builder=>cs_cell_control-switch ) ) ).
+```
+
+- **Sorting by the column header** - `i_col_sort = abap_true` makes the
+  header of every column a link. A click sorts the table by that column
+  through the layout - none, ascending, descending, none again; the column
+  clicked last is the only sorted one - and the column shows the order with
+  the standard sort icon of `sap.m.Column` (`sortIndicator`, UI5 1.61),
+  bound to the layout, so no new view is needed. The event is
+  `z2ui5_cl_layo_xml_builder=>cv_event_column_sort`; `on_event_layout( )`
+  handles it when it gets the table:
+
+  ```abap
+  z2ui5_cl_layo_pop=>on_event_layout( client = client
+                                      layout = mo_layout
+                                      data   = REF #( mt_table ) ).
+  ```
+
+  or, next to other handling, `z2ui5_cl_layo_xml_builder=>on_event_column_sort( )`
+  with the same parameters (`abap_true` when it was the event). The sort
+  order is saved with the layout like one chosen in the popup. The links
+  look like links; `i_col_sort_class` puts a style class of the app on them
+  for an app that styles them itself. No CSS comes with the table.
+- **Without toolbar** - `i_toolbar = abap_false` leaves the header toolbar
+  out: no layout settings button, no search field (`i_search_value` is
+  ignored), and `i_headertext` becomes the `headerText` of the table instead
+  of a title in the toolbar. For a table whose layout the user does not
+  change, or whose settings button sits somewhere else (e.g. a
+  `z2ui5_cl_layo_pop=>render_layout_function( )` of the app's own toolbar).
+- **Row colour** - `i_row_color` names the field of the row that carries a
+  colour key, relative to the row (`COLOR`, or `CELL_COLOR-COLOR` for a
+  component of a structured column). Every row gets it as custom data written
+  to the DOM - `<tr data-color="red_1">` - and the app's CSS gives the key
+  its colour, e.g. `tr[data-color="red_1"] > td { background-color: #FFEAF4; }`.
+  The field has to be a string (`writeToDom` writes nothing else).
+- **Cell controls** - a column whose rollname (its data element, or for a
+  structured column its structure type) is one of the structures below is
+  drawn as that control instead of text. The cells bind the components of
+  the row; a component the structure does not have is left out, so an
+  app's own structure may carry fewer of them:
+
+  | Structure | Control | Components |
+  |---|---|---|
+  | `z2ui5_xml_s_icon` | `sap.ui.core.Icon` | `SRC`, `ICON_SIZE` (or `SIZE`), and `COLOR`, `PRESS`, `PRESS_VALUE` when the structure has them |
+  | `z2ui5_xml_s_generictag` | `sap.m.GenericTag` | `TEXT`, `DESIGN`, `STATUS` |
+  | `z2ui5_xml_s_progressind` | `sap.m.ProgressIndicator` | `PERCENTVALUE`, `DISPLAYVALUE`, `SHOWVALUE`, `STATE` |
+  | `z2ui5_xml_s_radialchart` | `sap.suite.ui.microchart.RadialMicroChart` | `RADIALMICROCHART_SIZE` (or `SIZE`), `PERCENTAGE`, `VALUECOLOR`, `HIDEONNODATA` |
+  | `z2ui5_xml_s_statusind` | `sap.suite.ui.commons.statusindicator.StatusIndicator` | `CLASS`, `STATUSINDICATOR_SIZE` (or `SIZE`), `VALUE`, `FILLCOLOR_GOOD` / `_CRITICAL` / `_ERROR`, `SHAPEID` |
+  | `z2ui5_xml_s_switch` | `sap.m.Switch` | `STATE`, `CUSTOMTEXTON`, `CUSTOMTEXTOFF`, `ENABLED`, `TYPE`, `CHANGE` / `CHANGE_VALUE` |
+  | `z2ui5_xml_s_input` | `sap.m.Input` | `VALUE`, `PLACEHOLDER`, `ENABLED`, `EDITABLE`, `VISIBLE` |
+  | `z2ui5_xml_s_button` | `sap.m.Button` | `TEXT`, `ICON`, `TYPE`, `PRESS` / `PRESS_VALUE` |
+
+  `PRESS` / `CHANGE` hold the **name of the event** of the row and
+  `PRESS_VALUE` / `CHANGE_VALUE` its argument - the click sends
+  `get( )-event = <PRESS>` and `get_event_arg( ) = <PRESS_VALUE>`. A
+  button `TYPE` such as `Critical` or `Success` needs UI5 1.73; on 1.71 the
+  value is rejected and the view fails to render. An empty `TYPE` renders
+  `Default`. An `Input` cell is bound to the row, so what
+  the user types travels back with the table.
+- **Cell controls of the app** - the controls are found by the rollname
+  pattern `*_XML_S_ICON`, `*_XML_S_SWITCH`, ... (any namespace). An app with
+  structures of its own maps them in `i_t_cell_control`: `rollname` is a
+  pattern (`CP`), `control` one of `z2ui5_cl_layo_xml_builder=>cs_cell_control`
+  (`cs_cell_control-text` draws a matching column as text). The app's
+  entries are checked first.
+- **Several controls in one cell** - `i_sub_col_controls = abap_true`: a
+  subcolumn (chosen in the layout popup) that is a cell control is drawn as
+  that control below the value of the column, and a control column shows its
+  text subcolumns below the control; a cell with more than one control
+  stacks them in a `VBox`. Without it a control column shows the control
+  only, and every subcolumn is text.
+- `i_sel_event` - the event of `selectionChange`, `SELECTION_CHANGE` when it
+  is empty.
 
 ### Any view - the generic mode
 
@@ -168,25 +305,117 @@ client->view_display( z2ui5_cl_layo_xml_builder=>xml_apply_layout( i_xml    = vi
 The XML handling is `z2ui5_cl_layo_xml_tree` - no dependency on the framework
 or the database, covered by ABAP Unit tests.
 
+### Popup to select rows
+
+`z2ui5_cl_layo_pop_w_sel` shows any table in a popup to pick rows from, with
+the settings button of a layout table: the user chooses, orders and sizes the
+columns, sets a sorting and saves the layout - it is offered again the next
+time. Single select confirms with the first click, `i_multiselect = abap_true`
+shows check boxes and an OK button; a search keeps what was selected before.
+
+```abap
+" in an event handler
+client->nav_app_call( z2ui5_cl_layo_pop_w_sel=>factory( i_tab         = mt_tab
+                                                        i_title       = `Select Products`
+                                                        i_multiselect = abap_true ) ).
+
+" back in check_on_navigated( )
+DATA(result) = CAST z2ui5_cl_layo_pop_w_sel( client->get_app_prev( ) )->result( ).
+IF result-check_confirmed = abap_true.
+  ASSIGN result-table->* TO <selected>.   " a table of the type of mt_tab
+ENDIF.
+```
+
+- `result-table` holds the selected rows in the order of `i_tab`,
+  `result-row` the first of them; `nav_app_leave( )` hands the same table to
+  the calling app as `r_data`, with the event `i_event_confirmed` (or
+  `i_event_canceled` on cancel) when given.
+- Without `i_handle01` to `i_handle04` the layouts are saved under the name of
+  the popup class and the type name of the line of `i_tab`; pass handles to
+  keep them apart per app.
+- `i_tab` may also be a table of an elementary type (`string_table`), its
+  column is `TAB_LINE`.
+
+### Copy layouts
+
+Hand saved layouts on to other handles - for example from one app and
+warehouse to another - with `copy_layouts( )` instead of writing the layout
+tables yourself:
+
+```abap
+DATA(heads) = z2ui5_cl_layo_manager=>copy_layouts( VALUE #(
+    ( guid = ls_head-guid  handle01 = ls_head-handle01  handle02 = ls_head-handle02
+      handle03 = `NEW_APP` handle04 = `0002` ) ) ).
+```
+
+Every copy gets new guids for head and positions and keeps name, control,
+screen format, user and default flag; a copied default demotes the defaults of
+its new scope. The copies are checked with `z2ui5_if_layo_auth` like a save in
+the popup (`check_auth = abap_false` for an admin tool that checks itself), one
+LUW, committed - unless `iv_commit = abap_false`, then the caller commits (see
+[Commits](#commits)); `z2ui5_cx_layo_error` and nothing written when an
+original is missing, a copy is not authorized or the database refuses it.
+
+### Select layouts by ranges
+
+`select_layouts( )` reads the layouts of one exact set of handles, as the
+layout popup offers them. A tool that copies or migrates layouts reads them by
+ranges with `select_layouts_by_range( )` instead - every parameter is an
+optional range (`guid`, `layout`, `control`, `handle01` to `handle04`,
+`format`, `uname`), an empty one selects everything:
+
+```abap
+DATA handle03 TYPE z2ui5_cl_layo_manager=>ty_r_handle.
+DATA handle04 TYPE z2ui5_cl_layo_manager=>ty_r_handle.
+handle03 = VALUE #( ( sign = `I` option = `CP` low = `MY_APP*` ) ).
+handle04 = VALUE #( ( sign = `I` option = `EQ` low = `0001` ) ).
+
+DATA(heads) = z2ui5_cl_layo_manager=>select_layouts_by_range( handle03   = handle03
+                                                              handle04   = handle04
+                                                              all_users  = abap_true
+                                                              check_auth = abap_false ).
+
+z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( FOR h IN heads
+                                                           ( guid     = h-guid
+                                                             handle01 = h-handle01
+                                                             handle02 = h-handle02
+                                                             handle03 = `MY_NEW_APP`
+                                                             handle04 = `0002` ) )
+                                     check_auth = abap_false ).
+```
+
+- Without `all_users` it returns the user's own and the shared layouts, as
+  the popup does. With `all_users = abap_true` other users' personal layouts
+  come too - each of them only when `z2ui5_if_layo_auth` allows the action
+  `READ_OTHERS`, which the shipped default does not; `check_auth = abap_false`
+  skips the check, for an admin tool that checks itself.
+- The heads come as saved, ordered by guid - without the screen format
+  fallback and the default demotion of `select_layouts( )`.
+
 ## Features
 
 * **Generic Output** - Universal table and form rendering
+* **Selection Popup** - Pick one or several rows of any table in a popup with a layout
 * **Layout Customization** - Flexible customization of table and form outputs
 * **Any View** - Hide, reorder within the parent aggregation and relabel the controls of any view built with the view builder (generic mode)
+* **Conversion in the Browser** - ALPHA and NUMC columns are formatted by UI5, the data stays internal
+* **Table Options** - Sort by a click on the column header, a colour key on every row, switches, inputs and buttons in cells, several controls in one cell, cell controls of the app's own structures
 * **Variant Persistence** - Save layout variants to database
 * **Auto-Loading** - Load default layouts automatically at startup
-* **Authorization Hook** - Shared layouts and deletions are decided by `z2ui5_if_layo_auth`, with a safe default
+* **Select and Copy** - Read layouts by ranges, also of every user, and copy them under other handles
+* **Authorization Hook** - Shared layouts and deletions can be restricted with `z2ui5_if_layo_auth`; by default every user may save and delete shared layouts
 
 ## Samples
 
 | Sample | Shows |
 |---|---|
-| `z2ui5_cl_layo_sample_01` | Table with icons, tags, progress indicators, radial charts and status indicators |
+| `z2ui5_cl_layo_sample_01` | Table with icons, tags, progress indicators, radial charts and status indicators, sorted by a click on a column header |
 | `z2ui5_cl_layo_sample_02` | Simple form with the same field types |
 | `z2ui5_cl_layo_sample_03` | Table from a database table |
 | `z2ui5_cl_layo_sample_04` | Simple form from a database record |
 | `z2ui5_cl_layo_sample_05` | Table and form with two layouts on one page |
 | `z2ui5_cl_layo_sample_06` | Generic mode: a page with a panel of inputs, a toolbar and a list, personalized by control id |
+| `z2ui5_cl_layo_sample_07` | Popup to select several rows of a table, with a layout the user arranges and saves |
 
 ## Demo
 
@@ -205,6 +434,56 @@ or the database, covered by ABAP Unit tests.
 ### Persistence
 <img width="700" alt="Popup for saving and selecting persisted layout variants" src="https://github.com/user-attachments/assets/d7f39663-d864-4737-89e4-8e925e54bc2d">
 
+## Commits
+
+The abap2UI5 addons (layout-management, popups, table-maintenance) share one
+commit model:
+
+- **The addon commits only in its own apps.** A popup or app of the addon
+  that saves on a button of its own runs in a roundtrip of its own and ends
+  its own LUW - `COMMIT WORK AND WAIT`, or `ROLLBACK WORK` on failure.
+- **A library method commits only with `iv_commit = abap_true`.** Every
+  public method that writes on behalf of its caller takes
+  `iv_commit TYPE abap_bool DEFAULT abap_true`. The default keeps the old
+  behaviour: the method ends with `COMMIT WORK AND WAIT` - and so commits
+  whatever the caller has open at that moment as well. With
+  `iv_commit = abap_false` it neither commits nor rolls back: its writes join
+  the caller's LUW, and the caller commits them once, together with its own
+  changes.
+- **On failure the method raises its exception.** With
+  `iv_commit = abap_false` it never runs `ROLLBACK WORK` - whatever it wrote
+  before the failure is still in the caller's LUW, and the caller decides,
+  normally with `ROLLBACK WORK`. With `iv_commit = abap_true` it fails as it
+  always did (the table below).
+- **The caller must commit.** abap2UI5 runs `ROLLBACK WORK` before and after
+  `main( )` of a stateless app, so what an app writes - itself, or through a
+  method called with `iv_commit = abap_false` - is lost unless the app commits
+  it in the same roundtrip.
+
+In this addon:
+
+| Where | Commits | On failure with `iv_commit = abap_true` |
+|---|---|---|
+| `z2ui5_cl_layo_manager=>copy_layouts( )` - library | with `iv_commit = abap_true` (default) | `ROLLBACK WORK`, then `z2ui5_cx_layo_error` |
+| Layout popup `z2ui5_cl_layo_pop` - Save and Delete | always, its own app | `ROLLBACK WORK` and a message toast |
+
+A missing original or a copy `z2ui5_if_layo_auth` refuses is found before the
+first write: `copy_layouts( )` raises with nothing written, in both modes. A
+tool that copies layouts as part of a larger change commits once:
+
+```abap
+TRY.
+    " ... the tool's own database changes
+    z2ui5_cl_layo_manager=>copy_layouts( t_copy     = lt_copy
+                                         check_auth = abap_false
+                                         iv_commit  = abap_false ).
+    COMMIT WORK AND WAIT.
+  CATCH z2ui5_cx_layo_error INTO DATA(lx).
+    ROLLBACK WORK.
+    client->message_box_display( text = lx->get_text( ) type = `error` ).
+ENDTRY.
+```
+
 ## Security
 
 This library persists layout variants to its own database tables. Who may
@@ -219,13 +498,14 @@ Ownership of the variants:
 ### Authorization concept
 
 Before every write the popup asks `z2ui5_cl_layo_auth=>check( action = ... head = ... )`
-with one of three actions of `z2ui5_if_layo_auth=>cs_action`:
+with one of the actions of `z2ui5_if_layo_auth=>cs_action`:
 
 | Action | Asked when | Shipped default |
 |---|---|---|
 | `SAVE_OWN` | a user specific layout is saved (`head-uname` = the user) | allowed |
-| `SAVE_SHARED` | a shared layout is saved, new or updated (`head-uname` empty) | **denied** |
-| `DELETE` | a layout is deleted - `head` is read from the database, `uname` is its owner | allowed for the owner only, shared layouts never |
+| `SAVE_SHARED` | a shared layout is saved, new or updated (`head-uname` empty) | allowed |
+| `DELETE` | a layout is deleted - `head` is read from the database, `uname` is its owner | allowed for the owner and for shared layouts, never another user's personal layout |
+| `READ_OTHERS` | `select_layouts_by_range( all_users = abap_true )` reads another user's personal layout - `uname` is its owner; a refused one is left out | refused - the popup never shows another user's personal layout |
 
 The decision goes to, in this order:
 
@@ -236,14 +516,15 @@ The decision goes to, in this order:
    if there are several, so keep it to one);
 3. `z2ui5_cl_layo_auth` itself, the default above.
 
-A denial ends in a message toast and nothing is written. Without an
-implementation the save popup starts on **User specific**, so the first save
-of every user just works.
+Without an implementation of its own the system behaves as before the hook
+existed: every user may save and delete his own and the shared layouts. A
+denial of an implementation ends in a message toast and nothing is written;
+when a shared save is denied, the save popup starts on **User specific**.
 
 The addon ships no authorization object on purpose: an `AUTHORITY-CHECK`
 against an object that does not exist in the customer system is always
-refused, and the right object differs per installation. To let key users
-maintain shared layouts, implement the interface with your own object:
+refused, and the right object differs per installation. To restrict shared
+layouts to key users, implement the interface with your own object:
 
 ```abap
 CLASS zcl_my_layo_auth DEFINITION PUBLIC FINAL CREATE PUBLIC.
@@ -268,8 +549,7 @@ ENDCLASS.
 ```
 
 Shared layouts written before an implementation existed, or by another tool,
-stay in table `z2ui5_t_11` (positions in `z2ui5_t_12`) and can be removed
-there.
+stay in table `z2ui5_t_11` (positions in `z2ui5_t_12`).
 
 ## Development
 

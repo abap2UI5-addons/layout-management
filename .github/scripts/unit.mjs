@@ -43,7 +43,7 @@ const CONFIG = {
   // checkouts under WORK; the first one is the abap2UI5 tree everything is
   // built in, the others are what this repository builds on
   repos: [
-    { name: "abap2UI5", url: "https://github.com/abap2UI5/abap2UI5", ref: "main" },
+    { name: "abap2UI5", url: "https://github.com/abap2UI5/abap2UI5", ref: "main" }, // the client API of abap2UI5 1.151.0
   ],
   // copied into <abap2UI5>/src/<into>/: entries relative to <from>/src
   packages: [
