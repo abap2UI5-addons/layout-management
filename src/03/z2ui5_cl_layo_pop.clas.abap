@@ -228,10 +228,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     LOOP AT mt_controls REFERENCE INTO DATA(control) WHERE control = mo_layout->ms_layout-s_head-control.
 
-      READ TABLE lt_comp INTO DATA(comp) WITH KEY name = control->attribute.
-      IF sy-subrc <> 0.
+      IF NOT line_exists( lt_comp[ name = control->attribute ] ).
         CONTINUE.
       ENDIF.
+      DATA(comp) = lt_comp[ name = control->attribute ].
 
       CASE control->attribute.
         WHEN 'TLABEL'.
@@ -306,10 +306,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     LOOP AT mt_controls REFERENCE INTO control WHERE control = mo_layout->ms_layout-s_head-control.
 
-      READ TABLE lt_comp INTO comp WITH KEY name = control->attribute.
-      IF sy-subrc <> 0.
+      IF NOT line_exists( lt_comp[ name = control->attribute ] ).
         CONTINUE.
       ENDIF.
+      comp = lt_comp[ name = control->attribute ].
 
       CASE comp-name.
         WHEN 'TLABEL'.
@@ -747,7 +747,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     LOOP AT mo_layout->ms_layout-t_layout REFERENCE INTO DATA(r_layout).
       r_layout->guid = head-guid.
 
-      MOVE-CORRESPONDING r_layout->* TO position.
+      position = CORRESPONDING #( BASE ( position ) r_layout->* ).
       " the generic mode keeps the width as typed (a CSS size), like edit_okay( )
       IF mo_layout->ms_layout-s_head-control <> z2ui5_cl_layo_manager=>generic.
         position-width = check_width_unit( position-width ).
@@ -758,18 +758,18 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       " registered since, and is shown
       IF r_layout->visible = abap_true
           OR mo_layout->ms_layout-s_head-control = z2ui5_cl_layo_manager=>generic.
-        APPEND position TO positions.
+        INSERT position INTO TABLE positions.
         CONTINUE.
       ENDIF.
 
       IF line_exists( mo_layout->ms_layout-t_layout[ reference_field = r_layout->fname ] ).
-        APPEND position TO positions.
+        INSERT position INTO TABLE positions.
         CONTINUE.
       ENDIF.
 
       LOOP AT mo_layout->ms_layout-t_layout INTO DATA(layout) WHERE t_sub_col IS NOT INITIAL.
         IF line_exists( layout-t_sub_col[ fname = r_layout->fname ] ).
-          APPEND position TO positions.
+          INSERT position INTO TABLE positions.
           EXIT.
         ENDIF.
       ENDLOOP.
@@ -1287,10 +1287,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         DATA(arg) = client->get( )-t_event_arg.
         mv_active_line = VALUE #( arg[ 1 ] OPTIONAL ).
 
-        READ TABLE mt_layout REFERENCE INTO DATA(layout) WITH KEY fname = mv_active_line.
-        IF sy-subrc <> 0.
+        IF NOT line_exists( mt_layout[ fname = mv_active_line ] ).
           RETURN.
         ENDIF.
+        DATA(layout) = REF #( mt_layout[ fname = mv_active_line ] ).
 
         " Components for DropDownList, defined subcolumns
         mo_layout->mt_comps    = mo_layout->ms_layout-t_layout.
@@ -1300,10 +1300,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
       WHEN `SUBCOLUMN_CONFIRM`.
 
-        READ TABLE mt_layout REFERENCE INTO layout WITH KEY fname = mv_active_line.
-        IF sy-subrc <> 0.
+        IF NOT line_exists( mt_layout[ fname = mv_active_line ] ).
           RETURN.
         ENDIF.
+        layout = REF #( mt_layout[ fname = mv_active_line ] ).
 
         " rows added but never given a field would save as blanks
         DELETE mo_layout->mt_sub_cols WHERE fname IS INITIAL.
@@ -1313,7 +1313,8 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         LOOP AT mo_layout->mt_sub_cols REFERENCE INTO DATA(line).
           layout->subcolumn = |{ layout->subcolumn } { line->fname }|.
         ENDLOOP.
-        SHIFT layout->subcolumn LEFT DELETING LEADING space.
+        layout->subcolumn = shift_left( val = layout->subcolumn
+                                        sub = ` ` ).
 
         layout->t_sub_col = mo_layout->mt_sub_cols.
 
@@ -1355,13 +1356,12 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     " Sequence and SubCols need rerendering
     LOOP AT mo_layout->ms_layout-t_layout INTO DATA(layout).
 
-      READ TABLE mo_layout->ms_layout_tmp-t_layout INTO DATA(layout_tmp)
-           WITH KEY guid     = layout-guid
-                    pos_guid = layout-pos_guid.
-
-      IF sy-subrc <> 0.
+      IF NOT line_exists( mo_layout->ms_layout_tmp-t_layout[ guid     = layout-guid
+                                                             pos_guid = layout-pos_guid ] ).
         CONTINUE.
       ENDIF.
+      DATA(layout_tmp) = mo_layout->ms_layout_tmp-t_layout[ guid     = layout-guid
+                                                            pos_guid = layout-pos_guid ].
 
       IF layout-alternative_text <> layout_tmp-alternative_text.
         mv_rerender = abap_true.
@@ -1420,10 +1420,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         DATA(arg) = client->get( )-t_event_arg.
         mv_active_line = VALUE #( arg[ 1 ] OPTIONAL ).
 
-        READ TABLE mo_layout->ms_layout-t_layout REFERENCE INTO DATA(layout) WITH KEY fname = mv_active_line.
-        IF sy-subrc <> 0.
+        IF NOT line_exists( mo_layout->ms_layout-t_layout[ fname = mv_active_line ] ).
           RETURN.
         ENDIF.
+        DATA(layout) = REF #( mo_layout->ms_layout-t_layout[ fname = mv_active_line ] ).
 
         mv_xl_value = layout->grid_value_xl.
         mv_l_value = layout->grid_value_l.
@@ -1444,10 +1444,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                  OR check_grid_sum( mv_m_label + mv_m_value )  = abap_true
                  OR check_grid_sum( mv_s_label + mv_s_value )  = abap_true ).
 
-          READ TABLE mo_layout->ms_layout-t_layout REFERENCE INTO layout WITH KEY fname = mv_active_line.
-          IF sy-subrc <> 0.
+          IF NOT line_exists( mo_layout->ms_layout-t_layout[ fname = mv_active_line ] ).
             RETURN.
           ENDIF.
+          layout = REF #( mo_layout->ms_layout-t_layout[ fname = mv_active_line ] ).
 
           layout->grid_value_xl = mv_xl_value.
           layout->grid_value_l  = mv_l_value.

@@ -228,7 +228,7 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       ls_id-label_attr = lo_tree->label_attr_of( lv_index ).
       ls_id-label      = unescape_xml( lo_tree->attr_get( index = lv_index
                                                       n     = ls_id-label_attr ) ).
-      APPEND ls_id TO result.
+      INSERT ls_id INTO TABLE result.
     ENDLOOP.
 
   ENDMETHOD.
@@ -281,14 +281,14 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
 
   METHOD add_node.
 
-    APPEND node TO mt_node.
+    INSERT node INTO TABLE mt_node.
     result = lines( mt_node ).
     IF node-parent <= 0.
       RETURN.
     ENDIF.
-    READ TABLE mt_node REFERENCE INTO DATA(lr_parent) INDEX node-parent.
-    IF sy-subrc = 0.
-      APPEND result TO lr_parent->t_child.
+    ASSIGN mt_node[ node-parent ] TO FIELD-SYMBOL(<ls_parent>).
+    IF <ls_parent> IS ASSIGNED.
+      INSERT result INTO TABLE <ls_parent>-t_child.
     ENDIF.
 
   ENDMETHOD.
@@ -510,7 +510,7 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
                              with = `&quot;`
                              occ  = 0 ).
       ENDIF.
-      APPEND ls_attr TO ls_node-t_attr.
+      INSERT ls_attr INTO TABLE ls_node-t_attr.
       lv_pos = lv_end + 1.
     ENDWHILE.
 
@@ -530,7 +530,7 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
     IF lr_node->kind = c_raw.
       " node 1 is the document root: its raw is empty, its children are the document
       IF lr_node->raw IS NOT INITIAL.
-        APPEND lr_node->raw TO ct_out.
+        INSERT lr_node->raw INTO TABLE ct_out.
       ENDIF.
       LOOP AT lr_node->t_child INTO lv_child.
         render( EXPORTING index  = lv_child
@@ -541,21 +541,21 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
 
     DATA lt_attr TYPE string_table.
     LOOP AT lr_node->t_attr REFERENCE INTO DATA(lr_attr).
-      APPEND | { lr_attr->n }="{ lr_attr->v }"| TO lt_attr.
+      INSERT | { lr_attr->n }="{ lr_attr->v }"| INTO TABLE lt_attr.
     ENDLOOP.
     DATA(lv_attrs) = concat_lines_of( lt_attr ).
 
     IF lr_node->t_child IS INITIAL.
-      APPEND |<{ lr_node->name }{ lv_attrs }/>| TO ct_out.
+      INSERT |<{ lr_node->name }{ lv_attrs }/>| INTO TABLE ct_out.
       RETURN.
     ENDIF.
 
-    APPEND |<{ lr_node->name }{ lv_attrs }>| TO ct_out.
+    INSERT |<{ lr_node->name }{ lv_attrs }>| INTO TABLE ct_out.
     LOOP AT lr_node->t_child INTO lv_child.
       render( EXPORTING index  = lv_child
               CHANGING  ct_out = ct_out ).
     ENDLOOP.
-    APPEND |</{ lr_node->name }>| TO ct_out.
+    INSERT |</{ lr_node->name }>| INTO TABLE ct_out.
 
   ENDMETHOD.
 
@@ -580,13 +580,13 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
     IF index <= 0 OR n IS INITIAL.
       RETURN.
     ENDIF.
-    READ TABLE mt_node REFERENCE INTO DATA(lr_node) INDEX index.
-    IF sy-subrc <> 0.
+    ASSIGN mt_node[ index ] TO FIELD-SYMBOL(<ls_node>).
+    IF <ls_node> IS NOT ASSIGNED.
       RETURN.
     ENDIF.
-    READ TABLE lr_node->t_attr REFERENCE INTO DATA(lr_attr) WITH KEY n = n. "#EC CI_SORTSEQ
-    IF sy-subrc = 0.
-      result = lr_attr->v.
+    ASSIGN <ls_node>-t_attr[ n = n ] TO FIELD-SYMBOL(<ls_attr>). "#EC CI_SORTSEQ
+    IF <ls_attr> IS ASSIGNED.
+      result = <ls_attr>-v.
     ENDIF.
 
   ENDMETHOD.
@@ -594,13 +594,13 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
   METHOD attr_set.
 
     DATA(lr_node) = REF #( mt_node[ index ] ).
-    READ TABLE lr_node->t_attr REFERENCE INTO DATA(lr_attr) WITH KEY n = n. "#EC CI_SORTSEQ
-    IF sy-subrc = 0.
-      lr_attr->v = v.
+    ASSIGN lr_node->t_attr[ n = n ] TO FIELD-SYMBOL(<ls_attr>). "#EC CI_SORTSEQ
+    IF <ls_attr> IS ASSIGNED.
+      <ls_attr>-v = v.
       RETURN.
     ENDIF.
-    APPEND VALUE #( n = n
-                    v = v ) TO lr_node->t_attr.
+    INSERT VALUE #( n = n
+                    v = v ) INTO TABLE lr_node->t_attr.
 
   ENDMETHOD.
 
@@ -613,10 +613,10 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
 
     " not line_exists( mt_node[ index ]-t_attr[ n = lv_cand ] ): the 7.02
     " downport drops the inner key of a chained table expression
-    READ TABLE mt_node REFERENCE INTO DATA(lr_node) INDEX index.
-    IF sy-subrc = 0.
+    ASSIGN mt_node[ index ] TO FIELD-SYMBOL(<ls_node>).
+    IF <ls_node> IS ASSIGNED.
       LOOP AT lt_cand INTO lv_cand.
-        IF line_exists( lr_node->t_attr[ n = lv_cand ] ). "#EC CI_SORTSEQ
+        IF line_exists( <ls_node>-t_attr[ n = lv_cand ] ). "#EC CI_SORTSEQ
           result = lv_cand.
           RETURN.
         ENDIF.
@@ -638,11 +638,12 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
     ENDIF.
 
     DATA(lr_parent) = REF #( mt_node[ lr_node->parent ] ).
-    READ TABLE lr_parent->t_child WITH KEY table_line = index TRANSPORTING NO FIELDS.
-    IF sy-subrc <> 0 OR sy-tabix <= 1.
+    " line_index( ) is 0 when the node is no child of its parent
+    DATA(lv_child_pos) = line_index( lr_parent->t_child[ table_line = index ] ).
+    IF lv_child_pos <= 1.
       RETURN.
     ENDIF.
-    lv_pos = sy-tabix - 1.
+    lv_pos = lv_child_pos - 1.
     lv_prev = lr_parent->t_child[ lv_pos ].
 
     DATA(lr_prev) = REF #( mt_node[ lv_prev ] ).
@@ -672,7 +673,7 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       IF lv_index = 0.
         CONTINUE.
       ENDIF.
-      APPEND lv_index TO lt_index.
+      INSERT lv_index INTO TABLE lt_index.
 
       DATA(lv_label) = label_of( lv_index ).
 
@@ -742,12 +743,12 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       " a Label registered itself is a block of its own - taken along a second
       " time it would be a member twice, one more than the positions it holds
       IF lv_label > 0 AND NOT line_exists( t_index[ table_line = lv_label ] ).
-        APPEND lv_label TO ls_block-t_index.
+        INSERT lv_label INTO TABLE ls_block-t_index.
       ENDIF.
-      APPEND lv_index TO ls_block-t_index.
-      APPEND ls_block TO lt_block.
+      INSERT lv_index INTO TABLE ls_block-t_index.
+      INSERT ls_block INTO TABLE lt_block.
       IF NOT line_exists( lt_parent[ table_line = ls_block-parent ] ).
-        APPEND ls_block-parent TO lt_parent.
+        INSERT ls_block-parent INTO TABLE lt_parent.
       ENDIF.
     ENDLOOP.
 
@@ -758,7 +759,7 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       " the positions occupied, in document order, and the members in layout order
       CLEAR lt_members.
       LOOP AT lt_block REFERENCE INTO DATA(lr_block) WHERE parent = lv_parent. "#EC CI_SORTSEQ
-        APPEND LINES OF lr_block->t_index TO lt_members.
+        INSERT LINES OF lr_block->t_index INTO TABLE lt_members.
       ENDLOOP.
 
       CLEAR lt_pos.
@@ -767,7 +768,7 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       LOOP AT lr_parent->t_child INTO lv_member.
         lv_pos = sy-tabix.
         IF line_exists( lt_members[ table_line = lv_member ] ).
-          APPEND lv_pos TO lt_pos.
+          INSERT lv_pos INTO TABLE lt_pos.
         ENDIF.
       ENDLOOP.
 

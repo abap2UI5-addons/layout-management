@@ -315,7 +315,7 @@ CLASS ltcl_apply IMPLEMENTATION.
   METHOD unknown_id_is_ignored.
 
     DATA(lt_slot) = slots_all_visible( ).
-    APPEND VALUE #( id = `doesNotExist` visible = abap_false label = `x` ) TO lt_slot.
+    INSERT VALUE #( id = `doesNotExist` visible = abap_false label = `x` ) INTO TABLE lt_slot.
 
     cl_abap_unit_assert=>assert_equals(
       act = z2ui5_cl_layo_xml_tree=>apply( xml    = view( )

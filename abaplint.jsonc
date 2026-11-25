@@ -448,8 +448,22 @@
         "TypePools",
         "Perform",
         "Form",
-        "Write"
+        "Write",
+        "ReadTable",
+        "Append",
+        "GetReference",
+        "Concatenate",
+        "Condense",
+        "Translate",
+        "Replace",
+        "Find",
+        "Shift",
+        "Check"
       ],
+      // CreateObject and MoveCorresponding stay allowed: z2ui5_cl_layo_auth
+      // creates the customer's class by name (CREATE OBJECT ... TYPE (name)),
+      // and z2ui5_cl_layo_pop_w_sel moves between generic rows (TYPE any) -
+      // neither NEW nor CORRESPONDING #( ) can take those
       // the vendored abap-util copies stay close to the master (AGENTS.md)
       "exclude": [
         "/src/03/z2ui5_cl_layo_context\\.",

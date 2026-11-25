@@ -535,9 +535,11 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = lv_id. "#EC CI_SORTSEQ
-    IF sy-subrc <> 0.
-      APPEND VALUE #( id = lv_id ) TO mt_slots REFERENCE INTO lr_slot.
+    DATA lr_slot TYPE REF TO ty_s_slot.
+    IF line_exists( mt_slots[ id = lv_id ] ).           "#EC CI_SORTSEQ
+      lr_slot = REF #( mt_slots[ id = lv_id ] ).        "#EC CI_SORTSEQ
+    ELSE.
+      INSERT VALUE #( id = lv_id ) INTO TABLE mt_slots REFERENCE INTO lr_slot.
     ENDIF.
 
     IF label IS NOT INITIAL.
@@ -605,17 +607,15 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     LOOP AT mt_slots REFERENCE INTO DATA(lr_slot).
 
-      READ TABLE lt_pos INTO DATA(ls_pos) WITH KEY fname = lr_slot->id. "#EC CI_SORTSEQ
-      IF sy-subrc = 0.
+      IF line_exists( lt_pos[ fname = lr_slot->id ] ).  "#EC CI_SORTSEQ
         " a saved position - a control registered since the save is new and visible
-        CLEAR ls_layout.
-        MOVE-CORRESPONDING ls_pos TO ls_layout.
+        ls_layout = CORRESPONDING #( lt_pos[ fname = lr_slot->id ] ). "#EC CI_SORTSEQ
       ELSE.
         ls_layout = build_slot_position( slot = lr_slot->*
                                          guid = lv_guid ).
       ENDIF.
       ls_layout-tlabel = text_of( ls_layout ).
-      APPEND ls_layout TO lt_layout.
+      INSERT ls_layout INTO TABLE lt_layout.
 
     ENDLOOP.
 
@@ -649,11 +649,10 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       IF lr_layout->alternative_text IS NOT INITIAL.
         ls_slot-label = lr_layout->tlabel.
       ENDIF.
-      READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = ls_slot-id. "#EC CI_SORTSEQ
-      IF sy-subrc = 0.
-        ls_slot-label_attr = lr_slot->label_attr.
+      IF line_exists( mt_slots[ id = ls_slot-id ] ).    "#EC CI_SORTSEQ
+        ls_slot-label_attr = mt_slots[ id = ls_slot-id ]-label_attr. "#EC CI_SORTSEQ
       ENDIF.
-      APPEND ls_slot TO result.
+      INSERT ls_slot INTO TABLE result.
     ENDLOOP.
 
   ENDMETHOD.
@@ -673,9 +672,8 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     ENDIF.
 
     lv_id = layout-fname.
-    READ TABLE mt_slots REFERENCE INTO DATA(lr_slot) WITH KEY id = lv_id. "#EC CI_SORTSEQ
-    IF sy-subrc = 0.
-      result = lr_slot->label.
+    IF line_exists( mt_slots[ id = lv_id ] ).           "#EC CI_SORTSEQ
+      result = mt_slots[ id = lv_id ]-label.            "#EC CI_SORTSEQ
     ENDIF.
     IF result IS INITIAL.
       result = lv_id.
@@ -825,7 +823,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       index = index + 1.
 
       LOOP AT tab INTO DATA(line) WHERE sequence = index.
-        APPEND line TO result.
+        INSERT line INTO TABLE result.
       ENDLOOP.
       " delete after the loop: deleting inside LOOP AT ... WHERE skips the
       " row that shifts into the current position, dropping duplicates
@@ -833,7 +831,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     ENDDO.
 
-    APPEND LINES OF tab TO result.
+    INSERT LINES OF tab INTO TABLE result.
 
   ENDMETHOD.
 
@@ -911,7 +909,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
       IF line_exists( t_pos[ fname = layout->fname ] ).
 
         DATA(pos) = VALUE #( t_pos[ fname = layout->fname ] OPTIONAL ).
-        MOVE-CORRESPONDING pos TO layout->*.
+        layout->* = CORRESPONDING #( BASE ( layout->* ) pos ).
 
       ELSE.
 
@@ -988,9 +986,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
         IF NOT line_exists( t_pos[ fname = r_comp->name ] ).
 
-          APPEND build_default_positions( comp  = r_comp
+          INSERT build_default_positions( comp  = r_comp
                                           guid  = def-guid
-                                          index = 99 ) TO result->ms_layout-t_layout.
+                                          index = 99 ) INTO TABLE result->ms_layout-t_layout.
 
         ELSE.
 
@@ -1007,7 +1005,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
           layout = get_conversion_exit( layout = layout
                                         type   = r_comp->type ).
 
-          APPEND layout TO result->ms_layout-t_layout.
+          INSERT layout INTO TABLE result->ms_layout-t_layout.
 
         ENDIF.
 
@@ -1031,9 +1029,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
         index = index + 1.
 
-        APPEND build_default_positions( comp  = r_comp
+        INSERT build_default_positions( comp  = r_comp
                                         guid  = guid
-                                        index = index ) TO result->ms_layout-t_layout.
+                                        index = index ) INTO TABLE result->ms_layout-t_layout.
 
       ENDLOOP.
 
@@ -1507,10 +1505,10 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
   METHOD toggle_sorting.
 
-    READ TABLE ms_layout-t_layout REFERENCE INTO DATA(column) WITH KEY fname = fname.
-    IF sy-subrc <> 0.
+    IF NOT line_exists( ms_layout-t_layout[ fname = fname ] ).
       RETURN.
     ENDIF.
+    DATA(column) = REF #( ms_layout-t_layout[ fname = fname ] ).
 
     DATA(sorting) = SWITCH string( column->sorting
                                    WHEN space        THEN `ASCENDING`

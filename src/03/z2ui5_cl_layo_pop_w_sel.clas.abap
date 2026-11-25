@@ -445,7 +445,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      APPEND INITIAL LINE TO <table_result> ASSIGNING <row_result>.
+      INSERT INITIAL LINE INTO TABLE <table_result> ASSIGNING <row_result>.
       IF check_table_line = abap_true.
         ASSIGN COMPONENT cv_tab_line OF STRUCTURE <row_backup> TO <tab_line>.
         ASSERT sy-subrc = 0.
@@ -463,8 +463,8 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     " the row: the first selected one - the only one of a single selection
     ASSIGN ms_result-row->* TO <row_result>.
     CLEAR <row_result>.
-    READ TABLE <table_result> INDEX 1 ASSIGNING FIELD-SYMBOL(<first>).
-    IF sy-subrc = 0.
+    ASSIGN <table_result>[ 1 ] TO FIELD-SYMBOL(<first>).
+    IF <first> IS ASSIGNED.
       <row_result> = <first>.
     ENDIF.
 
@@ -512,7 +512,7 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
     LOOP AT <t_tab> ASSIGNING <ls_tab>.
       DATA(index) = sy-tabix.
 
-      APPEND INITIAL LINE TO <t_out> ASSIGNING <ls_out>.
+      INSERT INITIAL LINE INTO TABLE <t_out> ASSIGNING <ls_out>.
       IF check_table_line = abap_true.
         ASSIGN COMPONENT cv_tab_line OF STRUCTURE <ls_out> TO <field>.
         ASSERT sy-subrc = 0.
@@ -553,16 +553,16 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
         ENDIF.
 
         IF NOT line_exists( comp[ name = cv_row_id_field ] ).
-          APPEND VALUE #( name = cv_row_id_field
-                          type = CAST #( cl_abap_datadescr=>describe_by_data( index ) ) ) TO result.
+          INSERT VALUE #( name = cv_row_id_field
+                          type = CAST #( cl_abap_datadescr=>describe_by_data( index ) ) ) INTO TABLE result.
         ENDIF.
 
         IF NOT line_exists( comp[ name = cv_sel_field ] ).
-          APPEND VALUE #( name = cv_sel_field
-                          type = CAST #( cl_abap_datadescr=>describe_by_data( selkz ) ) ) TO result.
+          INSERT VALUE #( name = cv_sel_field
+                          type = CAST #( cl_abap_datadescr=>describe_by_data( selkz ) ) ) INTO TABLE result.
         ENDIF.
 
-        APPEND LINES OF comp TO result.
+        INSERT LINES OF comp INTO TABLE result.
 
       CATCH cx_root ##NO_HANDLER.
     ENDTRY.
@@ -605,8 +605,9 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
       ASSIGN COMPONENT cv_sel_field OF STRUCTURE <row> TO <selkz>.
       ASSERT sy-subrc = 0.
 
-      READ TABLE <tab_backup> ASSIGNING <row_backup> INDEX <row_id>.
-      IF sy-subrc <> 0.
+      UNASSIGN <row_backup>.
+      ASSIGN <tab_backup>[ <row_id> ] TO <row_backup>.
+      IF <row_backup> IS NOT ASSIGNED.
         CONTINUE.
       ENDIF.
       ASSIGN COMPONENT cv_sel_field OF STRUCTURE <row_backup> TO <selkz_backup>.

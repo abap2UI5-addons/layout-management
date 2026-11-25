@@ -127,7 +127,7 @@ CLASS z2ui5_cl_layo_sample_05 IMPLEMENTATION.
     ENDIF.
 
     DATA(class) = cl_abap_classdescr=>get_class_name( me ).
-    SHIFT class LEFT DELETING LEADING '\CLASS='.
+    class = shift_left( val = class sub = `\CLASS=` ).
 
     " the draft table's name behind this class's own prefix (Z2UI5_, or the
     " one a namespace rename gave it) - the rename rewrites the class name,

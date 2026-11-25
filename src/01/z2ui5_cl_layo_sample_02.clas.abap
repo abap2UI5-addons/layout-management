@@ -135,7 +135,7 @@ CLASS z2ui5_cl_layo_sample_02 IMPLEMENTATION.
     ENDIF.
 
     DATA(class) = cl_abap_classdescr=>get_class_name( me ).
-    SHIFT class LEFT DELETING LEADING '\CLASS='.
+    class = shift_left( val = class sub = `\CLASS=` ).
 
     mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>ui_simpleform
                                                 data     = REF #( ms_data )

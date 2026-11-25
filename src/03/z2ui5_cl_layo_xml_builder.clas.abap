@@ -1024,10 +1024,13 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     " the subcolumns that are controls
     DATA t_sub_control TYPE STANDARD TABLE OF REF TO z2ui5_cl_layo_manager=>ty_s_positions WITH EMPTY KEY.
     LOOP AT position->t_sub_col INTO DATA(subcol).
-      READ TABLE i_layout->ms_layout-t_layout REFERENCE INTO DATA(line) WITH KEY fname = subcol-fname.
-      IF sy-subrc = 0 AND cell_control( rollname       = line->rollname
-                                        t_cell_control = i_t_cell_control ) <> cs_cell_control-text.
-        APPEND line TO t_sub_control.
+      IF NOT line_exists( i_layout->ms_layout-t_layout[ fname = subcol-fname ] ).
+        CONTINUE.
+      ENDIF.
+      DATA(line) = REF #( i_layout->ms_layout-t_layout[ fname = subcol-fname ] ).
+      IF cell_control( rollname       = line->rollname
+                       t_cell_control = i_t_cell_control ) <> cs_cell_control-text.
+        INSERT line INTO TABLE t_sub_control.
       ENDIF.
     ENDLOOP.
 
@@ -1087,10 +1090,10 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       " a subcolumn that names no position (one added in the popup and
       " left empty, or a field the structure no longer has) is left out -
       " the work area kept the previous row and repeated it
-      READ TABLE i_layout->ms_layout-t_layout INTO line WITH KEY fname = subcol-fname.
-      IF sy-subrc <> 0.
+      IF NOT line_exists( i_layout->ms_layout-t_layout[ fname = subcol-fname ] ).
         CONTINUE.
       ENDIF.
+      line = i_layout->ms_layout-t_layout[ fname = subcol-fname ].
 
       IF skip_controls = abap_true AND cell_control( rollname       = line-rollname
                                                      t_cell_control = i_t_cell_control ) <> cs_cell_control-text.
@@ -1100,13 +1103,12 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       " the label is literal text inside a value that carries bindings
       DATA(column) = |{ z2ui5_cl_ui5_view_builder=>escape_literal( line-tlabel ) }: { table_value_formatter( line ) }|.
 
-      IF line-reference_field IS NOT INITIAL.
-        " a reference field that is no column is left out - a failed READ
-        " kept the previous one in the work area
-        READ TABLE i_layout->ms_layout-t_layout INTO ref WITH KEY fname = line-reference_field.
-        IF sy-subrc = 0.
-          column = |{ column } { table_value_formatter( ref ) }|.
-        ENDIF.
+      " a reference field that is no column is left out - a failed READ
+      " kept the previous one in the work area
+      IF     line-reference_field IS NOT INITIAL
+         AND line_exists( i_layout->ms_layout-t_layout[ fname = line-reference_field ] ).
+        ref = i_layout->ms_layout-t_layout[ fname = line-reference_field ].
+        column = |{ column } { table_value_formatter( ref ) }|.
       ENDIF.
 
       IF result IS INITIAL.
@@ -1122,13 +1124,16 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     TRY.
         DATA(t_attri) = z2ui5_cl_layo_context=>rtti_get_t_attri_by_any( i_data ).
-        READ TABLE t_attri INTO DATA(attri) WITH KEY name = fname.
-        IF sy-subrc <> 0 OR attri-type->kind <> cl_abap_typedescr=>kind_struct.
+        IF NOT line_exists( t_attri[ name = fname ] ).
+          RETURN.
+        ENDIF.
+        DATA(attri) = t_attri[ name = fname ].
+        IF attri-type->kind <> cl_abap_typedescr=>kind_struct.
           RETURN.
         ENDIF.
         DATA(struct) = CAST cl_abap_structdescr( attri-type ).
         LOOP AT struct->components INTO DATA(comp).
-          APPEND CONV string( comp-name ) TO result.
+          INSERT CONV string( comp-name ) INTO TABLE result.
         ENDLOOP.
       CATCH cx_root.
         CLEAR result.
@@ -1177,7 +1182,7 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     IF has_comp( t_comp = t_comp
                  name   = value ) = abap_true.
-      APPEND |$\{{ path }/{ value }\}| TO t_arg.
+      INSERT |$\{{ path }/{ value }\}| INTO TABLE t_arg.
     ENDIF.
 
     result = i_client->_event( val   = placeholder
@@ -1287,8 +1292,8 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
 
     " a reference field that is no column is left out - a failed READ kept
     " the previous one in the work area
-    READ TABLE i_layout->ms_layout-t_layout INTO DATA(ref) WITH KEY fname = position-reference_field.
-    IF sy-subrc = 0.
+    IF line_exists( i_layout->ms_layout-t_layout[ fname = position-reference_field ] ).
+      DATA(ref) = i_layout->ms_layout-t_layout[ fname = position-reference_field ].
       result = |{ result } { table_value_formatter( ref ) }|.
     ENDIF.
 
