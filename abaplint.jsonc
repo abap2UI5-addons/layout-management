@@ -10,12 +10,11 @@
     },
     {
       "url": "https://github.com/abap2UI5/abap2UI5",
-      // branch DEV of this repository runs on abap2UI5 DEV (its client API
-      // differs from main: no _bind_edit( ), no *_model_update( ), the client
-      // lifecycle and navigation API); main lints against abap2UI5 main.
-      // Without src/03 - the installation package (ICF handler, BSP) of
-      // abap2UI5 DEV, which nothing here uses
-      "branch": "DEV",
+      // abap2UI5 main - the client lifecycle and navigation API of 1.151.0
+      // (no _bind_edit( ), no *_model_update( )); move to the tag 1.151.0
+      // once it is cut. Without src/03 - the installation package (ICF
+      // handler, BSP), which nothing here uses
+      "branch": "main",
       "folder": "/abap2UI5",
       "files": "/src/0[0-2]/**/*.*"
     }
