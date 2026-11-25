@@ -1143,6 +1143,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     DELETE FROM z2ui5_t_12 WHERE guid = @head-guid ##SUBRC_OK.
 
     IF head_deleted = abap_false.
+      " the positions are gone already - the next commit (the framework's
+      " draft save) must not write that half of the delete
+      ROLLBACK WORK.
       client->message_toast_display( 'Layout could not be deleted.' ).
       RETURN.
     ENDIF.
