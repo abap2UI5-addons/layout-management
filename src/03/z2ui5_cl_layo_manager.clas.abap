@@ -235,16 +235,24 @@ CLASS z2ui5_cl_layo_manager DEFINITION
     "! example the layouts of one app and warehouse to another. Every copy
     "! gets new guids and keeps name, control, screen format, user and the
     "! default flag of its original; a copy flagged as default demotes the
-    "! defaults of its new scope. One LUW, committed.
+    "! defaults of its new scope. One LUW.
     "! check_auth: ask z2ui5_if_layo_auth for every copy as the layout popup
     "! does for a save - abap_false only for an admin tool that checks itself
-    "! Raises z2ui5_cx_layo_error when an original does not exist, a copy is
-    "! not authorized or the database refuses the write - nothing is written.
+    "! iv_commit: abap_true (the default) ends with COMMIT WORK AND WAIT - and
+    "! so also commits whatever the caller has open; abap_false neither
+    "! commits nor rolls back, the copies are part of the caller's LUW and
+    "! the caller commits them together with its own changes
+    "! Raises z2ui5_cx_layo_error when an original does not exist or a copy
+    "! is not authorized - checked before the first write, nothing is written
+    "! - or when the database refuses the write: with iv_commit = abap_true
+    "! after a ROLLBACK WORK, with abap_false without one - what was written
+    "! is then still in the caller's LUW, the caller rolls it back.
     "! result: the heads of the copies
     CLASS-METHODS copy_layouts
       IMPORTING
         t_copy        TYPE ty_t_copy
         check_auth    TYPE abap_bool DEFAULT abap_true
+        iv_commit     TYPE abap_bool DEFAULT abap_true
       RETURNING
         VALUE(result) TYPE ty_t_head.
 
@@ -1644,9 +1652,13 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     ENDLOOP.
 
+    " with iv_commit = abap_false the LUW is the caller's: no ROLLBACK here,
+    " the exception tells the caller to roll back
     INSERT z2ui5_t_11 FROM TABLE @result.
     IF sy-subrc <> 0.
-      ROLLBACK WORK.
+      IF iv_commit = abap_true.
+        ROLLBACK WORK.
+      ENDIF.
       RAISE EXCEPTION TYPE z2ui5_cx_layo_error
         EXPORTING val = `Layouts could not be copied`.
     ENDIF.
@@ -1654,7 +1666,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     IF positions IS NOT INITIAL.
       INSERT z2ui5_t_12 FROM TABLE @positions.
       IF sy-subrc <> 0.
-        ROLLBACK WORK.
+        IF iv_commit = abap_true.
+          ROLLBACK WORK.
+        ENDIF.
         RAISE EXCEPTION TYPE z2ui5_cx_layo_error
           EXPORTING val = `Layouts could not be copied`.
       ENDIF.
@@ -1699,7 +1713,9 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     ENDIF.
 
-    COMMIT WORK AND WAIT.
+    IF iv_commit = abap_true.
+      COMMIT WORK AND WAIT.
+    ENDIF.
 
   ENDMETHOD.
 

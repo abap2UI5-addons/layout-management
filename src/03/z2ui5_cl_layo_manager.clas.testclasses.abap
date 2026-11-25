@@ -47,8 +47,16 @@ CLASS ltcl_copy DEFINITION FINAL FOR TESTING
     METHODS copy_unknown_raises FOR TESTING.
     METHODS copy_denied_by_auth FOR TESTING.
     METHODS copy_checked_by_default FOR TESTING.
+    METHODS copy_commits_by_default FOR TESTING.
+    METHODS copy_no_commit_rollback FOR TESTING.
+    METHODS copy_no_commit_caller_commits FOR TESTING.
 
     METHODS cleanup.
+
+    "! abap_true when the copy of c_source under LTCL_TO is in the database
+    METHODS copy_in_db
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 ENDCLASS.
 
 
@@ -91,6 +99,9 @@ CLASS ltcl_copy IMPLEMENTATION.
                          ( guid = c_source pos_guid = 'LTCLCOPYPOS000000000000000000002' fname = `MAKTX` visible = abap_true sequence = 2 ) ).
     INSERT z2ui5_t_12 FROM TABLE @positions ##SUBRC_OK.
 
+    " committed: the iv_commit tests roll back, and must only undo the copy
+    COMMIT WORK.
+
   ENDMETHOD.
 
   METHOD teardown.
@@ -100,9 +111,105 @@ CLASS ltcl_copy IMPLEMENTATION.
 
   METHOD cleanup.
 
+    DATA guids TYPE RANGE OF z2ui5_t_11-guid.
+
+    " the positions of the copies have new pos_guids - found by their heads
+    SELECT guid FROM z2ui5_t_11
+      WHERE handle03 = `LTCL_FROM` OR handle03 = `LTCL_TO`
+      ORDER BY PRIMARY KEY
+      INTO TABLE @DATA(heads) ##SUBRC_OK.
+    guids = VALUE #( FOR h IN heads ( sign = `I` option = `EQ` low = h-guid ) ).
+    IF guids IS NOT INITIAL.
+      DELETE FROM z2ui5_t_12 WHERE guid IN @guids ##SUBRC_OK.
+    ENDIF.
+
     DELETE FROM z2ui5_t_11 WHERE handle03 = `LTCL_FROM` OR handle03 = `LTCL_TO` ##SUBRC_OK.
     DELETE FROM z2ui5_t_12 WHERE pos_guid LIKE 'LTCL%' OR guid = @c_source ##SUBRC_OK.
     COMMIT WORK.
+
+  ENDMETHOD.
+
+  METHOD copy_in_db.
+
+    DATA count TYPE i.
+
+    SELECT COUNT(*) FROM z2ui5_t_11
+      WHERE handle03 = `LTCL_TO`
+        AND layout   = `LTCL`
+      INTO @count.
+    result = xsdbool( count > 0 ).
+
+  ENDMETHOD.
+
+  METHOD copy_commits_by_default.
+
+    DATA positions TYPE i.
+
+    " iv_commit defaults to abap_true: the copy is committed, a ROLLBACK of
+    " the caller afterwards does not undo it
+    DATA(heads) = z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( ( guid     = c_source
+                                                                               handle03 = `LTCL_TO`
+                                                                               handle04 = `0002` ) )
+                                                       check_auth = abap_false ).
+    DATA(copy_guid) = heads[ 1 ]-guid.
+    ROLLBACK WORK.
+
+    cl_abap_unit_assert=>assert_true( copy_in_db( ) ).
+    SELECT COUNT(*) FROM z2ui5_t_12 WHERE guid = @copy_guid INTO @positions.
+    cl_abap_unit_assert=>assert_equals( exp = 2
+                                        act = positions ).
+    SELECT SINGLE def FROM z2ui5_t_11 WHERE guid = @c_old_def INTO @DATA(old_def) ##SUBRC_OK.
+    cl_abap_unit_assert=>assert_equals( exp = abap_false
+                                        act = old_def ).
+
+  ENDMETHOD.
+
+  METHOD copy_no_commit_rollback.
+
+    DATA positions        TYPE i.
+    DATA source_positions TYPE i.
+
+    " iv_commit = abap_false: the copy is part of the caller's LUW - the
+    " caller's ROLLBACK undoes head, positions and the default demotion
+    DATA(heads) = z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( ( guid     = c_source
+                                                                               handle03 = `LTCL_TO`
+                                                                               handle04 = `0002` ) )
+                                                       check_auth = abap_false
+                                                       iv_commit  = abap_false ).
+    cl_abap_unit_assert=>assert_equals( exp = 1
+                                        act = lines( heads ) ).
+    " visible in the open LUW
+    cl_abap_unit_assert=>assert_true( copy_in_db( ) ).
+
+    DATA(copy_guid) = heads[ 1 ]-guid.
+    ROLLBACK WORK.
+
+    cl_abap_unit_assert=>assert_false( copy_in_db( ) ).
+    SELECT COUNT(*) FROM z2ui5_t_12 WHERE guid = @copy_guid INTO @positions.
+    cl_abap_unit_assert=>assert_equals( exp = 0
+                                        act = positions ).
+    SELECT SINGLE def FROM z2ui5_t_11 WHERE guid = @c_old_def INTO @DATA(old_def) ##SUBRC_OK.
+    cl_abap_unit_assert=>assert_equals( exp = abap_true
+                                        act = old_def ).
+    " the original is untouched
+    SELECT COUNT(*) FROM z2ui5_t_12 WHERE guid = @c_source INTO @source_positions.
+    cl_abap_unit_assert=>assert_equals( exp = 2
+                                        act = source_positions ).
+
+  ENDMETHOD.
+
+  METHOD copy_no_commit_caller_commits.
+
+    " iv_commit = abap_false: the caller's COMMIT WORK writes the copy
+    z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( ( guid     = c_source
+                                                                 handle03 = `LTCL_TO`
+                                                                 handle04 = `0002` ) )
+                                         check_auth = abap_false
+                                         iv_commit  = abap_false ).
+    COMMIT WORK.
+    ROLLBACK WORK.
+
+    cl_abap_unit_assert=>assert_true( copy_in_db( ) ).
 
   ENDMETHOD.
 

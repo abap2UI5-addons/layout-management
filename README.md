@@ -351,8 +351,9 @@ Every copy gets new guids for head and positions and keeps name, control,
 screen format, user and default flag; a copied default demotes the defaults of
 its new scope. The copies are checked with `z2ui5_if_layo_auth` like a save in
 the popup (`check_auth = abap_false` for an admin tool that checks itself), one
-LUW, committed; `z2ui5_cx_layo_error` and nothing written when an original is
-missing, a copy is not authorized or the database refuses it.
+LUW, committed - unless `iv_commit = abap_false`, then the caller commits (see
+[Commits](#commits)); `z2ui5_cx_layo_error` and nothing written when an
+original is missing, a copy is not authorized or the database refuses it.
 
 ### Select layouts by ranges
 
@@ -431,6 +432,56 @@ z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( FOR h IN heads
 
 ### Persistence
 <img width="700" alt="Popup for saving and selecting persisted layout variants" src="https://github.com/user-attachments/assets/d7f39663-d864-4737-89e4-8e925e54bc2d">
+
+## Commits
+
+The abap2UI5 addons (layout-management, popups, table-maintenance) share one
+commit model:
+
+- **The addon commits only in its own apps.** A popup or app of the addon
+  that saves on a button of its own runs in a roundtrip of its own and ends
+  its own LUW - `COMMIT WORK AND WAIT`, or `ROLLBACK WORK` on failure.
+- **A library method commits only with `iv_commit = abap_true`.** Every
+  public method that writes on behalf of its caller takes
+  `iv_commit TYPE abap_bool DEFAULT abap_true`. The default keeps the old
+  behaviour: the method ends with `COMMIT WORK AND WAIT` - and so commits
+  whatever the caller has open at that moment as well. With
+  `iv_commit = abap_false` it neither commits nor rolls back: its writes join
+  the caller's LUW, and the caller commits them once, together with its own
+  changes.
+- **On failure the method raises its exception.** With
+  `iv_commit = abap_false` it never runs `ROLLBACK WORK` - whatever it wrote
+  before the failure is still in the caller's LUW, and the caller decides,
+  normally with `ROLLBACK WORK`. With `iv_commit = abap_true` it fails as it
+  always did (the table below).
+- **The caller must commit.** abap2UI5 runs `ROLLBACK WORK` before and after
+  `main( )` of a stateless app, so what an app writes - itself, or through a
+  method called with `iv_commit = abap_false` - is lost unless the app commits
+  it in the same roundtrip.
+
+In this addon:
+
+| Where | Commits | On failure with `iv_commit = abap_true` |
+|---|---|---|
+| `z2ui5_cl_layo_manager=>copy_layouts( )` - library | with `iv_commit = abap_true` (default) | `ROLLBACK WORK`, then `z2ui5_cx_layo_error` |
+| Layout popup `z2ui5_cl_layo_pop` - Save and Delete | always, its own app | `ROLLBACK WORK` and a message toast |
+
+A missing original or a copy `z2ui5_if_layo_auth` refuses is found before the
+first write: `copy_layouts( )` raises with nothing written, in both modes. A
+tool that copies layouts as part of a larger change commits once:
+
+```abap
+TRY.
+    " ... the tool's own database changes
+    z2ui5_cl_layo_manager=>copy_layouts( t_copy     = lt_copy
+                                         check_auth = abap_false
+                                         iv_commit  = abap_false ).
+    COMMIT WORK AND WAIT.
+  CATCH z2ui5_cx_layo_error INTO DATA(lx).
+    ROLLBACK WORK.
+    client->message_box_display( text = lx->get_text( ) type = `error` ).
+ENDTRY.
+```
 
 ## Security
 
