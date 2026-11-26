@@ -91,7 +91,7 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
     ENDIF.
 
     IF gi_instance IS NOT BOUND.
-      gi_instance = NEW z2ui5_cl_layo_auth( ).
+      CREATE OBJECT gi_instance TYPE z2ui5_cl_layo_auth.
     ENDIF.
 
     result = gi_instance.
@@ -117,6 +117,8 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
     DATA lv_intf    TYPE string.
     DATA lv_shipped TYPE string.
     DATA lt_class   TYPE z2ui5_cl_layo_context=>ty_t_classes.
+        DATA temp1 TYPE string.
+        DATA temp2 TYPE z2ui5_cl_layo_context=>ty_s_class_descr.
 
     TRY.
         lv_intf    = type_name_of( li_auth ).
@@ -127,7 +129,14 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
 
         " reproducible when a system carries more than one: the first by name
         SORT lt_class BY classname.
-        result = VALUE #( lt_class[ 1 ]-classname OPTIONAL ).
+
+        CLEAR temp1.
+
+        READ TABLE lt_class INTO temp2 INDEX 1.
+        IF sy-subrc = 0.
+          temp1 = temp2-classname.
+        ENDIF.
+        result = temp1.
 
       CATCH cx_root ##NO_HANDLER.
         " no repository access, no implementation: the default applies
@@ -147,6 +156,9 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD z2ui5_if_layo_auth~check_authorized.
+        DATA temp1 TYPE xsdboolean.
+        DATA temp2 TYPE xsdboolean.
+        DATA temp3 TYPE xsdboolean.
 
     " the default, as before the hook existed: every user may save his own
     " and shared layouts and delete his own and shared ones - never another
@@ -154,15 +166,21 @@ CLASS z2ui5_cl_layo_auth IMPLEMENTATION.
     " implements z2ui5_if_layo_auth with its own authorization object
     CASE action.
       WHEN z2ui5_if_layo_auth=>cs_action-save_own.
-        result = xsdbool( head-uname = sy-uname ).
+
+        temp1 = boolc( head-uname = sy-uname ).
+        result = temp1.
       WHEN z2ui5_if_layo_auth=>cs_action-save_shared.
         result = abap_true.
       WHEN z2ui5_if_layo_auth=>cs_action-delete.
-        result = xsdbool( head-uname IS INITIAL OR head-uname = sy-uname ).
+
+        temp2 = boolc( head-uname IS INITIAL OR head-uname = sy-uname ).
+        result = temp2.
       WHEN z2ui5_if_layo_auth=>cs_action-read_others.
         " the layout popup never shows another user's personal layout - a
         " tool that reads them all implements the hook or passes check_auth
-        result = xsdbool( head-uname IS INITIAL OR head-uname = sy-uname ).
+
+        temp3 = boolc( head-uname IS INITIAL OR head-uname = sy-uname ).
+        result = temp3.
       WHEN OTHERS.
         result = abap_false.
     ENDCASE.

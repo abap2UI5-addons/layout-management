@@ -52,7 +52,10 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
 
   METHOD render_main.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA page TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp1 LIKE REF TO ms_data.
+    view = z2ui5_cl_ui5_view_builder=>factory(
                      )->ele( n = `View` ns = `mvc`
                      )->a( n = `xmlns` v = `sap.m`
                      )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc`
@@ -67,13 +70,16 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
                      )->a( n = `height` v = `100%`
                      )->ele( `Shell` ).
 
-    DATA(page) = view->ele( `Page`
+
+    page = view->ele( `Page`
                      )->a( n = `title` v = `Layout`
                      )->a( n = `navButtonPress` v = client->_event( 'BACK' )
                      )->a( n = `showNavButton` b = client->check_app_prev_stack( )
                      )->a( n = `class` v = `sapUiContentPadding` ).
 
-    z2ui5_cl_layo_xml_builder=>xml_build_simple_form( i_data   = REF #( ms_data )
+
+    GET REFERENCE OF ms_data INTO temp1.
+z2ui5_cl_layo_xml_builder=>xml_build_simple_form( i_data   = temp1
                                                       i_xml    = page
                                                       i_client = client
                                                       i_layout = mo_layout ).
@@ -85,11 +91,11 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
   METHOD z2ui5_if_app~main.
     me->client = client.
 
-    IF client->check_on_init( ).
+    IF client->check_on_init( ) IS NOT INITIAL.
       on_init( ).
-    ELSEIF client->check_on_navigated( ).
+    ELSEIF client->check_on_navigated( ) IS NOT INITIAL.
       on_after_navigation( ).
-    ELSEIF client->check_on_event( ).
+    ELSEIF client->check_on_event( ) IS NOT INITIAL.
       on_event( ).
     ENDIF.
 
@@ -97,20 +103,25 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
 
   METHOD get_data.
 
-    SELECT SINGLE * FROM z2ui5_t_11 INTO @ms_data ##SUBRC_OK.      "#EC CI_NOORDER
+    SELECT SINGLE * FROM z2ui5_t_11 INTO ms_data ##SUBRC_OK.      "#EC CI_NOORDER
 
   ENDMETHOD.
 
   METHOD init_layout.
+    DATA class TYPE string.
+    DATA temp2 LIKE REF TO ms_data.
 
     IF mo_layout IS BOUND.
       RETURN.
     ENDIF.
 
-    DATA(class) = z2ui5_cl_layo_context=>rtti_get_classname_by_ref( me ).
 
-    mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>ui_simpleform
-                                                data     = REF #( ms_data )
+    class = z2ui5_cl_layo_context=>rtti_get_classname_by_ref( me ).
+
+
+    GET REFERENCE OF ms_data INTO temp2.
+mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>ui_simpleform
+                                                data     = temp2
                                                 handle01 = class
                                                 handle02 = 'USR01'
                                                 handle03 = ''
@@ -119,10 +130,15 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD on_after_navigation.
+        DATA temp3 TYPE REF TO z2ui5_cl_layo_pop.
+        DATA app LIKE temp3.
 
     TRY.
 
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
+
+        temp3 ?= client->get_app_prev( ).
+
+        app = temp3.
         mo_layout = app->mo_layout.
 
         IF app->mv_rerender = abap_true.
