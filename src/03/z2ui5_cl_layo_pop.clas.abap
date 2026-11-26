@@ -510,8 +510,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     z2ui5_cl_layo_context=>itab_filter_by_val(
       EXPORTING
-        val    = client->get_event_arg( )
-        fields = VALUE #( ( `FNAME` ) ( `ROLLNAME` ) ( `TLABEL` ) )
+        val         = client->get_event_arg( )
+        fields      = VALUE #( ( `FNAME` ) ( `ROLLNAME` ) ( `TLABEL` ) )
+        " field names and data elements are upper case - "weight" finds CONF_WEIGHT
+        ignore_case = abap_true
       CHANGING
         tab    = mt_layout ).
 
