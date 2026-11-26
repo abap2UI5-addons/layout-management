@@ -10,8 +10,8 @@
     },
     {
       "url": "https://github.com/abap2UI5/abap2UI5",
-      // abap2UI5 main - the client API of 1.151.0 (see abaplint.jsonc)
-      "branch": "main",
+      // abap2UI5 1.151.0 - its client API (see abaplint.jsonc)
+      "branch": "1.151.0",
       "folder": "/abap2UI5",
       "files": "/src/0[0-2]/**/*.*"
     }
