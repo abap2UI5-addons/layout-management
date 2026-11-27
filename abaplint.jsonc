@@ -10,9 +10,13 @@
     },
     {
       "url": "https://github.com/abap2UI5/abap2UI5",
-      // abap2UI5 1.151.0 - the client lifecycle and navigation API of that
-      // release (no _bind_edit( ), no *_model_update( )). Without src/03 - the
-      // installation package (ICF handler, BSP), which nothing here uses
+      // A release tag, not main: users install a release next to this addon
+      // (abap2UI5 CONVENTIONS §9) - its client lifecycle and navigation API
+      // (no _bind_edit( ), no *_model_update( )). scripts/core-pin.mjs reads
+      // and moves it in every config and in the unit runner at once, bump-deps
+      // moves it monthly, the weekly canary run lints once against main.
+      // Without src/03 - the installation package (ICF handler, BSP), which
+      // nothing here uses
       "branch": "1.151.0",
       "folder": "/abap2UI5",
       "files": "/src/0[0-2]/**/*.*"

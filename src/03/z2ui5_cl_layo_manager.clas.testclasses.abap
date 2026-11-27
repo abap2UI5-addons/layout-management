@@ -727,3 +727,78 @@ CLASS ltcl_conv IMPLEMENTATION.
   ENDMETHOD.
 
 ENDCLASS.
+
+
+CLASS ltcl_same_layout DEFINITION FINAL FOR TESTING
+  DURATION SHORT
+  RISK LEVEL HARMLESS.
+
+  PRIVATE SECTION.
+    METHODS same_control_and_handles FOR TESTING.
+    METHODS other_handle FOR TESTING.
+    METHODS other_control FOR TESTING.
+    METHODS unbound FOR TESTING.
+
+    "! a manager with the head the layout popup compares
+    METHODS layout
+      IMPORTING
+        !control      TYPE clike
+        handle04      TYPE clike
+      RETURNING
+        VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
+ENDCLASS.
+
+
+CLASS ltcl_same_layout IMPLEMENTATION.
+
+  METHOD layout.
+
+    result = NEW #( ).
+    result->ms_layout-s_head-control  = control.
+    result->ms_layout-s_head-handle01 = `APP`.
+    result->ms_layout-s_head-handle02 = `TABLE`.
+    result->ms_layout-s_head-handle03 = `X`.
+    result->ms_layout-s_head-handle04 = handle04.
+
+  ENDMETHOD.
+
+  METHOD same_control_and_handles.
+
+    " the guid differs - another variant of the same table is the same layout
+    DATA(lo_other) = layout( control  = z2ui5_cl_layo_manager=>m_table
+                             handle04 = `4` ).
+    lo_other->ms_layout-s_head-guid = `OTHER`.
+
+    cl_abap_unit_assert=>assert_true( layout( control  = z2ui5_cl_layo_manager=>m_table
+                                              handle04 = `4` )->is_same_layout( lo_other ) ).
+
+  ENDMETHOD.
+
+  METHOD other_handle.
+
+    cl_abap_unit_assert=>assert_false( layout( control  = z2ui5_cl_layo_manager=>m_table
+                                               handle04 = `4` )->is_same_layout(
+                                         layout( control  = z2ui5_cl_layo_manager=>m_table
+                                                 handle04 = `5` ) ) ).
+
+  ENDMETHOD.
+
+  METHOD other_control.
+
+    cl_abap_unit_assert=>assert_false( layout( control  = z2ui5_cl_layo_manager=>m_table
+                                               handle04 = `4` )->is_same_layout(
+                                         layout( control  = z2ui5_cl_layo_manager=>ui_simpleform
+                                                 handle04 = `4` ) ) ).
+
+  ENDMETHOD.
+
+  METHOD unbound.
+
+    DATA lo_none TYPE REF TO z2ui5_cl_layo_manager.
+
+    cl_abap_unit_assert=>assert_false( layout( control  = z2ui5_cl_layo_manager=>m_table
+                                               handle04 = `4` )->is_same_layout( lo_none ) ).
+
+  ENDMETHOD.
+
+ENDCLASS.

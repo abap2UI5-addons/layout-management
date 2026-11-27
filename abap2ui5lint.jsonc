@@ -12,7 +12,10 @@
   // code genuinely needs a newer member: a floor above what is used stops the
   // gate reporting members that are missing on the systems people run.
   "ui5": "1.71",
-  "distribution": "sapui5",
+  // OpenUI5: the apps that embed the layout popup (table-maintenance,
+  // table-content-loader, se16n, sql-console) target OpenUI5, so a
+  // SAPUI5-only control here would reach them unnoticed
+  "distribution": "openui5",
 
   // Required, not merely left on. It is on by default, and a default-on gate
   // whose runtime is missing steps aside and the run stays green - which for
