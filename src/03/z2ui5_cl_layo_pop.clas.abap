@@ -321,7 +321,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
           cells->tag( `Switch`
               )->a( n = `type` v = `AcceptReject`
-              )->a( n = `state` v = |\{{ comp-name }\}| ).
+              )->a( n = `state` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}| ).
 
         WHEN 'NO_CONVEXIT'.
 
@@ -330,19 +330,19 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
               )->tag( `Switch`
               )->a( n = `customTextOn` v = |\{CONVEXIT\}|
               )->a( n = `customTextOff` v = |\{CONVEXIT\}|
-              )->a( n = `state` v = |\{{ comp-name }\}| ).
+              )->a( n = `state` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}| ).
 
         WHEN 'WIDTH'.
 
           cells->tag( `Input`
-              )->a( n = `value` v = |\{{ comp-name }\}|
+              )->a( n = `value` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `maxLength` v = `6`
               )->a( n = `width` v = `4rem` ).
 
         WHEN 'SEQUENCE'.
 
           cells->tag( `Input`
-              )->a( n = `value` v = |\{{ comp-name }\}|
+              )->a( n = `value` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `maxLength` v = `3`
               )->a( n = `width` v = `3rem`
               )->a( n = `type` v = `Number` ).
@@ -350,12 +350,12 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         WHEN 'ALTERNATIVE_TEXT'.
 
           cells->tag( `Input`
-              )->a( n = `value` v = |\{{ comp-name }\}| ).
+              )->a( n = `value` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}| ).
 
         WHEN 'SUBCOLUMN'.
 
           cells->tag( `Button`
-              )->a( n = `text` v = |\{{ comp-name }\}|
+              )->a( n = `text` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `icon` v = `sap-icon://add`
               )->a( n = `width` v = `100%`
               )->a( n = `press` v = client->_event( val = 'CALL_SUBCOLUMN'
@@ -364,7 +364,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         WHEN 'SORTING'.
 
           cells->ele( `ComboBox`
-              )->a( n = `selectedKey` v = |\{{ comp-name }\}|
+              )->a( n = `selectedKey` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `items` v = client->_bind( mt_sorting )
               )->a( n = `width` v = `5rem`
               )->tag( n = `Item` ns = `core`
@@ -374,7 +374,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         WHEN 'REFERENCE_FIELD'.
 
           cells->ele( `ComboBox`
-              )->a( n = `selectedKey` v = |\{{ comp-name }\}|
+              )->a( n = `selectedKey` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `items` v = client->_bind( mo_layout->ms_layout-t_layout )
               )->a( n = `width` v = `10rem`
               )->tag( n = `Item` ns = `core`
@@ -384,7 +384,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         WHEN 'GRID_LAYOUT'.
 
           cells->tag( `Button`
-              )->a( n = `text` v = |\{{ comp-name }\}|
+              )->a( n = `text` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `icon` v = `sap-icon://grid`
               )->a( n = `width` v = `5rem`
               )->a( n = `press` v = client->_event( val = 'CALL_GRIDLAYOUT'

@@ -17,7 +17,6 @@ CLASS z2ui5_cl_layo_sample_01 DEFINITION
       END OF ty_s_tab.
     TYPES ty_t_table TYPE STANDARD TABLE OF ty_s_tab WITH EMPTY KEY.
 
-    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_table( ) binds it, handed over as REF #( mt_table )
     DATA mt_table  TYPE ty_t_table.
     DATA mo_layout TYPE REF TO z2ui5_cl_layo_manager.
 
