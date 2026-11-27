@@ -382,6 +382,22 @@ CLASS ltcl_apply IMPLEMENTATION.
     cl_abap_unit_assert=>assert_equals( act = z2ui5_cl_layo_xml_tree=>unescape_xml( `a&lt;b&gt;c&amp;&quot;d&quot;&apos;` )
                                         exp = `a<b>c&"d"'` ).
 
+    " line feed, carriage return and tab travel as character references
+    DATA(lv_text) = `a` && cl_abap_char_utilities=>newline && `b` && cl_abap_char_utilities=>cr_lf(1) && `c`
+                 && cl_abap_char_utilities=>horizontal_tab && `d`.
+    cl_abap_unit_assert=>assert_equals( act = z2ui5_cl_layo_xml_tree=>escape_xml( lv_text )
+                                        exp = `a&#xA;b&#xD;c&#x9;d` ).
+    cl_abap_unit_assert=>assert_equals( act = z2ui5_cl_layo_xml_tree=>unescape_xml( `a&#xA;b&#xD;c&#x9;d` )
+                                        exp = lv_text ).
+    cl_abap_unit_assert=>assert_equals( act = z2ui5_cl_layo_xml_tree=>unescape_xml( `a&#10;b&#13;c&#9;d` )
+                                        exp = lv_text ).
+    cl_abap_unit_assert=>assert_equals( act = z2ui5_cl_layo_xml_tree=>unescape_xml( z2ui5_cl_layo_xml_tree=>escape_xml( lv_text ) )
+                                        exp = lv_text ).
+
+    " an escaped reference stays a reference: &amp; is decoded last
+    cl_abap_unit_assert=>assert_equals( act = z2ui5_cl_layo_xml_tree=>unescape_xml( `&amp;#xA;&amp;lt;` )
+                                        exp = `&#xA;&lt;` ).
+
   ENDMETHOD.
 
   METHOD single_quotes_and_whitespace.

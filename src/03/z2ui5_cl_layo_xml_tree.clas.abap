@@ -64,13 +64,18 @@ CLASS z2ui5_cl_layo_xml_tree DEFINITION
         VALUE(result) TYPE ty_t_id.
 
     "! the XML escaping of an attribute value - the four characters that may
-    "! not stand in one
+    "! not stand in one, and line feed, carriage return and tab as character
+    "! references (hex A, D and 9, as the core's view builder writes them),
+    "! which attribute-value normalization would otherwise turn into spaces
     CLASS-METHODS escape_xml
       IMPORTING
         val           TYPE string
       RETURNING
         VALUE(result) TYPE string.
 
+    "! the reverse of escape_xml: the five predefined entities and the
+    "! character references of line feed, carriage return and tab (hex or
+    "! decimal); the ampersand last, so an escaped entity stays what it was
     CLASS-METHODS unescape_xml
       IMPORTING
         val           TYPE string
@@ -251,12 +256,32 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
                       sub  = `"`
                       with = `&quot;`
                       occ  = 0 ).
+    result = replace( val  = result
+                      sub  = z2ui5_cl_layo_context=>cv_char_util_newline
+                      with = `&#xA;`
+                      occ  = 0 ).
+    result = replace( val  = result
+                      sub  = z2ui5_cl_layo_context=>cv_char_util_cr_lf(1)
+                      with = `&#xD;`
+                      occ  = 0 ).
+    result = replace( val  = result
+                      sub  = z2ui5_cl_layo_context=>cv_char_util_horizontal_tab
+                      with = `&#x9;`
+                      occ  = 0 ).
 
   ENDMETHOD.
 
   METHOD unescape_xml.
 
-    result = replace( val  = val
+    DATA lv_cr TYPE c LENGTH 1.
+
+    result = val.
+    IF result NS `&`.
+      RETURN.
+    ENDIF.
+    lv_cr = z2ui5_cl_layo_context=>cv_char_util_cr_lf(1).
+
+    result = replace( val  = result
                       sub  = `&lt;`
                       with = `<`
                       occ  = 0 ).
@@ -272,6 +297,34 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
                       sub  = `&apos;`
                       with = `'`
                       occ  = 0 ).
+    result = replace( val  = result
+                      sub  = `&#xA;`
+                      with = z2ui5_cl_layo_context=>cv_char_util_newline
+                      occ  = 0
+                      case = abap_false ).
+    result = replace( val  = result
+                      sub  = `&#10;`
+                      with = z2ui5_cl_layo_context=>cv_char_util_newline
+                      occ  = 0 ).
+    result = replace( val  = result
+                      sub  = `&#xD;`
+                      with = lv_cr
+                      occ  = 0
+                      case = abap_false ).
+    result = replace( val  = result
+                      sub  = `&#13;`
+                      with = lv_cr
+                      occ  = 0 ).
+    result = replace( val  = result
+                      sub  = `&#x9;`
+                      with = z2ui5_cl_layo_context=>cv_char_util_horizontal_tab
+                      occ  = 0
+                      case = abap_false ).
+    result = replace( val  = result
+                      sub  = `&#9;`
+                      with = z2ui5_cl_layo_context=>cv_char_util_horizontal_tab
+                      occ  = 0 ).
+    " last, so an escaped entity stays what it was: &amp;lt; is &lt;
     result = replace( val  = result
                       sub  = `&amp;`
                       with = `&`
