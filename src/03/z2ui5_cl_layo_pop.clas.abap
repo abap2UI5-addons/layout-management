@@ -153,9 +153,13 @@ CLASS z2ui5_cl_layo_pop DEFINITION
       RETURNING
         VALUE(result) TYPE abap_bool.
 
+    "! result: abap_false when the layout was deleted meanwhile - the
+    "! current one stays
     METHODS set_selected_layout
       IMPORTING
-        head TYPE ty_s_layo.
+        head          TYPE ty_s_layo
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 
     METHODS check_width_unit
       IMPORTING
@@ -531,13 +535,17 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
           RETURN.
         ENDIF.
 
-        set_selected_layout( selected ).
+        IF set_selected_layout( selected ) = abap_false.
+          get_layouts( ).
+          render_open( ).
+          RETURN.
+        ENDIF.
 
         mv_rerender = abap_true.
 
         client->popup_destroy( ).
 
-        client->nav_app_leave( ).
+        client->nav_app_leave( keep_messages = abap_true ).
 
       WHEN 'DELETE_SELECT'.
 
@@ -592,7 +600,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     client->popup_destroy( ).
 
-    client->nav_app_leave( ).
+    " keep_messages: the toast of save_layout( ) - `Data saved.` - is shown
+    " in the app; without it the leave drops everything this app queued
+    client->nav_app_leave( keep_messages = abap_true ).
 
   ENDMETHOD.
 
@@ -1098,6 +1108,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       client->message_toast_display( 'Layout no longer exists.' ).
       RETURN.
     ENDIF.
+    result = abap_true.
 
     " the layout opened is the app's layout from now on - it sorts, converts
     " and selects the same table, which factory_by_guid( ) does not know
