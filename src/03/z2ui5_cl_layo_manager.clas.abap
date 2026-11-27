@@ -839,7 +839,15 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     result = layout.
 
-    LOOP AT result REFERENCE INTO DATA(line) WHERE subcolumn IS NOT INITIAL.
+    " every row anew from its SUBCOLUMN - factory_by_guid( ) merges the saved
+    " positions into the rows of the layout shown before, and a row without
+    " subcolumns kept the subcolumns of that layout
+    LOOP AT result REFERENCE INTO DATA(line).
+
+      CLEAR line->t_sub_col.
+      IF line->subcolumn IS INITIAL.
+        CONTINUE.
+      ENDIF.
 
       SPLIT line->subcolumn AT ` ` INTO TABLE DATA(tab).
 

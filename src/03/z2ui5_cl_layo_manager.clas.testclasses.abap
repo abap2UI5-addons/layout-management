@@ -510,6 +510,7 @@ CLASS ltcl_conv DEFINITION FINAL FOR TESTING
     METHODS conversion_default FOR TESTING.
     METHODS conversion_alpha_in_browser FOR TESTING.
     METHODS opened_layout_keeps_type FOR TESTING.
+    METHODS opened_layout_own_sub_cols FOR TESTING.
 
     METHODS layout
       RETURNING
@@ -677,6 +678,43 @@ CLASS ltcl_conv IMPLEMENTATION.
                                         act = nr-convexit ).
     cl_abap_unit_assert=>assert_equals( exp = 10
                                         act = nr-digits ).
+
+  ENDMETHOD.
+
+  METHOD opened_layout_own_sub_cols.
+
+    DATA head      TYPE z2ui5_t_11.
+    DATA positions TYPE STANDARD TABLE OF z2ui5_t_12 WITH EMPTY KEY.
+
+    cleanup( ).
+
+    head = VALUE #( guid     = c_guid
+                    layout   = `LTCL`
+                    control  = z2ui5_cl_layo_manager=>m_table
+                    handle03 = `LTCL_CONV` ).
+    INSERT z2ui5_t_11 FROM @head ##SUBRC_OK.
+    positions = VALUE #( ( guid = c_guid pos_guid = 'LTCLCONVPOS000000000000000000001' fname = `ID` visible = abap_true )
+                         ( guid = c_guid pos_guid = 'LTCLCONVPOS000000000000000000002' fname = `NR` visible = abap_true
+                           subcolumn = `LANGU` ) ).
+    INSERT z2ui5_t_12 FROM TABLE @positions ##SUBRC_OK.
+
+    " the layout shown before has subcolumns on ID, the opened one on NR only
+    DATA(before) = layout( )->ms_layout-t_layout.
+    ASSIGN before[ fname = `ID` ] TO FIELD-SYMBOL(<id>).
+    <id>-subcolumn = `NR`.
+    <id>-t_sub_col = VALUE #( ( fname = `NR` ) ).
+
+    DATA(opened) = z2ui5_cl_layo_manager=>factory_by_guid( layout_guid = c_guid
+                                                           t_comps     = before ).
+
+    cleanup( ).
+
+    cl_abap_unit_assert=>assert_initial( opened->ms_layout-t_layout[ fname = `ID` ]-t_sub_col ).
+    DATA(nr_sub_col) = opened->ms_layout-t_layout[ fname = `NR` ]-t_sub_col.
+    cl_abap_unit_assert=>assert_equals( exp = 1
+                                        act = lines( nr_sub_col ) ).
+    cl_abap_unit_assert=>assert_equals( exp = `LANGU`
+                                        act = nr_sub_col[ 1 ]-fname ).
 
   ENDMETHOD.
 
