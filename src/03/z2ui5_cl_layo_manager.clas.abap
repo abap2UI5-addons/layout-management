@@ -1395,12 +1395,17 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
   METHOD convert.
 
-    z2ui5_cl_layo_context=>conv_exit(
-      EXPORTING
-        convexit = i_layout-convexit
-        output   = i_output
-      CHANGING
-        value    = c_value ).
+    " a value the exit refuses, or an exit the system does not have, leaves
+    " the cell as it is - one odd cell must not end the whole table
+    TRY.
+        z2ui5_cl_layo_context=>conv_exit(
+          EXPORTING
+            convexit = i_layout-convexit
+            output   = i_output
+          CHANGING
+            value    = c_value ).
+      CATCH z2ui5_cx_layo_error ##NO_HANDLER.
+    ENDTRY.
 
   ENDMETHOD.
 
