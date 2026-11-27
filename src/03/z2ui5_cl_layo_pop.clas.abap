@@ -141,6 +141,15 @@ CLASS z2ui5_cl_layo_pop DEFINITION
     METHODS edit_okay.
     METHODS search.
 
+    "! one span of the grid layout popup: a combo box of 1 to 12 bound to
+    "! bind, after a label when one is given
+    METHODS render_grid_span
+      IMPORTING
+        !form TYPE REF TO z2ui5_cl_ui5_view_builder
+        label TYPE string OPTIONAL
+        bind  TYPE string
+        !text TYPE string.
+
 ENDCLASS.
 
 
@@ -1523,77 +1532,37 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                      )->a( n = `title` v = `Define Label and Value Span`
                      )->ele( n = `content` ns = `form` ).
 
-    form->tag( `Label`
-        )->a( n = `text` v = `XL`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_xl_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
+    render_grid_span( form  = form
+                      label = `XL`
+                      bind  = client->_bind( mv_xl_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_xl_value )
+                      text = `Value Span` ).
 
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_xl_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
+    render_grid_span( form  = form
+                      label = `L`
+                      bind  = client->_bind( mv_l_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_l_value )
+                      text = `Value Span` ).
 
-    form->tag( `Label`
-        )->a( n = `text` v = `L`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_l_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
+    render_grid_span( form  = form
+                      label = `M`
+                      bind  = client->_bind( mv_m_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_m_value )
+                      text = `Value Span` ).
 
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_l_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
-
-    form->tag( `Label`
-        )->a( n = `text` v = `M`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_m_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
-
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_m_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
-
-    form->tag( `Label`
-        )->a( n = `text` v = `S`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_s_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
-
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_s_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
+    render_grid_span( form  = form
+                      label = `S`
+                      bind  = client->_bind( mv_s_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_s_value )
+                      text = `Value Span` ).
 
     lo_popup->ele( `buttons`
         )->tag( `Button`
@@ -1605,6 +1574,23 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         )->a( n = `type` v = `Emphasized` ).
 
     client->popup_display( lo_popup->stringify( ) ).
+
+  ENDMETHOD.
+
+  METHOD render_grid_span.
+
+    IF label IS NOT INITIAL.
+      form->tag( `Label`
+          )->a( n = `text` v = label ).
+    ENDIF.
+
+    form->ele( `ComboBox`
+        )->a( n = `selectedKey` v = bind
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = `{COL}`
+        )->a( n = `text` v = |\{COL\} { text }| ).
 
   ENDMETHOD.
 
