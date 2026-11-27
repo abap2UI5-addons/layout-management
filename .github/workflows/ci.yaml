@@ -9,9 +9,12 @@ name: ci
 #   rename        the namespace rename check (npm run rename)
 #   abap2ui5lint  the app classes and their views (abap2ui5lint.jsonc)
 #
+# The core is pinned to a release tag (scripts/core-pin.mjs).
+#
 # layout-management builds on abap2UI5 alone, no sibling addon -
-# there is no .github/deps.json. The weekly run notices an upstream rename
-# while no pull request is open.
+# there is no .github/deps.json. The weekly run is the canary: it lints and
+# tests against the core's main, so an upstream rename is noticed while no
+# pull request is open.
 
 on:
   push:
@@ -40,3 +43,4 @@ jobs:
       unit: true
       rename: true
       canary: ${{ github.event_name == 'schedule' }}
+      canary-setup: node scripts/core-pin.mjs set main
