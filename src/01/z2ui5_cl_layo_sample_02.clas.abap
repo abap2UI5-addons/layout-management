@@ -16,7 +16,6 @@ CLASS z2ui5_cl_layo_sample_02 DEFINITION
         selkz             TYPE abap_bool,
       END OF ty_s_tab.
 
-    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_simple_form( ) binds it, handed over as REF #( ms_data )
     DATA ms_data   TYPE ty_s_tab.
     DATA mo_layout TYPE REF TO z2ui5_cl_layo_manager.
 

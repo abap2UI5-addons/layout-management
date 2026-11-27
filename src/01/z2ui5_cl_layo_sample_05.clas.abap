@@ -11,9 +11,7 @@ CLASS z2ui5_cl_layo_sample_05 DEFINITION
     TYPES END OF ty_s_data.
     TYPES ty_t_data TYPE STANDARD TABLE OF ty_s_data WITH EMPTY KEY.
 
-    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_table( ) binds it, handed over as REF #( mt_table )
     DATA mt_table        TYPE ty_t_data.
-    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_simple_form( ) binds it, handed over as REF #( ms_struc )
     DATA ms_struc        TYPE ty_s_data.
     DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
     DATA mo_table_layout TYPE REF TO z2ui5_cl_layo_manager.
