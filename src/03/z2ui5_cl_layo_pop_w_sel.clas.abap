@@ -570,6 +570,24 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
   METHOD sort_output_table.
 
+    FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
+
+    " the order the caller asked for (i_sort_field, i_descending) - the
+    " sorting of the layout, when it has one, decides over it
+    IF sort_field IS NOT INITIAL.
+      ASSIGN mr_out->* TO <tab>.
+      DATA(lv_name) = to_upper( sort_field ).
+      TRY.
+          IF descending = abap_true.
+            SORT <tab> BY (lv_name) DESCENDING.
+          ELSE.
+            SORT <tab> BY (lv_name) ASCENDING.
+          ENDIF.
+        CATCH cx_root ##NO_HANDLER.
+          " no column of that name: the caller's order stays
+      ENDTRY.
+    ENDIF.
+
     " the sorting of the layout - point it at the table again first: the
     " draft restores the layout's own reference as one to a copy
     mo_layout->sort( no_selkz_sort = abap_true

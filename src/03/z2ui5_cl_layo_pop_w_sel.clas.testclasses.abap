@@ -41,6 +41,7 @@ CLASS ltcl_pop_w_sel DEFINITION FINAL FOR TESTING
     METHODS single_row_pressed FOR TESTING.
     METHODS single_selection_replaced FOR TESTING.
     METHODS elementary_line FOR TESTING.
+    METHODS sort_field_honoured FOR TESTING.
 ENDCLASS.
 
 
@@ -137,6 +138,28 @@ CLASS ltcl_pop_w_sel IMPLEMENTATION.
     cl_abap_unit_assert=>assert_initial( <table> ).
     ASSIGN result-row->* TO <row>.
     cl_abap_unit_assert=>assert_subrc( ).
+
+  ENDMETHOD.
+
+  METHOD sort_field_honoured.
+
+    FIELD-SYMBOLS <out> TYPE STANDARD TABLE.
+
+    " i_sort_field and i_descending were stored and never used
+    DATA(cut) = new_cut( tab     = rows( )
+                         columns = VALUE #( ( `PRODUCT` ) ( `QUANTITY` ) ) ).
+    cut->sort_field = `quantity`.
+    cut->descending = abap_true.
+    cut->set_output_table( ).
+    cut->sort_output_table( ).
+
+    ASSIGN cut->mr_out->* TO <out>.
+    ASSIGN <out>[ 1 ] TO FIELD-SYMBOL(<first>).
+    cl_abap_unit_assert=>assert_subrc( ).
+    ASSIGN COMPONENT `PRODUCT` OF STRUCTURE <first> TO FIELD-SYMBOL(<product>).
+    cl_abap_unit_assert=>assert_subrc( ).
+    cl_abap_unit_assert=>assert_equals( exp = `Lamp 4`
+                                        act = <product> ).
 
   ENDMETHOD.
 
