@@ -93,6 +93,9 @@ CLASS z2ui5_cl_layo_pop DEFINITION
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_ui5_view_builder.
 
+    "! @parameter open_layout | abap_true: the popup starts on the Select tab
+    "! @parameter delete_layout | abap_true: the popup starts on the Delete
+    "!   tab; without either it starts on Edit
     CLASS-METHODS factory
       IMPORTING
         !layout       TYPE REF TO z2ui5_cl_layo_manager
@@ -202,7 +205,15 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     IF client->check_on_init( ).
       on_init( ).
       init_edit( ).
-      render_edit( ).
+      IF mv_open = abap_true.
+        get_layouts( ).
+        render_open( ).
+      ELSEIF mv_delete = abap_true.
+        get_layouts( ).
+        render_delete( ).
+      ELSE.
+        render_edit( ).
+      ENDIF.
     ELSEIF client->check_on_navigated( ).
       " a restored draft - nothing of the popup is on screen any more
       init_edit( ).
