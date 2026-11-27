@@ -105,6 +105,7 @@ CLASS ltcl_xml_builder DEFINITION FINAL FOR TESTING
     METHODS own_structures FOR TESTING.
     METHODS sub_col_controls FOR TESTING.
     METHODS table_without_toolbar FOR TESTING.
+    METHODS grid_span_beside_ref_field FOR TESTING.
 
     DATA mo_app    TYPE REF TO ltcl_app.
     DATA mi_client TYPE REF TO z2ui5_if_client.
@@ -528,6 +529,25 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
         act = xml ).
     " without i_sub_col_controls a control column shows the control only
     cl_abap_unit_assert=>assert_false( xsdbool( xml CS `<VBox` ) ).
+
+  ENDMETHOD.
+
+  METHOD grid_span_beside_ref_field.
+
+    " a value span the reference field takes up completely is still a span
+    " of 1 - XL0 or S0 is none the grid takes
+    DATA(position) = VALUE z2ui5_cl_layo_manager=>ty_s_positions( reference_field = `WAERS`
+                                                                  grid_value_xl   = `1`
+                                                                  grid_value_l    = `4`
+                                                                  grid_value_m    = `1`
+                                                                  grid_value_s    = `2` ).
+
+    DATA(grid_layout) = z2ui5_cl_layo_xml_builder=>get_grid_layout( REF #( position ) ).
+
+    cl_abap_unit_assert=>assert_equals( exp = `XL1 L3 M1 S1`
+                                        act = grid_layout-value ).
+    cl_abap_unit_assert=>assert_equals( exp = `XL1 L1 M1 S2`
+                                        act = grid_layout-ref_field ).
 
   ENDMETHOD.
 

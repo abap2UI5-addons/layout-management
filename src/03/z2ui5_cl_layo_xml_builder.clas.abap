@@ -352,6 +352,16 @@ CLASS z2ui5_cl_layo_xml_builder DEFINITION
       RETURNING
         VALUE(result) TYPE ty_s_grid_layout.
 
+    "! the span of a value beside its reference field: what the reference
+    "! field leaves of the span, but at least 1 - XL0 or S-1 is no span, and
+    "! the form failed on it
+    CLASS-METHODS get_value_span
+      IMPORTING
+        span          TYPE i
+        ref_size      TYPE i
+      RETURNING
+        VALUE(result) TYPE i.
+
     "! Attach the grid layout to one form element.
     "!
     "! @parameter i_xml | the ELEMENT to decorate, not its container. It used to
@@ -476,7 +486,13 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
       set_layout_for_element( i_xml = label
                               span  = grid_layout-label ).
 
-      IF layout->rollname CP `*_XML_S_ICON`.
+      " the controls of a field, each in a box that carries the visibility
+      " and the span of the value
+      IF    layout->rollname CP `*_XML_S_ICON`
+         OR layout->rollname CP `*_XML_S_PROGRESSIND`
+         OR layout->rollname CP `*_XML_S_GENERICTAG`
+         OR layout->rollname CP `*_XML_S_STATUSIND`
+         OR layout->rollname CP `*_XML_S_RADIALCHART`.
 
         DATA(hbox) = form->ele( `HBox`
                          )->a( n = `renderType` v = `Bare`
@@ -487,74 +503,32 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
         set_layout_for_element( i_xml = hbox
                                 span  = grid_layout-value ).
 
-        xml_build_icon( i_layout = layout
-                        i_data   = i_data
-                        i_client = i_client
-                        i_xml    = hbox ).
-
-      ELSEIF layout->rollname CP `*_XML_S_PROGRESSIND`.
-
-        hbox = form->ele( `HBox`
-                   )->a( n = `renderType` v = `Bare`
-                   )->a( n = `visible` v = i_client->_bind( val       = layout->visible
-                                                         tab       = i_layout->ms_layout-t_layout
-                                                         tab_index = lv_index ) ).
-
-        set_layout_for_element( i_xml = hbox
-                                span  = grid_layout-value ).
-
-        xml_build_progress_indicator( i_layout = layout
-                                      i_data   = i_data
+        IF layout->rollname CP `*_XML_S_ICON`.
+          xml_build_icon( i_layout = layout
+                          i_data   = i_data
+                          i_client = i_client
+                          i_xml    = hbox ).
+        ELSEIF layout->rollname CP `*_XML_S_PROGRESSIND`.
+          xml_build_progress_indicator( i_layout = layout
+                                        i_data   = i_data
+                                        i_client = i_client
+                                        i_xml    = hbox ).
+        ELSEIF layout->rollname CP `*_XML_S_GENERICTAG`.
+          xml_build_generic_tag( i_layout = layout
+                                 i_data   = i_data
+                                 i_client = i_client
+                                 i_xml    = hbox ).
+        ELSEIF layout->rollname CP `*_XML_S_STATUSIND`.
+          xml_build_status_indicator( i_data   = i_data
                                       i_client = i_client
+                                      i_layout = layout
                                       i_xml    = hbox ).
-
-      ELSEIF layout->rollname CP `*_XML_S_GENERICTAG`.
-
-        hbox = form->ele( `HBox`
-                   )->a( n = `renderType` v = `Bare`
-                   )->a( n = `visible` v = i_client->_bind( val       = layout->visible
-                                                         tab       = i_layout->ms_layout-t_layout
-                                                         tab_index = lv_index ) ).
-
-        set_layout_for_element( i_xml = hbox
-                                span  = grid_layout-value ).
-
-        xml_build_generic_tag( i_layout = layout
-                               i_data   = i_data
-                               i_client = i_client
-                               i_xml    = hbox ).
-
-      ELSEIF layout->rollname CP `*_XML_S_STATUSIND`.
-
-        hbox = form->ele( `HBox`
-                   )->a( n = `renderType` v = `Bare`
-                   )->a( n = `visible` v = i_client->_bind( val       = layout->visible
-                                                         tab       = i_layout->ms_layout-t_layout
-                                                         tab_index = lv_index ) ).
-
-        set_layout_for_element( i_xml = hbox
-                                span  = grid_layout-value ).
-
-        xml_build_status_indicator( i_data   = i_data
-                                    i_client = i_client
-                                    i_layout = layout
-                                    i_xml    = hbox ).
-
-      ELSEIF layout->rollname CP `*_XML_S_RADIALCHART`.
-
-        hbox = form->ele( `HBox`
-                   )->a( n = `renderType` v = `Bare`
-                   )->a( n = `visible` v = i_client->_bind( val       = layout->visible
-                                                         tab       = i_layout->ms_layout-t_layout
-                                                         tab_index = lv_index ) ).
-
-        set_layout_for_element( i_xml = hbox
-                                span  = grid_layout-value ).
-
-        xml_build_radial_microchart( i_data   = i_data
-                                     i_client = i_client
-                                     i_layout = layout
-                                     i_xml    = hbox ).
+        ELSE.
+          xml_build_radial_microchart( i_data   = i_data
+                                       i_client = i_client
+                                       i_layout = layout
+                                       i_xml    = hbox ).
+        ENDIF.
 
       ELSE.
 
@@ -616,6 +590,15 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
+  METHOD get_value_span.
+
+    result = span - ref_size.
+    IF result < 1.
+      result = 1.
+    ENDIF.
+
+  ENDMETHOD.
+
   METHOD get_grid_layout.
 
     IF layout->grid_label_xl > 0.
@@ -654,16 +637,20 @@ CLASS z2ui5_cl_layo_xml_builder IMPLEMENTATION.
     ENDIF.
 
     IF layout->grid_value_xl > 0.
-      DATA(value_xl) = |XL{ layout->grid_value_xl - ref_size }|.
+      DATA(value_xl) = |XL{ get_value_span( span     = CONV #( layout->grid_value_xl )
+                                            ref_size = ref_size ) }|.
     ENDIF.
     IF layout->grid_value_l > 0.
-      DATA(value_l) = |L{ layout->grid_value_l - ref_size }|.
+      DATA(value_l) = |L{ get_value_span( span     = CONV #( layout->grid_value_l )
+                                          ref_size = ref_size ) }|.
     ENDIF.
     IF layout->grid_value_m > 0.
-      DATA(value_m) = |M{ layout->grid_value_m - ref_size }|.
+      DATA(value_m) = |M{ get_value_span( span     = CONV #( layout->grid_value_m )
+                                          ref_size = ref_size ) }|.
     ENDIF.
     IF layout->grid_value_s > 0.
-      DATA(value_s) = |S{ layout->grid_value_s - ref_size_s }|.
+      DATA(value_s) = |S{ get_value_span( span     = CONV #( layout->grid_value_s )
+                                          ref_size = ref_size_s ) }|.
     ENDIF.
 
     IF value_xl IS NOT INITIAL.

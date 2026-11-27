@@ -141,6 +141,15 @@ CLASS z2ui5_cl_layo_pop DEFINITION
     METHODS edit_okay.
     METHODS search.
 
+    "! one span of the grid layout popup: a combo box of 1 to 12 bound to
+    "! bind, after a label when one is given
+    METHODS render_grid_span
+      IMPORTING
+        !form TYPE REF TO z2ui5_cl_ui5_view_builder
+        label TYPE string OPTIONAL
+        bind  TYPE string
+        !text TYPE string.
+
 ENDCLASS.
 
 
@@ -696,9 +705,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                                    uname         = user ).
 
     " A shared layout (no user) is offered to, and loaded as default by,
-    " every user of the app: saving one needs an authorization the addon
-    " cannot decide itself - z2ui5_if_layo_auth does, and without an
-    " implementation in the system the shipped default denies it
+    " every user of the app: whether a user may save one is
+    " z2ui5_if_layo_auth's decision. The shipped default allows it, as
+    " before the hook existed; a system that wants to restrict shared
+    " layouts implements the interface with its own authorization object
     DATA(action) = COND string( WHEN head-uname IS INITIAL
                                 THEN z2ui5_if_layo_auth=>cs_action-save_shared
                                 ELSE z2ui5_if_layo_auth=>cs_action-save_own ).
@@ -1114,8 +1124,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     " The head - owner and handles - comes from the database, not from the
     " bound list the browser sends back. Whether the user may delete it is
     " z2ui5_if_layo_auth's decision: the shipped default allows a user to
-    " delete his own layouts and nothing else; an implementation in the
-    " system may let an administrator remove shared layouts as well
+    " delete his own layouts and the shared ones, never another user's
+    " personal layout; an implementation in the system may restrict the
+    " shared ones to an administrator
     SELECT SINGLE * FROM z2ui5_t_11
       WHERE guid = @head-guid
       INTO @DATA(head_db).
@@ -1356,15 +1367,15 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     CLEAR mv_rerender.
 
-    " Sequence and SubCols need rerendering
+    " Sequence and SubCols need rerendering. A row is found by its
+    " component, not by its guid: saving as a new layout gives every
+    " position the guid of the new head, and no row matched any more
     LOOP AT mo_layout->ms_layout-t_layout INTO DATA(layout).
 
-      IF NOT line_exists( mo_layout->ms_layout_tmp-t_layout[ guid     = layout-guid
-                                                             pos_guid = layout-pos_guid ] ).
+      IF NOT line_exists( mo_layout->ms_layout_tmp-t_layout[ fname = layout-fname ] ).
         CONTINUE.
       ENDIF.
-      DATA(layout_tmp) = mo_layout->ms_layout_tmp-t_layout[ guid     = layout-guid
-                                                            pos_guid = layout-pos_guid ].
+      DATA(layout_tmp) = mo_layout->ms_layout_tmp-t_layout[ fname = layout-fname ].
 
       IF layout-alternative_text <> layout_tmp-alternative_text.
         mv_rerender = abap_true.
@@ -1521,77 +1532,37 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                      )->a( n = `title` v = `Define Label and Value Span`
                      )->ele( n = `content` ns = `form` ).
 
-    form->tag( `Label`
-        )->a( n = `text` v = `XL`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_xl_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
+    render_grid_span( form  = form
+                      label = `XL`
+                      bind  = client->_bind( mv_xl_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_xl_value )
+                      text = `Value Span` ).
 
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_xl_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
+    render_grid_span( form  = form
+                      label = `L`
+                      bind  = client->_bind( mv_l_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_l_value )
+                      text = `Value Span` ).
 
-    form->tag( `Label`
-        )->a( n = `text` v = `L`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_l_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
+    render_grid_span( form  = form
+                      label = `M`
+                      bind  = client->_bind( mv_m_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_m_value )
+                      text = `Value Span` ).
 
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_l_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
-
-    form->tag( `Label`
-        )->a( n = `text` v = `M`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_m_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
-
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_m_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
-
-    form->tag( `Label`
-        )->a( n = `text` v = `S`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_s_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
-
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_s_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
+    render_grid_span( form  = form
+                      label = `S`
+                      bind  = client->_bind( mv_s_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_s_value )
+                      text = `Value Span` ).
 
     lo_popup->ele( `buttons`
         )->tag( `Button`
@@ -1603,6 +1574,23 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         )->a( n = `type` v = `Emphasized` ).
 
     client->popup_display( lo_popup->stringify( ) ).
+
+  ENDMETHOD.
+
+  METHOD render_grid_span.
+
+    IF label IS NOT INITIAL.
+      form->tag( `Label`
+          )->a( n = `text` v = label ).
+    ENDIF.
+
+    form->ele( `ComboBox`
+        )->a( n = `selectedKey` v = bind
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = `{COL}`
+        )->a( n = `text` v = |\{COL\} { text }| ).
 
   ENDMETHOD.
 

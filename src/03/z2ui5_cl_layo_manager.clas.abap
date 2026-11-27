@@ -417,7 +417,6 @@ CLASS z2ui5_cl_layo_manager DEFINITION
 
     CLASS-METHODS create_layout_obj
       IMPORTING
-        layout_guid   TYPE clike       OPTIONAL
         !data         TYPE REF TO data OPTIONAL
         !control      TYPE clike       OPTIONAL
         handle01      TYPE clike       OPTIONAL
@@ -434,7 +433,6 @@ CLASS z2ui5_cl_layo_manager DEFINITION
         handle03      TYPE clike
         handle02      TYPE clike
         handle01      TYPE clike
-        layout_guid   TYPE clike
         !format       TYPE clike OPTIONAL
         head          TYPE  ty_t_head
       RETURNING
@@ -591,13 +589,12 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
                                     handle03 = ms_layout-s_head-handle03
                                     handle04 = ms_layout-s_head-handle04 ).
 
-    DATA(ls_def) = get_default_layout( handle04    = ms_layout-s_head-handle04
-                                       handle03    = ms_layout-s_head-handle03
-                                       handle02    = ms_layout-s_head-handle02
-                                       handle01    = ms_layout-s_head-handle01
-                                       layout_guid = ``
-                                       format      = ms_layout-s_head-screen_format
-                                       head        = lt_head ).
+    DATA(ls_def) = get_default_layout( handle04 = ms_layout-s_head-handle04
+                                       handle03 = ms_layout-s_head-handle03
+                                       handle02 = ms_layout-s_head-handle02
+                                       handle01 = ms_layout-s_head-handle01
+                                       format   = ms_layout-s_head-screen_format
+                                       head     = lt_head ).
 
     IF ls_def-layout IS NOT INITIAL.
       ms_layout-s_head = ls_def.
@@ -839,7 +836,15 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     result = layout.
 
-    LOOP AT result REFERENCE INTO DATA(line) WHERE subcolumn IS NOT INITIAL.
+    " every row anew from its SUBCOLUMN - factory_by_guid( ) merges the saved
+    " positions into the rows of the layout shown before, and a row without
+    " subcolumns kept the subcolumns of that layout
+    LOOP AT result REFERENCE INTO DATA(line).
+
+      CLEAR line->t_sub_col.
+      IF line->subcolumn IS INITIAL.
+        CONTINUE.
+      ENDIF.
 
       SPLIT line->subcolumn AT ` ` INTO TABLE DATA(tab).
 
@@ -961,21 +966,19 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
     DELETE t_comp WHERE type->type_kind = cl_abap_elemdescr=>typekind_oref.
 
     " Select Layout Heads
-    DATA(head) = select_layouts( layout_guid = layout_guid
-                                 control     = control
-                                 handle01    = handle01
-                                 handle02    = handle02
-                                 handle03    = handle03
-                                 handle04    = handle04
-                                 format      = format  ).
+    DATA(head) = select_layouts( control  = control
+                                 handle01 = handle01
+                                 handle02 = handle02
+                                 handle03 = handle03
+                                 handle04 = handle04
+                                 format   = format  ).
 
-    DATA(def) = get_default_layout( handle04    = handle04
-                                    handle03    = handle03
-                                    handle02    = handle02
-                                    handle01    = handle01
-                                    layout_guid = layout_guid
-                                    format      = format
-                                    head        = head ).
+    DATA(def) = get_default_layout( handle04 = handle04
+                                    handle03 = handle03
+                                    handle02 = handle02
+                                    handle01 = handle01
+                                    format   = format
+                                    head     = head ).
 
     IF def-layout IS NOT INITIAL.
 
@@ -1104,7 +1107,7 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
   METHOD get_default_layout.
 
-    IF head IS INITIAL OR layout_guid IS NOT INITIAL.
+    IF head IS INITIAL.
       RETURN.
     ENDIF.
 
@@ -1392,12 +1395,17 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
   METHOD convert.
 
-    z2ui5_cl_layo_context=>conv_exit(
-      EXPORTING
-        convexit = i_layout-convexit
-        output   = i_output
-      CHANGING
-        value    = c_value ).
+    " a value the exit refuses, or an exit the system does not have, leaves
+    " the cell as it is - one odd cell must not end the whole table
+    TRY.
+        z2ui5_cl_layo_context=>conv_exit(
+          EXPORTING
+            convexit = i_layout-convexit
+            output   = i_output
+          CHANGING
+            value    = c_value ).
+      CATCH z2ui5_cx_layo_error ##NO_HANDLER.
+    ENDTRY.
 
   ENDMETHOD.
 
