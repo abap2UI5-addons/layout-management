@@ -93,6 +93,9 @@ CLASS z2ui5_cl_layo_pop DEFINITION
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_ui5_view_builder.
 
+    "! @parameter open_layout | abap_true: the popup starts on the Select tab
+    "! @parameter delete_layout | abap_true: the popup starts on the Delete
+    "!   tab; without either it starts on Edit
     CLASS-METHODS factory
       IMPORTING
         !layout       TYPE REF TO z2ui5_cl_layo_manager
@@ -132,9 +135,20 @@ CLASS z2ui5_cl_layo_pop DEFINITION
 
     METHODS render_open.
 
+    "! the layout selected in mt_head - read again from the layouts the list
+    "! offers (select_layouts( ) for this layout's control, handles and
+    "! screen format), since mt_head is bound to the browser and a GUID in
+    "! it is only what the browser sent; initial when nothing is selected or
+    "! the selected layout is not offered (any more)
     METHODS get_selected_layout
       RETURNING
         VALUE(result) TYPE ty_s_layo.
+
+    "! the layouts the Select and Delete tabs offer - the user's own and the
+    "! shared ones of this layout's control, handles and screen format
+    METHODS select_offered_layouts
+      RETURNING
+        VALUE(result) TYPE ty_t_layo.
 
     METHODS delete_selected_layout
       IMPORTING
@@ -142,9 +156,13 @@ CLASS z2ui5_cl_layo_pop DEFINITION
       RETURNING
         VALUE(result) TYPE abap_bool.
 
+    "! result: abap_false when the layout was deleted meanwhile - the
+    "! current one stays
     METHODS set_selected_layout
       IMPORTING
-        head TYPE ty_s_layo.
+        head          TYPE ty_s_layo
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 
     METHODS check_width_unit
       IMPORTING
@@ -187,7 +205,15 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     IF client->check_on_init( ).
       on_init( ).
       init_edit( ).
-      render_edit( ).
+      IF mv_open = abap_true.
+        get_layouts( ).
+        render_open( ).
+      ELSEIF mv_delete = abap_true.
+        get_layouts( ).
+        render_delete( ).
+      ELSE.
+        render_edit( ).
+      ENDIF.
     ELSEIF client->check_on_navigated( ).
       " a restored draft - nothing of the popup is on screen any more
       init_edit( ).
@@ -507,17 +533,30 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         " layout without head - no control, no handles, nothing to save to
         DATA(selected) = get_selected_layout( ).
         IF selected-guid IS INITIAL.
-          client->message_toast_display( 'No layout selected.' ).
+          IF line_exists( mt_head[ selkz = abap_true ] ).
+            " a row is selected, but the list does not offer it (any more):
+            " deleted meanwhile in another session - or a GUID the browser
+            " made up. The list again, as it is now
+            client->message_toast_display( 'Layout no longer exists.' ).
+            get_layouts( ).
+            render_open( ).
+          ELSE.
+            client->message_toast_display( 'No layout selected.' ).
+          ENDIF.
           RETURN.
         ENDIF.
 
-        set_selected_layout( selected ).
+        IF set_selected_layout( selected ) = abap_false.
+          get_layouts( ).
+          render_open( ).
+          RETURN.
+        ENDIF.
 
         mv_rerender = abap_true.
 
         client->popup_destroy( ).
 
-        client->nav_app_leave( ).
+        client->nav_app_leave( keep_messages = abap_true ).
 
       WHEN 'DELETE_SELECT'.
 
@@ -572,7 +611,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     client->popup_destroy( ).
 
-    client->nav_app_leave( ).
+    " keep_messages: the toast of save_layout( ) - `Data saved.` - is shown
+    " in the app; without it the leave drops everything this app queued
+    client->nav_app_leave( keep_messages = abap_true ).
 
   ENDMETHOD.
 
@@ -1039,7 +1080,28 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD get_selected_layout.
 
-    result = VALUE #( mt_head[ selkz = abap_true ] OPTIONAL ).
+    ASSIGN mt_head[ selkz = abap_true ] TO FIELD-SYMBOL(<selected>).
+    IF <selected> IS NOT ASSIGNED OR <selected>-guid IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    DATA(lt_offered) = select_offered_layouts( ).
+    ASSIGN lt_offered[ guid = <selected>-guid ] TO FIELD-SYMBOL(<offered>).
+    IF <offered> IS ASSIGNED.
+      result = <offered>.
+      result-selkz = abap_true.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD select_offered_layouts.
+
+    result = z2ui5_cl_layo_manager=>select_layouts( control  = mo_layout->ms_layout-s_head-control
+                                                    handle01 = mo_layout->ms_layout-s_head-handle01
+                                                    handle02 = mo_layout->ms_layout-s_head-handle02
+                                                    handle03 = mo_layout->ms_layout-s_head-handle03
+                                                    handle04 = mo_layout->ms_layout-s_head-handle04
+                                                    format   = mo_layout->ms_layout-s_head-screen_format ).
 
   ENDMETHOD.
 
@@ -1057,6 +1119,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       client->message_toast_display( 'Layout no longer exists.' ).
       RETURN.
     ENDIF.
+    result = abap_true.
 
     " the layout opened is the app's layout from now on - it sorts, converts
     " and selects the same table, which factory_by_guid( ) does not know
@@ -1070,12 +1133,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD get_layouts.
 
-    mt_head = z2ui5_cl_layo_manager=>select_layouts( control  = mo_layout->ms_layout-s_head-control
-                                                     handle01 = mo_layout->ms_layout-s_head-handle01
-                                                     handle02 = mo_layout->ms_layout-s_head-handle02
-                                                     handle03 = mo_layout->ms_layout-s_head-handle03
-                                                     handle04 = mo_layout->ms_layout-s_head-handle04
-                                                     format   = mo_layout->ms_layout-s_head-screen_format ).
+    mt_head = select_offered_layouts( ).
 
     IF mt_head IS INITIAL.
       RETURN.
