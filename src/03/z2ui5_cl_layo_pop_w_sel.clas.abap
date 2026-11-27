@@ -17,6 +17,9 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
+    "! the caller's table - until the popup has started: it is cleared once
+    "! mr_out and mr_out_tmp are built from it, since every attribute is
+    "! written to the draft on every roundtrip and nothing reads it later
     DATA mr_tab          TYPE REF TO data.
     "! the rows on screen: those of mr_tab with ZZROW_ID and ZZSELKZ in front,
     "! filtered by the search and sorted by the layout
@@ -323,7 +326,9 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     IF client->check_on_init( ).
       set_output_table( ).
+      " after this the layout sorts mr_out - mr_tab is read by nothing more
       sort_output_table( ).
+      CLEAR mr_tab.
       render_main( ).
     ELSEIF client->check_on_navigated( ).
       on_after_layout( ).
