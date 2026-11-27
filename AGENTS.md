@@ -90,8 +90,11 @@ pinned by commit in the `uses:` lines and moved by `bump-deps`):
   way abap2UI5 tests itself: `npm run unit` (`.github/scripts/unit.mjs`)
   copies the packages into a checkout of abap2UI5 at the release pin (`main`
   in the weekly canary), downports, transpiles and runs the tests of this
-  repository's classes - and `rename`, the namespace-rename check (`npm run
-  rename`, `.github/scripts/rename.mjs`)
+  repository's classes - `rename`, the namespace-rename check (`npm run
+  rename`, `.github/scripts/rename.mjs`), and `npm run check:702`, the 7.02
+  gate of a pull request: `.github/scripts/check-702.sh` downports a scratch
+  copy of `src/` in `build/702` and lints it with
+  `.github/abaplint/abap_702.jsonc` (`src/` itself is never rewritten)
 * `ci-702` — writes the downported `702` branch on every push to `main`
   (`npm run auto_downport`: `abaplint --fix` against
   `.github/abaplint/abap_702.jsonc`) and lints it
