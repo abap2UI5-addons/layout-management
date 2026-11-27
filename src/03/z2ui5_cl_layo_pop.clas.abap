@@ -64,19 +64,20 @@ CLASS z2ui5_cl_layo_pop DEFINITION
     "! layout the user arranged or chose there, when it is that layout - the
     "! same control and handles (z2ui5_cl_layo_manager=&gt;is_same_layout( )).
     "! Call it for every layout of the app on the roundtrip on which
-    "! check_on_navigated( ) is true; on any other return (a first start, a
-    "! restored draft, a return from another app) it does nothing:
+    "! check_on_navigated( ) is true:
     "!
     "!     ELSEIF client-&gt;check_on_navigated( ).
-    "!       IF z2ui5_cl_layo_pop=&gt;take_over( client = client layout = mo_layout ) = abap_true
-    "!           OR client-&gt;check_on_nav_back( ) = abap_false.
+    "!       IF z2ui5_cl_layo_pop=&gt;take_over( client = client layout = mo_layout ) = abap_true.
     "!         render_main( ).
     "!       ENDIF.
     "!
-    "! result: abap_true when the layout was taken over AND the popup changed
-    "! what the view is built from (subcolumns, ...), so the view has to be
-    "! rendered again; abap_false when nothing was taken over or the changed
-    "! model alone shows the change
+    "! result: abap_true when the app has to render its view again - the
+    "! roundtrip is no return from the layout popup (a first start, a
+    "! restored draft, a return from another app), or the popup changed
+    "! what the view is built from (subcolumns, ...); abap_false on the
+    "! return from the layout popup when the changed model alone shows the
+    "! change, or when the popup was opened for another layout of the app.
+    "! Always abap_false when check_on_navigated( ) is not true
     CLASS-METHODS take_over
       IMPORTING
         !client       TYPE REF TO z2ui5_if_client
@@ -1141,17 +1142,20 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     DATA lo_popup TYPE REF TO z2ui5_cl_layo_pop.
 
-    IF layout IS NOT BOUND OR client->check_on_nav_back( ) = abap_false.
+    IF layout IS NOT BOUND OR client->check_on_navigated( ) = abap_false.
       RETURN.
     ENDIF.
 
-    " back from another app than the layout popup
+    " no return from the layout popup: on a first start or a restored draft
+    " get_app_prev( ) is the app itself, after another app that app
     TRY.
         lo_popup ?= client->get_app_prev( ).
       CATCH cx_sy_move_cast_error.
+        result = abap_true.
         RETURN.
     ENDTRY.
 
+    " the popup was opened for another layout of the app
     IF layout->is_same_layout( lo_popup->mo_layout ) = abap_false.
       RETURN.
     ENDIF.

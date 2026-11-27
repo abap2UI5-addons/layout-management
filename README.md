@@ -122,9 +122,10 @@ ENDMETHOD.
   the app class and the table name.
 - `z2ui5_cl_layo_pop=>take_over( )` copies the layout back from the popup
   when it is the layout passed (same control and handles), so an app with a
-  form and a table layout calls it for both. It returns `abap_true` when the popup
-  changed what the view is built from (subcolumns) and the view has to be
-  rendered again; otherwise the changed model alone shows the change
+  form and a table layout calls it for both. It returns `abap_true` when the
+  view has to be rendered again: the popup changed what the view is built
+  from (subcolumns), or the roundtrip is no return from the popup at all (a
+  restored draft); otherwise the changed model alone shows the change
   (samples 02 to 05).
 
 The samples below are complete apps, `z2ui5_cl_layo_sample_03` is the table
@@ -323,14 +324,15 @@ client->nav_app_call( z2ui5_cl_layo_pop_w_sel=>factory( i_tab         = mt_tab
                                                         i_title       = `Select Products`
                                                         i_multiselect = abap_true ) ).
 
-" back in the app - check_on_nav_back( ) is true only on the return from
-" the popup, so get_app_prev( ) is the popup there
-IF client->check_on_nav_back( ).
-  DATA(result) = CAST z2ui5_cl_layo_pop_w_sel( client->get_app_prev( ) )->result( ).
-  IF result-check_confirmed = abap_true.
-    ASSIGN result-table->* TO <selected>.   " a table of the type of mt_tab
-  ENDIF.
-ENDIF.
+" back in check_on_navigated( ) - catch only the cast: on a restored draft
+" get_app_prev( ) is the app itself
+TRY.
+    DATA(result) = CAST z2ui5_cl_layo_pop_w_sel( client->get_app_prev( ) )->result( ).
+    IF result-check_confirmed = abap_true.
+      ASSIGN result-table->* TO <selected>.   " a table of the type of mt_tab
+    ENDIF.
+  CATCH cx_sy_move_cast_error.
+ENDTRY.
 ```
 
 - `result-table` holds the selected rows in the order of `i_tab`,

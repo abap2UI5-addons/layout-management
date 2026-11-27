@@ -156,13 +156,13 @@ CLASS z2ui5_cl_layo_sample_05 IMPLEMENTATION.
     " only when the popup changed what the view is built from (e.g.
     " subcolumns) - for all other changes the changed model is enough, the
     " framework sends it by itself. Not back from the layout popup (e.g. a
-    " restored draft): the view still has to be displayed
+    " restored draft): take_over( ) asks for the view to be displayed too
     DATA(lv_rerender) = z2ui5_cl_layo_pop=>take_over( client = client layout = mo_layout ).
     IF z2ui5_cl_layo_pop=>take_over( client = client layout = mo_table_layout ) = abap_true.
       lv_rerender = abap_true.
     ENDIF.
 
-    IF lv_rerender = abap_true OR client->check_on_nav_back( ) = abap_false.
+    IF lv_rerender = abap_true.
       render_main( ).
     ENDIF.
 
