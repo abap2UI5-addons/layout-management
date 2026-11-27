@@ -696,9 +696,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                                    uname         = user ).
 
     " A shared layout (no user) is offered to, and loaded as default by,
-    " every user of the app: saving one needs an authorization the addon
-    " cannot decide itself - z2ui5_if_layo_auth does, and without an
-    " implementation in the system the shipped default denies it
+    " every user of the app: whether a user may save one is
+    " z2ui5_if_layo_auth's decision. The shipped default allows it, as
+    " before the hook existed; a system that wants to restrict shared
+    " layouts implements the interface with its own authorization object
     DATA(action) = COND string( WHEN head-uname IS INITIAL
                                 THEN z2ui5_if_layo_auth=>cs_action-save_shared
                                 ELSE z2ui5_if_layo_auth=>cs_action-save_own ).
@@ -1114,8 +1115,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     " The head - owner and handles - comes from the database, not from the
     " bound list the browser sends back. Whether the user may delete it is
     " z2ui5_if_layo_auth's decision: the shipped default allows a user to
-    " delete his own layouts and nothing else; an implementation in the
-    " system may let an administrator remove shared layouts as well
+    " delete his own layouts and the shared ones, never another user's
+    " personal layout; an implementation in the system may restrict the
+    " shared ones to an administrator
     SELECT SINGLE * FROM z2ui5_t_11
       WHERE guid = @head-guid
       INTO @DATA(head_db).
