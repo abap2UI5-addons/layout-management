@@ -1356,15 +1356,15 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     CLEAR mv_rerender.
 
-    " Sequence and SubCols need rerendering
+    " Sequence and SubCols need rerendering. A row is found by its
+    " component, not by its guid: saving as a new layout gives every
+    " position the guid of the new head, and no row matched any more
     LOOP AT mo_layout->ms_layout-t_layout INTO DATA(layout).
 
-      IF NOT line_exists( mo_layout->ms_layout_tmp-t_layout[ guid     = layout-guid
-                                                             pos_guid = layout-pos_guid ] ).
+      IF NOT line_exists( mo_layout->ms_layout_tmp-t_layout[ fname = layout-fname ] ).
         CONTINUE.
       ENDIF.
-      DATA(layout_tmp) = mo_layout->ms_layout_tmp-t_layout[ guid     = layout-guid
-                                                            pos_guid = layout-pos_guid ].
+      DATA(layout_tmp) = mo_layout->ms_layout_tmp-t_layout[ fname = layout-fname ].
 
       IF layout-alternative_text <> layout_tmp-alternative_text.
         mv_rerender = abap_true.
