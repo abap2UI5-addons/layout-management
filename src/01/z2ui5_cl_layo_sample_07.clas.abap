@@ -86,20 +86,19 @@ CLASS z2ui5_cl_layo_sample_07 IMPLEMENTATION.
 
     FIELD-SYMBOLS <table> TYPE ty_t_row.
 
-    TRY.
-        DATA(ls_result) = CAST z2ui5_cl_layo_pop_w_sel( client->get_app_prev( ) )->result( ).
+    " true only on the way back from the popup - not on a restored draft,
+    " where get_app_prev( ) is no popup; the view is shown again either way
+    IF client->check_on_nav_back( ).
+      DATA(ls_result) = CAST z2ui5_cl_layo_pop_w_sel( client->get_app_prev( ) )->result( ).
 
-        IF ls_result-check_confirmed = abap_false.
-          client->message_toast_display( `Popup was cancelled` ).
-        ELSE.
-          ASSIGN ls_result-table->* TO <table>.
-          mt_selected = <table>.
-          client->message_toast_display( |{ lines( mt_selected ) } rows selected| ).
-        ENDIF.
-
-      CATCH cx_root ##NO_HANDLER.
-        " not back from the popup (e.g. a restored draft) - show the view again
-    ENDTRY.
+      IF ls_result-check_confirmed = abap_false.
+        client->message_toast_display( `Popup was cancelled` ).
+      ELSE.
+        ASSIGN ls_result-table->* TO <table>.
+        mt_selected = <table>.
+        client->message_toast_display( |{ lines( mt_selected ) } rows selected| ).
+      ENDIF.
+    ENDIF.
 
     view_display( ).
 

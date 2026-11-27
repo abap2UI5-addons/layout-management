@@ -161,22 +161,15 @@ CLASS z2ui5_cl_layo_sample_02 IMPLEMENTATION.
 
   METHOD on_after_navigation.
 
-    TRY.
-
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
-        mo_layout = app->mo_layout.
-
-        IF app->mv_rerender = abap_true.
-          " subcolumns need rerendering to work ..
-          render_main( ).
-        ENDIF.
-        " for all other changes the changed model is enough - the framework
-        " sends it by itself
-      CATCH cx_root.
-        " not back from the layout popup (e.g. a restored draft) - the
-        " view still has to be displayed
-        render_main( ).
-    ENDTRY.
+    " back from the layout popup: take over the layout chosen there. Render
+    " again only when the popup changed what the view is built from (e.g.
+    " subcolumns) - for all other changes the changed model is enough, the
+    " framework sends it by itself. Not back from the layout popup (e.g. a
+    " restored draft): the view still has to be displayed
+    IF z2ui5_cl_layo_pop=>take_over( client = client layout = mo_layout ) = abap_true
+        OR client->check_on_nav_back( ) = abap_false.
+      render_main( ).
+    ENDIF.
 
   ENDMETHOD.
 

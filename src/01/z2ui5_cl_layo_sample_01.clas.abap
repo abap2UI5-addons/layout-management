@@ -183,18 +183,11 @@ CLASS z2ui5_cl_layo_sample_01 IMPLEMENTATION.
 
   METHOD on_after_navigation.
 
-    TRY.
-
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
-        mo_layout = app->mo_layout.
-
-        render_main( ).
-
-      CATCH cx_root.
-        " not back from the layout popup (e.g. a restored draft) - the
-        " view still has to be displayed
-        render_main( ).
-    ENDTRY.
+    " back from the layout popup: take over the layout chosen there; on
+    " any other navigation (e.g. a restored draft) take_over( ) does
+    " nothing - the view is displayed either way
+    z2ui5_cl_layo_pop=>take_over( client = client layout = mo_layout ).
+    render_main( ).
 
   ENDMETHOD.
 

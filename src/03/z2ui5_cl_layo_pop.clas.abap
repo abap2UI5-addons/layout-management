@@ -60,6 +60,30 @@ CLASS z2ui5_cl_layo_pop DEFINITION
         !layout TYPE REF TO z2ui5_cl_layo_manager
         !data   TYPE REF TO data OPTIONAL.
 
+    "! Back in the app from the layout popup: takes over into layout the
+    "! layout the user arranged or chose there, when it is that layout - the
+    "! same control and handles (z2ui5_cl_layo_manager=&gt;is_same_layout( )).
+    "! Call it for every layout of the app on the roundtrip on which
+    "! check_on_navigated( ) is true; on any other return (a first start, a
+    "! restored draft, a return from another app) it does nothing:
+    "!
+    "!     ELSEIF client-&gt;check_on_navigated( ).
+    "!       IF z2ui5_cl_layo_pop=&gt;take_over( client = client layout = mo_layout ) = abap_true
+    "!           OR client-&gt;check_on_nav_back( ) = abap_false.
+    "!         render_main( ).
+    "!       ENDIF.
+    "!
+    "! result: abap_true when the layout was taken over AND the popup changed
+    "! what the view is built from (subcolumns, ...), so the view has to be
+    "! rendered again; abap_false when nothing was taken over or the changed
+    "! model alone shows the change
+    CLASS-METHODS take_over
+      IMPORTING
+        !client       TYPE REF TO z2ui5_if_client
+        !layout       TYPE REF TO z2ui5_cl_layo_manager
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
     CLASS-METHODS render_layout_function
       IMPORTING
         !xml          TYPE REF TO z2ui5_cl_ui5_view_builder
@@ -1110,6 +1134,30 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     IF client->get( )-event = layout->ms_layout-s_head-guid.
       client->nav_app_call( factory( layout = layout ) ).
     ENDIF.
+
+  ENDMETHOD.
+
+  METHOD take_over.
+
+    DATA lo_popup TYPE REF TO z2ui5_cl_layo_pop.
+
+    IF layout IS NOT BOUND OR client->check_on_nav_back( ) = abap_false.
+      RETURN.
+    ENDIF.
+
+    " back from another app than the layout popup
+    TRY.
+        lo_popup ?= client->get_app_prev( ).
+      CATCH cx_sy_move_cast_error.
+        RETURN.
+    ENDTRY.
+
+    IF layout->is_same_layout( lo_popup->mo_layout ) = abap_false.
+      RETURN.
+    ENDIF.
+
+    layout->ms_layout = lo_popup->mo_layout->ms_layout.
+    result = lo_popup->mv_rerender.
 
   ENDMETHOD.
 

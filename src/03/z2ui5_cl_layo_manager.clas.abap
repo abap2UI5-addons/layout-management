@@ -183,6 +183,14 @@ CLASS z2ui5_cl_layo_manager DEFINITION
       RETURNING
         VALUE(result) TYPE string.
 
+    "! abap_true when layout is a layout of the same table, form or view as
+    "! this one: the same control and the same four handles
+    METHODS is_same_layout
+      IMPORTING
+        !layout       TYPE REF TO z2ui5_cl_layo_manager
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
     CLASS-METHODS select_layouts
       IMPORTING
         layout_guid   TYPE clike OPTIONAL
@@ -1716,6 +1724,24 @@ CLASS z2ui5_cl_layo_manager IMPLEMENTATION.
 
     IF iv_commit = abap_true.
       COMMIT WORK AND WAIT.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD is_same_layout.
+
+    IF layout IS NOT BOUND.
+      RETURN.
+    ENDIF.
+
+    " an IF, not xsdbool( ): the 7.02 downport writes the condition into one
+    " line longer than 255 characters
+    IF     ms_layout-s_head-control  = layout->ms_layout-s_head-control
+       AND ms_layout-s_head-handle01 = layout->ms_layout-s_head-handle01
+       AND ms_layout-s_head-handle02 = layout->ms_layout-s_head-handle02
+       AND ms_layout-s_head-handle03 = layout->ms_layout-s_head-handle03
+       AND ms_layout-s_head-handle04 = layout->ms_layout-s_head-handle04.
+      result = abap_true.
     ENDIF.
 
   ENDMETHOD.

@@ -218,13 +218,9 @@ CLASS z2ui5_cl_layo_sample_06 IMPLEMENTATION.
   METHOD on_navigated.
 
     " back from the layout popup: take over the chosen layout and render
-    " again - the generic mode writes it into the view
-    TRY.
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
-        mo_layout = app->mo_layout.
-      CATCH cx_root ##NO_HANDLER.
-    ENDTRY.
-
+    " again - the generic mode writes it into the view (on any other
+    " navigation take_over( ) does nothing)
+    z2ui5_cl_layo_pop=>take_over( client = client layout = mo_layout ).
     view_display( ).
 
   ENDMETHOD.
