@@ -388,7 +388,12 @@
     "static_call_via_instance": {
       "allowInTestclassIncludes": false
     },
-    "subrc_after_assign": true,
+    // the vendored z2ui5_cl_layo_context stays as abap-util ships it
+    "subrc_after_assign": {
+      "exclude": [
+        "/src/03/z2ui5_cl_layo_context\\."
+      ]
+    },
     "unnecessary_chaining": true,
     "unnecessary_return": true,
     "unused_variables": {
@@ -562,9 +567,11 @@
     },
     // the XML parser and builder (parse, get_grid_layout, xml_build_table, ...),
     // save_layout / the popup view and data_conversion / copy_layouts / set_selkz:
-    // splitting them is a refactoring, not a lint fix
+    // splitting them is a refactoring, not a lint fix. The vendored
+    // z2ui5_cl_layo_context stays as abap-util ships it (itab_filter_by_val)
     "cyclomatic_complexity": {
       "exclude": [
+        "/src/03/z2ui5_cl_layo_context\\.",
         "/src/03/z2ui5_cl_layo_xml_tree\\.",
         "/src/03/z2ui5_cl_layo_xml_builder\\.",
         "/src/03/z2ui5_cl_layo_pop\\.",
@@ -575,6 +582,7 @@
     "method_length": {
       "checkFunctionModules": true,
       "exclude": [
+        "/src/03/z2ui5_cl_layo_context\\.",
         "/src/03/z2ui5_cl_layo_xml_tree\\.",
         "/src/03/z2ui5_cl_layo_xml_builder\\.",
         "/src/03/z2ui5_cl_layo_pop\\.",
