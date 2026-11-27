@@ -26,7 +26,6 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
     DATA mr_out_tmp      TYPE REF TO data.
 
     DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
-    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder binds it, handed over as REF #( mv_search_value )
     DATA mv_search_value TYPE string.
 
     TYPES:
