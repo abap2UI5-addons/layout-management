@@ -3,9 +3,9 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>Z2UI5_CL_SEL_VAR_DB</CLSNAME>
+    <CLSNAME>Z2UI5_CL_LAYO_POP_VARREAD</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>variant - db api</DESCRIPT>
+    <DESCRIPT>popup - selection variant read</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>

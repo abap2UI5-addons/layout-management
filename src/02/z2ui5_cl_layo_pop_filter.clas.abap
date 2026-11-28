@@ -1,12 +1,22 @@
-CLASS z2ui5_cl_sel_multisel_pop DEFINITION
+CLASS z2ui5_cl_layo_pop_filter DEFINITION
   PUBLIC FINAL
   CREATE PUBLIC.
 
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
-    DATA mo_multiselect TYPE REF TO z2ui5_cl_sel_multisel.
+    DATA mo_multiselect TYPE REF TO z2ui5_cl_layo_filter.
 
+    "! the filter popup for a filter the caller keeps - no selection
+    "! variants (formerly z2ui5_cl_popup_get_ranges of abap2UI5-addons/popups)
+    CLASS-METHODS factory
+      IMPORTING
+        val             TYPE z2ui5_cl_layo_context=>ty_t_filter_multi
+      RETURNING
+        VALUE(r_result) TYPE REF TO z2ui5_cl_layo_pop_filter.
+
+    "! the filter popup for every field of a table or a structure, with
+    "! selection variants stored under the handles
     CLASS-METHODS factory_by_data
       IMPORTING
         data            TYPE any
@@ -17,7 +27,7 @@ CLASS z2ui5_cl_sel_multisel_pop DEFINITION
         var_handle3     TYPE clike     OPTIONAL
       RETURNING
         " check_db_active is not read any more - kept for callers that pass it
-        VALUE(r_result) TYPE REF TO z2ui5_cl_sel_multisel_pop ##NEEDED.
+        VALUE(r_result) TYPE REF TO z2ui5_cl_layo_pop_filter ##NEEDED.
 
     TYPES:
       BEGIN OF ty_s_result,
@@ -31,7 +41,7 @@ CLASS z2ui5_cl_sel_multisel_pop DEFINITION
 
   PROTECTED SECTION.
     DATA client     TYPE REF TO z2ui5_if_client.
-    DATA ms_variant TYPE z2ui5_cl_sel_var_db=>ty_s_db.
+    DATA ms_variant TYPE z2ui5_cl_layo_var_db=>ty_s_db.
     DATA ms_result  TYPE ty_s_result.
 
     METHODS popup_display.
@@ -42,7 +52,18 @@ CLASS z2ui5_cl_sel_multisel_pop DEFINITION
 ENDCLASS.
 
 
-CLASS z2ui5_cl_sel_multisel_pop IMPLEMENTATION.
+CLASS z2ui5_cl_layo_pop_filter IMPLEMENTATION.
+
+  METHOD factory.
+
+    r_result = NEW #( ).
+    r_result->mo_multiselect = z2ui5_cl_layo_filter=>factory_by_filter( val         = val
+                                                                       check_popup = abap_true ).
+    " result( ) carries the caller's filter until OK replaces it - Cancel
+    " hands it back unchanged
+    r_result->ms_result-t_filter = val.
+
+  ENDMETHOD.
 
   METHOD factory_by_data.
 
@@ -53,7 +74,7 @@ CLASS z2ui5_cl_sel_multisel_pop IMPLEMENTATION.
                                     handle02 = var_handle2
                                     handle03 = var_handle3 ).
 
-    r_result->mo_multiselect = z2ui5_cl_sel_multisel=>factory_by_data( val         = data
+    r_result->mo_multiselect = z2ui5_cl_layo_filter=>factory_by_data( val         = data
                                                                        s_variant   = r_result->ms_variant
                                                                        check_popup = abap_true ).
 

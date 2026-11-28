@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_sel_multisel DEFINITION
+CLASS z2ui5_cl_layo_filter DEFINITION
   PUBLIC FINAL
   CREATE PUBLIC.
 
@@ -7,7 +7,12 @@ CLASS z2ui5_cl_sel_multisel DEFINITION
 
     DATA mv_check_popup TYPE abap_bool.
 
-    DATA ms_variant TYPE z2ui5_cl_sel_var_db=>ty_s_db.
+    "! abap_true: the toolbar offers Load and Save of selection variants -
+    "! set by factory_by_data( ) and factory_by_name( ), not by
+    "! factory_by_filter( ), whose caller keeps the filter itself
+    DATA mv_check_variant TYPE abap_bool.
+
+    DATA ms_variant TYPE z2ui5_cl_layo_var_db=>ty_s_db.
 
     TYPES:
       BEGIN OF ty_s_result,
@@ -34,22 +39,22 @@ CLASS z2ui5_cl_sel_multisel DEFINITION
         val             TYPE z2ui5_cl_layo_context=>ty_t_filter_multi
         check_popup     TYPE abap_bool OPTIONAL
       RETURNING
-        VALUE(r_result) TYPE REF TO z2ui5_cl_sel_multisel.
+        VALUE(r_result) TYPE REF TO z2ui5_cl_layo_filter.
 
     CLASS-METHODS factory_by_name
       IMPORTING
         val             TYPE clike
-        s_variant       TYPE z2ui5_cl_sel_var_db=>ty_s_db OPTIONAL
+        s_variant       TYPE z2ui5_cl_layo_var_db=>ty_s_db OPTIONAL
       RETURNING
-        VALUE(r_result) TYPE REF TO z2ui5_cl_sel_multisel.
+        VALUE(r_result) TYPE REF TO z2ui5_cl_layo_filter.
 
     CLASS-METHODS factory_by_data
       IMPORTING
         val             TYPE any
-        s_variant       TYPE z2ui5_cl_sel_var_db=>ty_s_db OPTIONAL
+        s_variant       TYPE z2ui5_cl_layo_var_db=>ty_s_db OPTIONAL
         check_popup     TYPE abap_bool OPTIONAL
       RETURNING
-        VALUE(r_result) TYPE REF TO z2ui5_cl_sel_multisel.
+        VALUE(r_result) TYPE REF TO z2ui5_cl_layo_filter.
 
     METHODS result
       RETURNING
@@ -99,7 +104,7 @@ CLASS z2ui5_cl_sel_multisel DEFINITION
 ENDCLASS.
 
 
-CLASS z2ui5_cl_sel_multisel IMPLEMENTATION.
+CLASS z2ui5_cl_layo_filter IMPLEMENTATION.
 
   METHOD factory_by_filter.
 
@@ -119,6 +124,7 @@ CLASS z2ui5_cl_sel_multisel IMPLEMENTATION.
 
     r_result = factory_by_filter( z2ui5_cl_layo_context=>filter_get_multi_by_data( val ) ).
     r_result->mv_check_popup = check_popup.
+    r_result->mv_check_variant = abap_true.
     r_result->ms_variant = s_variant.
     r_result->set_var_default( ).
 
@@ -133,24 +139,28 @@ CLASS z2ui5_cl_sel_multisel IMPLEMENTATION.
     DATA(tab) = view->ele( `Table`
                     )->a( n = `items` v = client->_bind( ms_result-t_filter ) ).
 
-    tab->ele( `headerToolbar`
-        )->ele( `Toolbar`
-        )->tag( `Title`
-        )->a( n = `text` v = ms_result-tab_name
-        )->tag( `ToolbarSpacer`
-        )->tag( `Button`
+    DATA(toolbar) = tab->ele( `headerToolbar`
+                      )->ele( `Toolbar` ).
+
+    toolbar->tag( `Title`
+        )->a( n = `text` v = ms_result-tab_name ).
+    toolbar->tag( `ToolbarSpacer` ).
+    toolbar->tag( `Button`
         )->a( n = `text` v = `Clear`
         )->a( n = `icon` v = `sap-icon://delete`
         )->a( n = `type` v = `Transparent`
-        )->a( n = `press` v = client->_event( val = `DELETE_ALL` )
-        )->tag( `Button`
-        )->a( n = `text` v = `Load`
-        )->a( n = `icon` v = `sap-icon://download-from-cloud`
-        )->a( n = `press` v = client->_event( `BUTTON_LOAD` )
-        )->tag( `Button`
-        )->a( n = `text` v = `Save`
-        )->a( n = `icon` v = `sap-icon://save`
-        )->a( n = `press` v = client->_event( `BUTTON_SAVE` ) ).
+        )->a( n = `press` v = client->_event( val = `DELETE_ALL` ) ).
+
+    IF mv_check_variant = abap_true.
+      toolbar->tag( `Button`
+          )->a( n = `text` v = `Load`
+          )->a( n = `icon` v = `sap-icon://download-from-cloud`
+          )->a( n = `press` v = client->_event( `BUTTON_LOAD` ) ).
+      toolbar->tag( `Button`
+          )->a( n = `text` v = `Save`
+          )->a( n = `icon` v = `sap-icon://save`
+          )->a( n = `press` v = client->_event( `BUTTON_SAVE` ) ).
+    ENDIF.
 
     tab->ele( `columns`
         )->ele( `Column`
@@ -228,7 +238,7 @@ CLASS z2ui5_cl_sel_multisel IMPLEMENTATION.
           RETURN.
         ENDIF.
         mv_popup_name = <ls_open>-name.
-        client->nav_app_call( app = z2ui5_cl_sel_range_pop=>factory( <ls_open>-t_range )
+        client->nav_app_call( app = z2ui5_cl_layo_pop_range=>factory( <ls_open>-t_range )
                               tag = nav_tag( cs_nav-range ) ).
 
       WHEN `LIST_DELETE`.
@@ -242,7 +252,7 @@ CLASS z2ui5_cl_sel_multisel IMPLEMENTATION.
         ENDIF.
 
       WHEN `BUTTON_LOAD`.
-        DATA(lo_popup3) = z2ui5_cl_sel_var_pop_read=>factory( var_check_user = abap_true
+        DATA(lo_popup3) = z2ui5_cl_layo_pop_varread=>factory( var_check_user = abap_true
                                                               var_handle1    = ms_variant-handle01
                                                               var_handle2    = ms_variant-handle02
                                                               var_handle3    = ms_variant-handle03 ).
@@ -250,7 +260,7 @@ CLASS z2ui5_cl_sel_multisel IMPLEMENTATION.
                               tag = nav_tag( cs_nav-var_read ) ).
 
       WHEN `BUTTON_SAVE`.
-        DATA(lo_popup4) = z2ui5_cl_sel_var_pop_save=>factory( val            = ms_result
+        DATA(lo_popup4) = z2ui5_cl_layo_pop_varsave=>factory( val            = ms_result
                                                               var_check_user = abap_true
                                                               var_handle1    = ms_variant-handle01
                                                               var_handle2    = ms_variant-handle02
@@ -295,8 +305,8 @@ CLASS z2ui5_cl_sel_multisel IMPLEMENTATION.
     " the popup once - get_app_prev( ) loads and parses its draft
     DATA(li_prev) = client->get_app_prev( ).
 
-    IF kind = cs_nav-range AND li_prev IS INSTANCE OF z2ui5_cl_sel_range_pop.
-      DATA(ls_range) = CAST z2ui5_cl_sel_range_pop( li_prev )->result( ).
+    IF kind = cs_nav-range AND li_prev IS INSTANCE OF z2ui5_cl_layo_pop_range.
+      DATA(ls_range) = CAST z2ui5_cl_layo_pop_range( li_prev )->result( ).
       IF ls_range-check_confirmed = abap_true.
         ASSIGN ms_result-t_filter[ name = mv_popup_name ] TO <tab>.
         IF <tab> IS ASSIGNED.
@@ -305,8 +315,8 @@ CLASS z2ui5_cl_sel_multisel IMPLEMENTATION.
         ENDIF.
       ENDIF.
 
-    ELSEIF kind = cs_nav-var_read AND li_prev IS INSTANCE OF z2ui5_cl_sel_var_pop_read.
-      DATA(ls_value) = CAST z2ui5_cl_sel_var_pop_read( li_prev )->result( ).
+    ELSEIF kind = cs_nav-var_read AND li_prev IS INSTANCE OF z2ui5_cl_layo_pop_varread.
+      DATA(ls_value) = CAST z2ui5_cl_layo_pop_varread( li_prev )->result( ).
       IF ls_value-check_confirmed = abap_true.
         TRY.
             z2ui5_cl_layo_context=>xml_parse( EXPORTING xml = ls_value-s_variant-data
@@ -323,7 +333,7 @@ CLASS z2ui5_cl_sel_multisel IMPLEMENTATION.
 
   METHOD set_var_default.
 
-    DATA(ls_default) = z2ui5_cl_sel_var_db=>db_read_default( ms_variant ).
+    DATA(ls_default) = z2ui5_cl_layo_var_db=>db_read_default( ms_variant ).
 
     IF ls_default-data IS NOT INITIAL.
       " a default saved for an older shape of the selection no longer

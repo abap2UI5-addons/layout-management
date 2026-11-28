@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_sel_range_pop DEFINITION PUBLIC.
+CLASS z2ui5_cl_layo_pop_range DEFINITION PUBLIC.
 
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
@@ -19,7 +19,7 @@ CLASS z2ui5_cl_sel_range_pop DEFINITION PUBLIC.
       IMPORTING
         t_range         TYPE ANY TABLE OPTIONAL
       RETURNING
-        VALUE(r_result) TYPE REF TO z2ui5_cl_sel_range_pop.
+        VALUE(r_result) TYPE REF TO z2ui5_cl_layo_pop_range.
 
     TYPES:
       BEGIN OF ty_s_result,
@@ -64,7 +64,7 @@ CLASS z2ui5_cl_sel_range_pop DEFINITION PUBLIC.
 ENDCLASS.
 
 
-CLASS z2ui5_cl_sel_range_pop IMPLEMENTATION.
+CLASS z2ui5_cl_layo_pop_range IMPLEMENTATION.
 
   METHOD factory.
 

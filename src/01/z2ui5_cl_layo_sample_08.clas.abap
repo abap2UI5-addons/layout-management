@@ -1,10 +1,10 @@
-CLASS z2ui5_cl_sel_sample_01 DEFINITION PUBLIC.
+CLASS z2ui5_cl_layo_sample_08 DEFINITION PUBLIC.
 
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
     DATA mr_table       TYPE REF TO data.
-    DATA mo_multiselect TYPE REF TO z2ui5_cl_sel_multisel.
+    DATA mo_multiselect TYPE REF TO z2ui5_cl_layo_filter.
     DATA client TYPE REF TO z2ui5_if_client.
     DATA mv_expanded TYPE abap_bool VALUE abap_true.
 
@@ -21,7 +21,7 @@ CLASS z2ui5_cl_sel_sample_01 DEFINITION PUBLIC.
 ENDCLASS.
 
 
-CLASS z2ui5_cl_sel_sample_01 IMPLEMENTATION.
+CLASS z2ui5_cl_layo_sample_08 IMPLEMENTATION.
 
   METHOD on_event.
 
@@ -162,7 +162,7 @@ CLASS z2ui5_cl_sel_sample_01 IMPLEMENTATION.
   METHOD on_init.
 
     mr_table = z2ui5_cl_layo_context=>rtti_create_tab_by_name( mv_tabname ).
-    mo_multiselect = z2ui5_cl_sel_multisel=>factory_by_name( val       = mv_tabname
+    mo_multiselect = z2ui5_cl_layo_filter=>factory_by_name( val       = mv_tabname
                                                              s_variant = VALUE #( handle01 = `TEST` ) ).
 
     view_display( ).

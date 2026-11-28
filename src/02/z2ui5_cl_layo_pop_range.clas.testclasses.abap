@@ -18,7 +18,7 @@ CLASS ltcl_test IMPLEMENTATION.
 
   METHOD test_factory_empty.
 
-    DATA(lo_pop) = z2ui5_cl_sel_range_pop=>factory( ).
+    DATA(lo_pop) = z2ui5_cl_layo_pop_range=>factory( ).
     cl_abap_unit_assert=>assert_bound( lo_pop ).
 
   ENDMETHOD.
@@ -28,7 +28,7 @@ CLASS ltcl_test IMPLEMENTATION.
     DATA(lt_range) = VALUE z2ui5_cl_layo_context=>ty_t_range(
       ( sign = `I` option = `EQ` low = `100` ) ).
 
-    DATA(lo_pop) = z2ui5_cl_sel_range_pop=>factory( lt_range ).
+    DATA(lo_pop) = z2ui5_cl_layo_pop_range=>factory( lt_range ).
     DATA(ls_result) = lo_pop->result( ).
 
     cl_abap_unit_assert=>assert_false( ls_result-check_confirmed ).
@@ -38,7 +38,7 @@ CLASS ltcl_test IMPLEMENTATION.
 
   METHOD test_result_initial.
 
-    DATA(lo_pop) = z2ui5_cl_sel_range_pop=>factory( ).
+    DATA(lo_pop) = z2ui5_cl_layo_pop_range=>factory( ).
     DATA(ls_result) = lo_pop->result( ).
     cl_abap_unit_assert=>assert_false( ls_result-check_confirmed ).
 
@@ -50,7 +50,7 @@ CLASS ltcl_test IMPLEMENTATION.
       ( sign = `I` option = `EQ` low = `100` )
       ( sign = `I` option = `BT` low = `200` high = `300` ) ).
 
-    DATA(lo_pop) = z2ui5_cl_sel_range_pop=>factory( lt_range ).
+    DATA(lo_pop) = z2ui5_cl_layo_pop_range=>factory( lt_range ).
     DATA(ls_result) = lo_pop->result( ).
 
     " factory appends one empty row to the range for new entries
@@ -61,7 +61,7 @@ CLASS ltcl_test IMPLEMENTATION.
 
   METHOD test_factory_empty_row.
 
-    DATA(lo_pop) = z2ui5_cl_sel_range_pop=>factory( ).
+    DATA(lo_pop) = z2ui5_cl_layo_pop_range=>factory( ).
     DATA(ls_result) = lo_pop->result( ).
 
     " factory always inserts one empty row even for empty input
@@ -77,7 +77,7 @@ CLASS ltcl_test IMPLEMENTATION.
       ( sign = `E` option = `EQ` low = `B` )
       ( sign = `I` option = `GE` low = `C` ) ).
 
-    DATA(lo_pop) = z2ui5_cl_sel_range_pop=>factory( lt_range ).
+    DATA(lo_pop) = z2ui5_cl_layo_pop_range=>factory( lt_range ).
     DATA(ls_result) = lo_pop->result( ).
 
     " 3 input rows + 1 empty row appended by factory
@@ -108,7 +108,7 @@ CLASS ltcl_test_roundtrip DEFINITION FINAL
       IMPORTING
         it_range      TYPE z2ui5_cl_layo_context=>ty_t_range OPTIONAL
       RETURNING
-        VALUE(ro_pop) TYPE REF TO z2ui5_cl_sel_range_pop.
+        VALUE(ro_pop) TYPE REF TO z2ui5_cl_layo_pop_range.
 
     METHODS test_init_displays_popup FOR TESTING RAISING cx_static_check.
     METHODS test_confirm_builds_range FOR TESTING RAISING cx_static_check.
@@ -126,7 +126,7 @@ CLASS ltcl_test_roundtrip IMPLEMENTATION.
 
   METHOD popup_create.
 
-    ro_pop = z2ui5_cl_sel_range_pop=>factory( it_range ).
+    ro_pop = z2ui5_cl_layo_pop_range=>factory( it_range ).
     mo_action = NEW #( NEW z2ui5_cl_ui5_handler( `` ) ).
     mo_action->mo_app->mo_app = ro_pop.
     mi_client = NEW z2ui5_cl_ui5_client( mo_action ).

@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_sel_var_pop_save DEFINITION
+CLASS z2ui5_cl_layo_pop_varsave DEFINITION
   PUBLIC FINAL
   CREATE PUBLIC.
 
@@ -30,13 +30,13 @@ CLASS z2ui5_cl_sel_var_pop_save DEFINITION
 
     CLASS-METHODS factory
       IMPORTING
-        val             TYPE z2ui5_cl_sel_multisel=>ty_s_result
+        val             TYPE z2ui5_cl_layo_filter=>ty_s_result
         var_check_user  TYPE abap_bool DEFAULT abap_true
         var_handle1     TYPE clike     DEFAULT sy-repid
         var_handle2     TYPE clike     OPTIONAL
         var_handle3     TYPE clike     OPTIONAL
       RETURNING
-        VALUE(r_result) TYPE REF TO z2ui5_cl_sel_var_pop_save.
+        VALUE(r_result) TYPE REF TO z2ui5_cl_layo_pop_varsave.
 
     TYPES:
       BEGIN OF ty_s_result,
@@ -51,7 +51,7 @@ CLASS z2ui5_cl_sel_var_pop_save DEFINITION
   PROTECTED SECTION.
     DATA client     TYPE REF TO z2ui5_if_client.
     DATA ms_variant TYPE ty_s_variant.
-    DATA s_variant  TYPE z2ui5_cl_sel_multisel=>ty_s_result.
+    DATA s_variant  TYPE z2ui5_cl_layo_filter=>ty_s_result.
     DATA ms_result  TYPE ty_s_result.
 
     METHODS popup_variant_save.
@@ -83,7 +83,7 @@ CLASS z2ui5_cl_sel_var_pop_save DEFINITION
 ENDCLASS.
 
 
-CLASS z2ui5_cl_sel_var_pop_save IMPLEMENTATION.
+CLASS z2ui5_cl_layo_pop_varsave IMPLEMENTATION.
 
   METHOD factory.
 
@@ -216,7 +216,7 @@ CLASS z2ui5_cl_sel_var_pop_save IMPLEMENTATION.
     ms_result-t_filter       = s_variant-t_filter.
     ms_variant_save-t_filter = s_variant-t_filter.
 
-    z2ui5_cl_sel_var_db=>db_save( s_info = get_db_info( )
+    z2ui5_cl_layo_var_db=>db_save( s_info = get_db_info( )
                                   data   = s_variant ).
 
   ENDMETHOD.
@@ -256,7 +256,7 @@ CLASS z2ui5_cl_sel_var_pop_save IMPLEMENTATION.
     DATA(ls_info) = get_db_info( ).
     DATA(lv_key)  = |{ ls_info-uname }/{ ls_info-name }|.
     IF     lv_key <> mv_name_confirmed
-       AND z2ui5_cl_sel_var_db=>db_check_exists( ls_info ) = abap_true.
+       AND z2ui5_cl_layo_var_db=>db_check_exists( ls_info ) = abap_true.
       mv_name_confirmed = lv_key.
       client->message_toast_display( |A variant { ms_variant_save-name } exists already - press Save again to replace it| ).
       RETURN.

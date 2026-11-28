@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_sel_sample_02 DEFINITION PUBLIC.
+CLASS z2ui5_cl_layo_sample_09 DEFINITION PUBLIC.
 
   PUBLIC SECTION.
 
@@ -19,7 +19,7 @@ CLASS z2ui5_cl_sel_sample_02 DEFINITION PUBLIC.
 
   PROTECTED SECTION.
     DATA client     TYPE REF TO z2ui5_if_client.
-    DATA mo_variant TYPE REF TO z2ui5_cl_sel_multisel_pop.
+    DATA mo_variant TYPE REF TO z2ui5_cl_layo_pop_filter.
 
     METHODS on_event.
     METHODS view_display.
@@ -29,7 +29,7 @@ CLASS z2ui5_cl_sel_sample_02 DEFINITION PUBLIC.
 ENDCLASS.
 
 
-CLASS z2ui5_cl_sel_sample_02 IMPLEMENTATION.
+CLASS z2ui5_cl_layo_sample_09 IMPLEMENTATION.
 
 
   METHOD on_event.
@@ -140,14 +140,14 @@ CLASS z2ui5_cl_sel_sample_02 IMPLEMENTATION.
 
     IF client->check_on_init( ).
 
-      mo_variant = z2ui5_cl_sel_multisel_pop=>factory_by_data( data        = mt_table
+      mo_variant = z2ui5_cl_layo_pop_filter=>factory_by_data( data        = mt_table
                                                                var_handle1 = `TEST_POP` ).
       set_data( ).
       view_display( ).
 
     ELSEIF client->check_on_nav_back( ).
       " back from the select-options popup, the one app this sample calls
-      DATA(lo_value_help) = CAST z2ui5_cl_sel_multisel_pop( client->get_app_prev( ) ).
+      DATA(lo_value_help) = CAST z2ui5_cl_layo_pop_filter( client->get_app_prev( ) ).
       IF lo_value_help->result( )-check_confirmed = abap_true.
         mo_variant->mo_multiselect->ms_result-t_filter = lo_value_help->result( )-t_filter.
         set_data( ).

@@ -30,7 +30,7 @@ features:
 
 ## What it does
 
-layout-management renders an internal table or a structure as a table or a simple form with a settings button. In the layout popup the user picks the visible columns or fields, their order, labels and sorting, and saves the result as a layout variant in the tables z2ui5_t_11 and z2ui5_t_12; the default variant is loaded automatically at the next start. A generic mode personalizes the controls of any view built with the view builder. The select-options (`z2ui5_cl_sel_*`, formerly the addon range-filter) do the same for the selection: one select-option per field of a table name or your data, the ranges entered in a popup, the selection saved as a variant in z2ui5_t_13. Use it when you want ALV-like layouts and selection variants in abap2UI5 apps without building them; other addons such as popups build on it.
+layout-management renders an internal table or a structure as a table or a simple form with a settings button. In the layout popup the user picks the visible columns or fields, their order, labels and sorting, and saves the result as a layout variant in the tables z2ui5_t_11 and z2ui5_t_12; the default variant is loaded automatically at the next start. A generic mode personalizes the controls of any view built with the view builder. The select-options (`z2ui5_cl_layo_filter`, formerly the addon range-filter) do the same for the selection: one select-option per field of a table name or your data, the ranges entered in a popup, the selection saved as a variant in z2ui5_t_13. Use it when you want ALV-like layouts and selection variants in abap2UI5 apps without building them; other addons such as popups build on it.
 
 ## Requirements
 

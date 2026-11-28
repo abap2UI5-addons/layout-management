@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_sel_var_db DEFINITION
+CLASS z2ui5_cl_layo_var_db DEFINITION
   PUBLIC FINAL
   CREATE PUBLIC.
 
@@ -52,7 +52,7 @@ CLASS z2ui5_cl_sel_var_db DEFINITION
 ENDCLASS.
 
 
-CLASS z2ui5_cl_sel_var_db IMPLEMENTATION.
+CLASS z2ui5_cl_layo_var_db IMPLEMENTATION.
 
   METHOD db_read.
 

@@ -8,7 +8,7 @@ description: When to use the select-options of layout-management and when abap-c
 Both addons have select-options and variants. They are built for different
 apps.
 
-**The select-options of layout-management** (`z2ui5_cl_sel_*`) are a building
+**The select-options of layout-management** (`z2ui5_cl_layo_filter`) are a building
 block for an abap2UI5 app you build yourself: your own view, your own table -
 and a filter for it. The filter fields come from a table or your data, at
 runtime; your app does the rest.
@@ -34,7 +34,7 @@ admin and tool reports - whatever is a Z report with a transaction today.
 ::: info Formerly range-filter
 The select-options were the addon `range-filter` (before that
 `selection-screen`) until they moved into layout-management in 2026-11. The
-ABAP objects keep their names (`z2ui5_cl_sel_*`, table `z2ui5_t_13`); the
-[guide](./guide#coming-from-range-filter) says what changes for an
+classes are named `z2ui5_cl_layo_*` now, the table `z2ui5_t_13` kept its name;
+the [guide](./guide#coming-from-range-filter-or-popups) says what changes for an
 installation.
 :::

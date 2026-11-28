@@ -95,7 +95,7 @@
       // the sample shows what the select-options are for: a SELECT with the
       // WHERE clause filter_get_sql_where( ) built from the user's ranges
       "exclude": [
-        "/src/01/z2ui5_cl_sel_sample_01\\."
+        "/src/01/z2ui5_cl_layo_sample_08\\."
       ],
       "execSQL": true,
       "exportDynpro": true,

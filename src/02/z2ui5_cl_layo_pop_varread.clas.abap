@@ -1,4 +1,4 @@
-CLASS z2ui5_cl_sel_var_pop_read DEFINITION
+CLASS z2ui5_cl_layo_pop_varread DEFINITION
   PUBLIC FINAL
   CREATE PUBLIC.
 
@@ -21,7 +21,7 @@ CLASS z2ui5_cl_sel_var_pop_read DEFINITION
         selkz      TYPE abap_bool,
         check_user TYPE abap_bool,
         check_def  TYPE abap_bool,
-        s_db       TYPE z2ui5_cl_sel_var_db=>ty_s_db,
+        s_db       TYPE z2ui5_cl_layo_var_db=>ty_s_db,
         t_filter   TYPE z2ui5_cl_layo_context=>ty_t_filter_multi,
       END OF ty_s_variant_out.
     TYPES ty_t_variant_out TYPE STANDARD TABLE OF ty_s_variant_out WITH EMPTY KEY.
@@ -42,12 +42,12 @@ CLASS z2ui5_cl_sel_var_pop_read DEFINITION
         var_handle2     TYPE clike     OPTIONAL
         var_handle3     TYPE clike     OPTIONAL
       RETURNING
-        VALUE(r_result) TYPE REF TO z2ui5_cl_sel_var_pop_read.
+        VALUE(r_result) TYPE REF TO z2ui5_cl_layo_pop_varread.
 
     TYPES:
       BEGIN OF ty_s_result,
         t_filter        TYPE z2ui5_cl_layo_context=>ty_t_filter_multi,
-        s_variant       TYPE z2ui5_cl_sel_var_db=>ty_s_db,
+        s_variant       TYPE z2ui5_cl_layo_var_db=>ty_s_db,
         check_confirmed TYPE abap_bool,
       END OF ty_s_result.
 
@@ -66,7 +66,7 @@ CLASS z2ui5_cl_sel_var_pop_read DEFINITION
   PROTECTED SECTION.
     DATA client        TYPE REF TO z2ui5_if_client.
     DATA ms_variant    TYPE ty_s_variant.
-    DATA mt_variant_db TYPE z2ui5_cl_sel_var_db=>ty_t_db.
+    DATA mt_variant_db TYPE z2ui5_cl_layo_var_db=>ty_t_db.
     DATA ms_result     TYPE ty_s_result.
 
     METHODS popup_variant_read.
@@ -74,10 +74,10 @@ CLASS z2ui5_cl_sel_var_pop_read DEFINITION
     METHODS db_read.
 
   PRIVATE SECTION.
-    "! the selection of a variant - the XML z2ui5_cl_sel_var_pop_save stored
+    "! the selection of a variant - the XML z2ui5_cl_layo_pop_varsave stored
     CLASS-METHODS get_filter
       IMPORTING
-        s_variant     TYPE z2ui5_cl_sel_var_db=>ty_s_db
+        s_variant     TYPE z2ui5_cl_layo_var_db=>ty_s_db
       RETURNING
         VALUE(result) TYPE z2ui5_cl_layo_context=>ty_t_filter_multi.
 
@@ -87,7 +87,7 @@ CLASS z2ui5_cl_sel_var_pop_read DEFINITION
     "! row the browser selected, initial without a selection
     METHODS get_selected
       RETURNING
-        VALUE(result) TYPE z2ui5_cl_sel_var_db=>ty_s_db.
+        VALUE(result) TYPE z2ui5_cl_layo_var_db=>ty_s_db.
 
     "! deletes the selected variant - one of the current user only
     METHODS on_event_delete.
@@ -95,11 +95,11 @@ CLASS z2ui5_cl_sel_var_pop_read DEFINITION
 ENDCLASS.
 
 
-CLASS z2ui5_cl_sel_var_pop_read IMPLEMENTATION.
+CLASS z2ui5_cl_layo_pop_varread IMPLEMENTATION.
 
   METHOD db_read.
 
-    mt_variant_db = z2ui5_cl_sel_var_db=>db_read( VALUE #( uname    = ms_variant-uname
+    mt_variant_db = z2ui5_cl_layo_var_db=>db_read( VALUE #( uname    = ms_variant-uname
                                                            handle01 = ms_variant-handle1
                                                            handle02 = ms_variant-handle2
                                                            handle03 = ms_variant-handle3 ) ).
@@ -256,7 +256,7 @@ CLASS z2ui5_cl_sel_var_pop_read IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    IF z2ui5_cl_sel_var_db=>db_delete( ls_variant-uuid ) = abap_false.
+    IF z2ui5_cl_layo_var_db=>db_delete( ls_variant-uuid ) = abap_false.
       client->message_toast_display( `The variant could not be deleted` ).
       RETURN.
     ENDIF.
@@ -282,7 +282,7 @@ CLASS z2ui5_cl_sel_var_pop_read IMPLEMENTATION.
 
   METHOD get_filter.
 
-    DATA ls_saved TYPE z2ui5_cl_sel_multisel=>ty_s_result.
+    DATA ls_saved TYPE z2ui5_cl_layo_filter=>ty_s_result.
 
     TRY.
         z2ui5_cl_layo_context=>xml_parse( EXPORTING xml = s_variant-data
@@ -300,14 +300,14 @@ CLASS z2ui5_cl_sel_var_pop_read IMPLEMENTATION.
         " the default row of the user, else the shared one - db_read( ) fills
         " neither check_def nor t_filter of mt_variant, so reading the default
         " from there always came back empty
-        result-s_variant = z2ui5_cl_sel_var_db=>db_read_default( VALUE #( handle01 = var_handle1
+        result-s_variant = z2ui5_cl_layo_var_db=>db_read_default( VALUE #( handle01 = var_handle1
                                                                            handle02 = var_handle2
                                                                            handle03 = var_handle3 ) ).
         IF result-s_variant IS INITIAL.
           RETURN.
         ENDIF.
 
-        " the data is the selection z2ui5_cl_sel_var_pop_save stored, as XML
+        " the data is the selection z2ui5_cl_layo_pop_varsave stored, as XML
         result-t_filter = get_filter( result-s_variant ).
 
       CATCH cx_root ##NO_HANDLER.
