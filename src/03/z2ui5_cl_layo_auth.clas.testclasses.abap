@@ -41,7 +41,7 @@ ENDCLASS.
 CLASS ltcl_default IMPLEMENTATION.
 
   METHOD setup.
-    mi_cut = NEW z2ui5_cl_layo_auth( ).
+    CREATE OBJECT mi_cut TYPE z2ui5_cl_layo_auth.
   ENDMETHOD.
 
   METHOD teardown.
@@ -158,7 +158,8 @@ CLASS ltcl_default IMPLEMENTATION.
 
     DATA ls_head TYPE z2ui5_t_11.
 
-    DATA(lo_allow) = NEW ltd_allow_all( ).
+    DATA lo_allow TYPE REF TO ltd_allow_all.
+    CREATE OBJECT lo_allow TYPE ltd_allow_all.
     z2ui5_cl_layo_auth=>set_instance( lo_allow ).
 
     cl_abap_unit_assert=>assert_equals(
@@ -173,15 +174,21 @@ CLASS ltcl_default IMPLEMENTATION.
 
   METHOD unset_restores_default.
 
-    DATA(lo_allow) = NEW ltd_allow_all( ).
+    DATA lo_allow TYPE REF TO ltd_allow_all.
+    DATA li_auth TYPE REF TO z2ui5_if_layo_auth.
+    DATA temp1 TYPE xsdboolean.
+    CREATE OBJECT lo_allow TYPE ltd_allow_all.
     z2ui5_cl_layo_auth=>set_instance( lo_allow ).
     z2ui5_cl_layo_auth=>set_instance( ).
 
     " the default again - either the shipped class or a system's own
     " implementation
-    DATA(li_auth) = z2ui5_cl_layo_auth=>get_instance( ).
+
+    li_auth = z2ui5_cl_layo_auth=>get_instance( ).
     cl_abap_unit_assert=>assert_bound( li_auth ).
-    cl_abap_unit_assert=>assert_true( xsdbool( li_auth <> lo_allow ) ).
+
+    temp1 = boolc( li_auth <> lo_allow ).
+    cl_abap_unit_assert=>assert_true( temp1 ).
 
   ENDMETHOD.
 

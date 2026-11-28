@@ -33,7 +33,7 @@ CLASS z2ui5_cl_layo_xml_tree DEFINITION
       END OF ty_s_slot.
     "! the slots in display order - the order inside a parent aggregation
     "! follows the order of this table
-    TYPES ty_t_slot TYPE STANDARD TABLE OF ty_s_slot WITH EMPTY KEY.
+    TYPES ty_t_slot TYPE STANDARD TABLE OF ty_s_slot WITH DEFAULT KEY.
 
     TYPES:
       BEGIN OF ty_s_id,
@@ -44,7 +44,7 @@ CLASS z2ui5_cl_layo_xml_tree DEFINITION
         label      TYPE string,
         label_attr TYPE string,
       END OF ty_s_id.
-    TYPES ty_t_id TYPE STANDARD TABLE OF ty_s_id WITH EMPTY KEY.
+    TYPES ty_t_id TYPE STANDARD TABLE OF ty_s_id WITH DEFAULT KEY.
 
     "! the view with the slots applied - unchanged where no slot names a control
     CLASS-METHODS apply
@@ -90,8 +90,8 @@ CLASS z2ui5_cl_layo_xml_tree DEFINITION
         n TYPE string,
         v TYPE string,
       END OF ty_s_attr.
-    TYPES ty_t_attr  TYPE STANDARD TABLE OF ty_s_attr WITH EMPTY KEY.
-    TYPES ty_t_index TYPE STANDARD TABLE OF i WITH EMPTY KEY.
+    TYPES ty_t_attr  TYPE STANDARD TABLE OF ty_s_attr WITH DEFAULT KEY.
+    TYPES ty_t_index TYPE STANDARD TABLE OF i WITH DEFAULT KEY.
 
     CONSTANTS c_element TYPE c LENGTH 1 VALUE 'E' ##NO_TEXT.
     "! anything kept verbatim: text between tags, comments, processing instructions
@@ -106,7 +106,7 @@ CLASS z2ui5_cl_layo_xml_tree DEFINITION
         parent  TYPE i,
         t_child TYPE ty_t_index,
       END OF ty_s_node.
-    TYPES ty_t_node TYPE STANDARD TABLE OF ty_s_node WITH EMPTY KEY.
+    TYPES ty_t_node TYPE STANDARD TABLE OF ty_s_node WITH DEFAULT KEY.
 
     "! node 1 is the document root, never rendered itself
     DATA mt_node TYPE ty_t_node.
@@ -190,7 +190,7 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    lo_tree = NEW #( ).
+    CREATE OBJECT lo_tree.
     lo_tree->parse( xml ).
     lo_tree->apply_slots( t_slot ).
     lo_tree->render( EXPORTING index  = 1
@@ -205,14 +205,20 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
     DATA ls_id   TYPE ty_s_id.
     DATA lv_id   TYPE string.
     DATA lv_len  TYPE i.
+    DATA temp46 LIKE LINE OF lo_tree->mt_node.
+    DATA lr_node LIKE REF TO temp46.
+      DATA lv_index LIKE sy-tabix.
 
-    lo_tree = NEW #( ).
+    CREATE OBJECT lo_tree.
     lo_tree->parse( xml ).
 
     lv_len = strlen( prefix ).
 
-    LOOP AT lo_tree->mt_node REFERENCE INTO DATA(lr_node) WHERE kind = c_element.
-      DATA(lv_index) = sy-tabix.
+
+
+    LOOP AT lo_tree->mt_node REFERENCE INTO lr_node WHERE kind = c_element.
+
+      lv_index = sy-tabix.
       lv_id = lo_tree->attr_get( index = lv_index
                                  n     = `id` ).
       IF lv_id IS INITIAL.
@@ -333,13 +339,15 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD add_node.
+    FIELD-SYMBOLS <ls_parent> TYPE z2ui5_cl_layo_xml_tree=>ty_s_node.
 
     INSERT node INTO TABLE mt_node.
     result = lines( mt_node ).
     IF node-parent <= 0.
       RETURN.
     ENDIF.
-    ASSIGN mt_node[ node-parent ] TO FIELD-SYMBOL(<ls_parent>).
+
+    READ TABLE mt_node INDEX node-parent ASSIGNING <ls_parent>.
     IF <ls_parent> IS ASSIGNED.
       INSERT result INTO TABLE <ls_parent>-t_child.
     ENDIF.
@@ -357,11 +365,16 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
     DATA lv_close TYPE string.
     DATA lv_quote TYPE string.
     DATA lv_char  TYPE string.
+    DATA lv_parent TYPE i.
+          FIELD-SYMBOLS <temp47> LIKE LINE OF mt_node.
+          DATA temp48 LIKE sy-tabix.
+      DATA lv_new TYPE i.
 
     CLEAR mt_node.
     ls_node-kind = c_raw.
     add_node( ls_node ).
-    DATA(lv_parent) = 1.
+
+    lv_parent = 1.
 
     lv_len = strlen( xml ).
 
@@ -461,12 +474,21 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
                     len = 1 ) = `/`.
         " closing tag - ascend
         IF lv_parent > 1.
-          lv_parent = mt_node[ lv_parent ]-parent.
+
+
+          temp48 = sy-tabix.
+          READ TABLE mt_node INDEX lv_parent ASSIGNING <temp47>.
+          sy-tabix = temp48.
+          IF sy-subrc <> 0.
+            ASSERT 1 = 0.
+          ENDIF.
+          lv_parent = <temp47>-parent.
         ENDIF.
         CONTINUE.
       ENDIF.
 
-      DATA(lv_new) = parse_tag( tag    = lv_tag
+
+      lv_new = parse_tag( tag    = lv_tag
                                 parent = lv_parent ).
       IF lv_new > 0.
         lv_parent = lv_new.
@@ -491,6 +513,9 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
     DATA lv_ws   TYPE string.
     DATA lv_rest TYPE string.
     DATA lv_char TYPE string.
+      DATA lv_quote_pos TYPE i.
+      DATA lv_quote TYPE string.
+    DATA lv_index TYPE i.
 
     lv_ws = ` ` && cl_abap_char_utilities=>newline && cl_abap_char_utilities=>cr_lf(1) && cl_abap_char_utilities=>horizontal_tab.
 
@@ -543,8 +568,10 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       IF lv_rest NA `"'`.
         EXIT.
       ENDIF.
-      DATA(lv_quote_pos) = lv_eq + sy-fdpos.
-      DATA(lv_quote) = substring( val = lv_tag
+
+      lv_quote_pos = lv_eq + sy-fdpos.
+
+      lv_quote = substring( val = lv_tag
                                   off = lv_quote_pos
                                   len = 1 ).
       lv_end = find( val = lv_tag
@@ -567,7 +594,8 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       lv_pos = lv_end + 1.
     ENDWHILE.
 
-    DATA(lv_index) = add_node( ls_node ).
+
+    lv_index = add_node( ls_node ).
     IF lv_self = abap_false.
       result = lv_index.
     ENDIF.
@@ -578,7 +606,22 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
 
     DATA lv_child TYPE i.
 
-    DATA(lr_node) = REF #( mt_node[ index ] ).
+    FIELD-SYMBOLS <temp49> TYPE z2ui5_cl_layo_xml_tree=>ty_s_node.
+DATA lr_node LIKE REF TO <temp49>.
+    DATA lt_attr TYPE string_table.
+    DATA temp50 LIKE LINE OF lr_node->t_attr.
+    DATA lr_attr LIKE REF TO temp50.
+      DATA temp51 LIKE LINE OF lt_attr.
+    DATA lv_attrs TYPE string.
+      DATA temp52 LIKE LINE OF ct_out.
+    DATA temp53 LIKE LINE OF ct_out.
+    DATA temp54 LIKE LINE OF ct_out.
+    READ TABLE mt_node INDEX index ASSIGNING <temp49>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp49> INTO lr_node.
 
     IF lr_node->kind = c_raw.
       " node 1 is the document root: its raw is empty, its children are the document
@@ -592,35 +635,60 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA lt_attr TYPE string_table.
-    LOOP AT lr_node->t_attr REFERENCE INTO DATA(lr_attr).
-      INSERT | { lr_attr->n }="{ lr_attr->v }"| INTO TABLE lt_attr.
+
+
+
+    LOOP AT lr_node->t_attr REFERENCE INTO lr_attr.
+
+      temp51 = | { lr_attr->n }="{ lr_attr->v }"|.
+      INSERT temp51 INTO TABLE lt_attr.
     ENDLOOP.
-    DATA(lv_attrs) = concat_lines_of( lt_attr ).
+
+    lv_attrs = concat_lines_of( lt_attr ).
 
     IF lr_node->t_child IS INITIAL.
-      INSERT |<{ lr_node->name }{ lv_attrs }/>| INTO TABLE ct_out.
+
+      temp52 = |<{ lr_node->name }{ lv_attrs }/>|.
+      INSERT temp52 INTO TABLE ct_out.
       RETURN.
     ENDIF.
 
-    INSERT |<{ lr_node->name }{ lv_attrs }>| INTO TABLE ct_out.
+
+    temp53 = |<{ lr_node->name }{ lv_attrs }>|.
+    INSERT temp53 INTO TABLE ct_out.
     LOOP AT lr_node->t_child INTO lv_child.
       render( EXPORTING index  = lv_child
               CHANGING  ct_out = ct_out ).
     ENDLOOP.
-    INSERT |</{ lr_node->name }>| INTO TABLE ct_out.
+
+    temp54 = |</{ lr_node->name }>|.
+    INSERT temp54 INTO TABLE ct_out.
 
   ENDMETHOD.
 
   METHOD find_by_id.
 
     DATA lv_id TYPE string.
+    DATA temp55 LIKE LINE OF mt_node.
+    DATA lr_node LIKE REF TO temp55.
+      DATA lv_tabix LIKE sy-tabix.
+      DATA temp56 LIKE sy-subrc.
+      DATA temp57 LIKE sy-tabix.
 
     lv_id = escape_xml( id ).
 
-    LOOP AT mt_node REFERENCE INTO DATA(lr_node) WHERE kind = c_element.
-      DATA(lv_tabix) = sy-tabix.
-      IF line_exists( lr_node->t_attr[ n = `id` v = lv_id ] ). "#EC CI_SORTSEQ
+
+
+    LOOP AT mt_node REFERENCE INTO lr_node WHERE kind = c_element.
+
+      lv_tabix = sy-tabix.
+
+
+      temp57 = sy-tabix.
+      READ TABLE lr_node->t_attr WITH KEY n = `id` v = lv_id TRANSPORTING NO FIELDS.
+      temp56 = sy-subrc.
+      sy-tabix = temp57.
+      IF temp56 = 0. "#EC CI_SORTSEQ
         result = lv_tabix.
         RETURN.
       ENDIF.
@@ -629,15 +697,19 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD attr_get.
+    FIELD-SYMBOLS <ls_node> TYPE z2ui5_cl_layo_xml_tree=>ty_s_node.
+    FIELD-SYMBOLS <ls_attr> TYPE z2ui5_cl_layo_xml_tree=>ty_s_attr.
 
     IF index <= 0 OR n IS INITIAL.
       RETURN.
     ENDIF.
-    ASSIGN mt_node[ index ] TO FIELD-SYMBOL(<ls_node>).
+
+    READ TABLE mt_node INDEX index ASSIGNING <ls_node>.
     IF <ls_node> IS NOT ASSIGNED.
       RETURN.
     ENDIF.
-    ASSIGN <ls_node>-t_attr[ n = n ] TO FIELD-SYMBOL(<ls_attr>). "#EC CI_SORTSEQ
+
+    READ TABLE <ls_node>-t_attr WITH KEY n = n ASSIGNING <ls_attr>. "#EC CI_SORTSEQ
     IF <ls_attr> IS ASSIGNED.
       result = <ls_attr>-v.
     ENDIF.
@@ -646,14 +718,27 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
 
   METHOD attr_set.
 
-    DATA(lr_node) = REF #( mt_node[ index ] ).
-    ASSIGN lr_node->t_attr[ n = n ] TO FIELD-SYMBOL(<ls_attr>). "#EC CI_SORTSEQ
+    FIELD-SYMBOLS <temp58> TYPE z2ui5_cl_layo_xml_tree=>ty_s_node.
+DATA lr_node LIKE REF TO <temp58>.
+    FIELD-SYMBOLS <ls_attr> TYPE z2ui5_cl_layo_xml_tree=>ty_s_attr.
+    DATA temp59 TYPE z2ui5_cl_layo_xml_tree=>ty_s_attr.
+    READ TABLE mt_node INDEX index ASSIGNING <temp58>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp58> INTO lr_node.
+
+    READ TABLE lr_node->t_attr WITH KEY n = n ASSIGNING <ls_attr>. "#EC CI_SORTSEQ
     IF <ls_attr> IS ASSIGNED.
       <ls_attr>-v = v.
       RETURN.
     ENDIF.
-    INSERT VALUE #( n = n
-                    v = v ) INTO TABLE lr_node->t_attr.
+
+    CLEAR temp59.
+    temp59-n = n.
+    temp59-v = v.
+    INSERT temp59 INTO TABLE lr_node->t_attr.
 
   ENDMETHOD.
 
@@ -662,14 +747,28 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
     DATA lt_cand TYPE string_table.
     DATA lv_cand TYPE string.
 
-    lt_cand = VALUE #( ( `text` ) ( `title` ) ( `header` ) ( `headerText` ) ( `label` ) ( `placeholder` ) ).
+    DATA temp60 TYPE string_table.
+    FIELD-SYMBOLS <ls_node> TYPE z2ui5_cl_layo_xml_tree=>ty_s_node.
+        DATA temp62 LIKE sy-subrc.
+    CLEAR temp60.
+    INSERT `text` INTO TABLE temp60.
+    INSERT `title` INTO TABLE temp60.
+    INSERT `header` INTO TABLE temp60.
+    INSERT `headerText` INTO TABLE temp60.
+    INSERT `label` INTO TABLE temp60.
+    INSERT `placeholder` INTO TABLE temp60.
+    lt_cand = temp60.
 
     " not line_exists( mt_node[ index ]-t_attr[ n = lv_cand ] ): the 7.02
     " downport drops the inner key of a chained table expression
-    ASSIGN mt_node[ index ] TO FIELD-SYMBOL(<ls_node>).
+
+    READ TABLE mt_node INDEX index ASSIGNING <ls_node>.
     IF <ls_node> IS ASSIGNED.
       LOOP AT lt_cand INTO lv_cand.
-        IF line_exists( <ls_node>-t_attr[ n = lv_cand ] ). "#EC CI_SORTSEQ
+
+        READ TABLE <ls_node>-t_attr WITH KEY n = lv_cand TRANSPORTING NO FIELDS.
+        temp62 = sy-subrc.
+        IF temp62 = 0. "#EC CI_SORTSEQ
           result = lv_cand.
           RETURN.
         ENDIF.
@@ -685,28 +784,77 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
     DATA lv_prev TYPE i.
     DATA lv_pos  TYPE i.
 
-    DATA(lr_node) = REF #( mt_node[ index ] ).
+    FIELD-SYMBOLS <temp63> TYPE z2ui5_cl_layo_xml_tree=>ty_s_node.
+DATA lr_node LIKE REF TO <temp63>.
+    FIELD-SYMBOLS <temp64> TYPE z2ui5_cl_layo_xml_tree=>ty_s_node.
+DATA lr_parent LIKE REF TO <temp64>.
+    DATA lv_child_pos TYPE i.
+    DATA temp7 LIKE sy-subrc.
+    DATA temp8 LIKE sy-subrc.
+    DATA temp9 LIKE sy-tabix.
+    FIELD-SYMBOLS <temp65> LIKE LINE OF lr_parent->t_child.
+    DATA temp66 LIKE sy-tabix.
+    FIELD-SYMBOLS <temp67> TYPE z2ui5_cl_layo_xml_tree=>ty_s_node.
+DATA lr_prev LIKE REF TO <temp67>.
+    DATA lv_for TYPE string.
+    READ TABLE mt_node INDEX index ASSIGNING <temp63>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp63> INTO lr_node.
     IF lr_node->parent <= 0.
       RETURN.
     ENDIF.
 
-    DATA(lr_parent) = REF #( mt_node[ lr_node->parent ] ).
+
+    READ TABLE mt_node INDEX lr_node->parent ASSIGNING <temp64>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp64> INTO lr_parent.
     " line_index( ) is 0 when the node is no child of its parent
-    DATA(lv_child_pos) = line_index( lr_parent->t_child[ table_line = index ] ).
+
+
+
+
+    temp8 = sy-subrc.
+    temp9 = sy-tabix.
+    READ TABLE lr_parent->t_child WITH KEY table_line = index TRANSPORTING NO FIELDS.
+    temp7 = sy-tabix.
+    sy-subrc = temp8.
+    sy-tabix = temp9.
+    lv_child_pos = temp7.
     IF lv_child_pos <= 1.
       RETURN.
     ENDIF.
     lv_pos = lv_child_pos - 1.
-    lv_prev = lr_parent->t_child[ lv_pos ].
 
-    DATA(lr_prev) = REF #( mt_node[ lv_prev ] ).
+
+    temp66 = sy-tabix.
+    READ TABLE lr_parent->t_child INDEX lv_pos ASSIGNING <temp65>.
+    sy-tabix = temp66.
+    IF sy-subrc <> 0.
+      ASSERT 1 = 0.
+    ENDIF.
+    lv_prev = <temp65>.
+
+
+    READ TABLE mt_node INDEX lv_prev ASSIGNING <temp67>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp67> INTO lr_prev.
     IF lr_prev->kind <> c_element.
       RETURN.
     ENDIF.
     IF lr_prev->name <> `Label` AND lr_prev->name NP `*:Label`.
       RETURN.
     ENDIF.
-    DATA(lv_for) = attr_get( index = lv_prev
+
+    lv_for = attr_get( index = lv_prev
                              n     = `labelFor` ).
     IF lv_for <> attr_get( index = index
                            n     = `id` ).
@@ -720,15 +868,22 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
 
     DATA lt_index TYPE ty_t_index.
 
-    LOOP AT t_slot REFERENCE INTO DATA(lr_slot).
+    DATA temp68 LIKE LINE OF t_slot.
+    DATA lr_slot LIKE REF TO temp68.
+      DATA lv_index TYPE i.
+      DATA lv_label TYPE i.
+        DATA lv_attr LIKE lr_slot->label_attr.
+    LOOP AT t_slot REFERENCE INTO lr_slot.
 
-      DATA(lv_index) = find_by_id( lr_slot->id ).
+
+      lv_index = find_by_id( lr_slot->id ).
       IF lv_index = 0.
         CONTINUE.
       ENDIF.
       INSERT lv_index INTO TABLE lt_index.
 
-      DATA(lv_label) = label_of( lv_index ).
+
+      lv_label = label_of( lv_index ).
 
       IF lr_slot->visible = abap_false.
         attr_set( index = lv_index
@@ -742,7 +897,8 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       ENDIF.
 
       IF lr_slot->label IS NOT INITIAL.
-        DATA(lv_attr) = lr_slot->label_attr.
+
+        lv_attr = lr_slot->label_attr.
         IF lv_attr IS INITIAL.
           lv_attr = label_attr_of( lv_index ).
         ENDIF.
@@ -781,7 +937,7 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
         parent  TYPE i,
         t_index TYPE ty_t_index,
       END OF ty_s_block.
-    DATA lt_block   TYPE STANDARD TABLE OF ty_s_block WITH EMPTY KEY.
+    DATA lt_block   TYPE STANDARD TABLE OF ty_s_block WITH DEFAULT KEY.
     DATA lt_parent  TYPE ty_t_index.
     DATA lv_index   TYPE i.
     DATA lv_member  TYPE i.
@@ -789,29 +945,82 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
     DATA lt_pos     TYPE ty_t_index.
     DATA lt_members TYPE ty_t_index.
     DATA lv_pos     TYPE i.
+      DATA temp69 TYPE ty_s_block.
+      FIELD-SYMBOLS <temp10> LIKE LINE OF mt_node.
+      DATA temp11 LIKE sy-tabix.
+      DATA ls_block LIKE temp69.
+      DATA lv_label TYPE i.
+      DATA temp70 LIKE sy-subrc.
+      DATA temp71 LIKE sy-tabix.
+      DATA temp72 LIKE sy-subrc.
+      DATA temp73 LIKE sy-tabix.
+      FIELD-SYMBOLS <temp74> TYPE z2ui5_cl_layo_xml_tree=>ty_s_node.
+DATA lr_parent LIKE REF TO <temp74>.
+      DATA temp75 LIKE LINE OF lt_block.
+      DATA lr_block LIKE REF TO temp75.
+        DATA temp76 LIKE sy-subrc.
+        DATA temp77 LIKE sy-tabix.
+        DATA lv_tabix LIKE sy-tabix.
+        FIELD-SYMBOLS <temp78> LIKE LINE OF lt_pos.
+        DATA temp79 LIKE sy-tabix.
+        FIELD-SYMBOLS <temp80> LIKE LINE OF lr_parent->t_child.
+        DATA temp81 LIKE sy-tabix.
 
     LOOP AT t_index INTO lv_index.
-      DATA(ls_block) = VALUE ty_s_block( parent = mt_node[ lv_index ]-parent ).
-      DATA(lv_label) = label_of( lv_index ).
+
+      CLEAR temp69.
+
+
+      temp11 = sy-tabix.
+      READ TABLE mt_node INDEX lv_index ASSIGNING <temp10>.
+      sy-tabix = temp11.
+      IF sy-subrc <> 0.
+        ASSERT 1 = 0.
+      ENDIF.
+      temp69-parent = <temp10>-parent.
+
+      ls_block = temp69.
+
+      lv_label = label_of( lv_index ).
       " a Label registered itself is a block of its own - taken along a second
       " time it would be a member twice, one more than the positions it holds
-      IF lv_label > 0 AND NOT line_exists( t_index[ table_line = lv_label ] ).
+
+
+      temp71 = sy-tabix.
+      READ TABLE t_index WITH KEY table_line = lv_label TRANSPORTING NO FIELDS.
+      temp70 = sy-subrc.
+      sy-tabix = temp71.
+      IF lv_label > 0 AND NOT temp70 = 0.
         INSERT lv_label INTO TABLE ls_block-t_index.
       ENDIF.
       INSERT lv_index INTO TABLE ls_block-t_index.
       INSERT ls_block INTO TABLE lt_block.
-      IF NOT line_exists( lt_parent[ table_line = ls_block-parent ] ).
+
+
+      temp73 = sy-tabix.
+      READ TABLE lt_parent WITH KEY table_line = ls_block-parent TRANSPORTING NO FIELDS.
+      temp72 = sy-subrc.
+      sy-tabix = temp73.
+      IF NOT temp72 = 0.
         INSERT ls_block-parent INTO TABLE lt_parent.
       ENDIF.
     ENDLOOP.
 
     LOOP AT lt_parent INTO lv_parent.
 
-      DATA(lr_parent) = REF #( mt_node[ lv_parent ] ).
+
+      READ TABLE mt_node INDEX lv_parent ASSIGNING <temp74>.
+IF sy-subrc <> 0.
+  ASSERT 1 = 0.
+ENDIF.
+
+GET REFERENCE OF <temp74> INTO lr_parent.
 
       " the positions occupied, in document order, and the members in layout order
       CLEAR lt_members.
-      LOOP AT lt_block REFERENCE INTO DATA(lr_block) WHERE parent = lv_parent. "#EC CI_SORTSEQ
+
+
+      LOOP AT lt_block REFERENCE INTO lr_block WHERE parent = lv_parent. "#EC CI_SORTSEQ
         INSERT LINES OF lr_block->t_index INTO TABLE lt_members.
       ENDLOOP.
 
@@ -820,15 +1029,38 @@ CLASS z2ui5_cl_layo_xml_tree IMPLEMENTATION.
       " right after the statement that sets it
       LOOP AT lr_parent->t_child INTO lv_member.
         lv_pos = sy-tabix.
-        IF line_exists( lt_members[ table_line = lv_member ] ).
+
+
+        temp77 = sy-tabix.
+        READ TABLE lt_members WITH KEY table_line = lv_member TRANSPORTING NO FIELDS.
+        temp76 = sy-subrc.
+        sy-tabix = temp77.
+        IF temp76 = 0.
           INSERT lv_pos INTO TABLE lt_pos.
         ENDIF.
       ENDLOOP.
 
       LOOP AT lt_members INTO lv_member.
-        DATA(lv_tabix) = sy-tabix.
-        lv_pos = lt_pos[ lv_tabix ].
-        lr_parent->t_child[ lv_pos ] = lv_member.
+
+        lv_tabix = sy-tabix.
+
+
+        temp79 = sy-tabix.
+        READ TABLE lt_pos INDEX lv_tabix ASSIGNING <temp78>.
+        sy-tabix = temp79.
+        IF sy-subrc <> 0.
+          ASSERT 1 = 0.
+        ENDIF.
+        lv_pos = <temp78>.
+
+
+        temp81 = sy-tabix.
+        READ TABLE lr_parent->t_child INDEX lv_pos ASSIGNING <temp80>.
+        sy-tabix = temp81.
+        IF sy-subrc <> 0.
+          ASSERT 1 = 0.
+        ENDIF.
+        <temp80> = lv_member.
       ENDLOOP.
 
     ENDLOOP.

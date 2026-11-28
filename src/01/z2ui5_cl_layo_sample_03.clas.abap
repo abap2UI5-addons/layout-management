@@ -9,7 +9,7 @@ CLASS z2ui5_cl_layo_sample_03 DEFINITION
     INCLUDE TYPE z2ui5_t_11.
     TYPES selkz TYPE abap_bool.
     TYPES END OF ty_s_tab.
-    TYPES ty_t_table TYPE STANDARD TABLE OF ty_s_tab WITH EMPTY KEY.
+    TYPES ty_t_table TYPE STANDARD TABLE OF ty_s_tab WITH DEFAULT KEY.
 
     DATA mt_table  TYPE ty_t_table.
     DATA mo_layout TYPE REF TO z2ui5_cl_layo_manager.
@@ -57,7 +57,10 @@ CLASS z2ui5_cl_layo_sample_03 IMPLEMENTATION.
 
   METHOD render_main.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory(
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA page TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp1 LIKE REF TO mt_table.
+    view = z2ui5_cl_ui5_view_builder=>factory(
                      )->ele( n = `View` ns = `mvc`
                      )->a( n = `xmlns` v = `sap.m`
                      )->a( n = `xmlns:mvc` v = `sap.ui.core.mvc`
@@ -71,13 +74,16 @@ CLASS z2ui5_cl_layo_sample_03 IMPLEMENTATION.
                      )->a( n = `height` v = `100%`
                      )->ele( `Shell` ).
 
-    DATA(page) = view->ele( `Page`
+
+    page = view->ele( `Page`
                      )->a( n = `title` v = `Layout`
                      )->a( n = `navButtonPress` v = client->_event( 'BACK' )
                      )->a( n = `showNavButton` b = client->check_app_prev_stack( )
                      )->a( n = `class` v = `sapUiContentPadding` ).
 
-    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = REF #( mt_table )
+
+    GET REFERENCE OF mt_table INTO temp1.
+z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = temp1
                                                 i_xml    = page
                                                 i_client = client
                                                 i_layout = mo_layout ).
@@ -89,11 +95,11 @@ CLASS z2ui5_cl_layo_sample_03 IMPLEMENTATION.
   METHOD z2ui5_if_app~main.
     me->client = client.
 
-    IF client->check_on_init( ).
+    IF client->check_on_init( ) IS NOT INITIAL.
       on_init( ).
-    ELSEIF client->check_on_navigated( ).
+    ELSEIF client->check_on_navigated( ) IS NOT INITIAL.
       on_after_navigation( ).
-    ELSEIF client->check_on_event( ).
+    ELSEIF client->check_on_event( ) IS NOT INITIAL.
       on_event( ).
     ENDIF.
 
@@ -101,27 +107,34 @@ CLASS z2ui5_cl_layo_sample_03 IMPLEMENTATION.
 
   METHOD get_data.
 
-    SELECT * FROM z2ui5_t_11 ORDER BY PRIMARY KEY INTO TABLE @mt_table UP TO 10 ROWS ##SUBRC_OK.
+    SELECT * FROM z2ui5_t_11 UP TO 10 ROWS INTO TABLE mt_table ORDER BY PRIMARY KEY   ##SUBRC_OK.
 
   ENDMETHOD.
 
   METHOD init_layout.
+    DATA class TYPE abap_abstypename.
+    DATA table TYPE string.
+    DATA temp2 LIKE REF TO mt_table.
 
     IF mo_layout IS BOUND.
       RETURN.
     ENDIF.
 
-    DATA(class) = cl_abap_classdescr=>get_class_name( me ).
+
+    class = cl_abap_classdescr=>get_class_name( me ).
     class = shift_left( val = class sub = `\CLASS=` ).
 
     " the draft table's name behind this class's own prefix (Z2UI5_, or the
     " one a namespace rename gave it) - the rename rewrites the class name,
     " never a literal
-    DATA(table) = substring_before( val = class
+
+    table = substring_before( val = class
                                     sub = `CL_LAYO_` ) && `T_01`.
 
-    mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>m_table
-                                                data     = REF #( mt_table )
+
+    GET REFERENCE OF mt_table INTO temp2.
+mo_layout = z2ui5_cl_layo_manager=>factory( control  = z2ui5_cl_layo_manager=>m_table
+                                                data     = temp2
                                                 handle01 = class
                                                 handle02 = table
                                                 handle03 = ''

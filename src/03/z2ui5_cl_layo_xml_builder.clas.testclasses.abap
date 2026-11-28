@@ -18,7 +18,8 @@ CLASS ltcl_app DEFINITION FINAL FOR TESTING.
         selkz    TYPE abap_bool,
       END OF ty_s_row.
 
-    DATA mt_data   TYPE STANDARD TABLE OF ty_s_row WITH EMPTY KEY.
+    TYPES temp1_6e95141e6c TYPE STANDARD TABLE OF ty_s_row WITH DEFAULT KEY.
+DATA mt_data   TYPE temp1_6e95141e6c.
     DATA mv_search TYPE string.
     DATA mo_layout TYPE REF TO z2ui5_cl_layo_manager.
 ENDCLASS.
@@ -66,7 +67,8 @@ CLASS ltcl_app_cells DEFINITION FINAL FOR TESTING.
         cell_color TYPE ty_s_own_color,
       END OF ty_s_row.
 
-    DATA mt_data   TYPE STANDARD TABLE OF ty_s_row WITH EMPTY KEY.
+    TYPES temp2_03c362f023 TYPE STANDARD TABLE OF ty_s_row WITH DEFAULT KEY.
+DATA mt_data   TYPE temp2_03c362f023.
     DATA mo_layout TYPE REF TO z2ui5_cl_layo_manager.
 ENDCLASS.
 
@@ -148,9 +150,12 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   METHOD cell_plain_name.
 
+    DATA temp1 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    CLEAR temp1.
+    temp1-fname = `MATNR`.
     cl_abap_unit_assert=>assert_equals(
         exp = `{MATNR}`
-        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( VALUE #( fname = `MATNR` ) ) ).
+        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( temp1 ) ).
 
   ENDMETHOD.
 
@@ -158,9 +163,12 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
     " the model writes /CWM/XCWMAT as a level of the row - a relative path,
     " never {/CWM/XCWMAT}, which UI5 reads from the model root
+    DATA temp2 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    CLEAR temp2.
+    temp2-fname = `/CWM/XCWMAT`.
     cl_abap_unit_assert=>assert_equals(
         exp = `{CWM/XCWMAT}`
-        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( VALUE #( fname = `/CWM/XCWMAT` ) ) ).
+        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( temp2 ) ).
 
   ENDMETHOD.
 
@@ -170,14 +178,21 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
     DATA client TYPE REF TO z2ui5_if_client.
 
     DATA position TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp3 LIKE REF TO position.
+    DATA xml TYPE string.
     position-fname = `/CWM/ICON`.
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
 
-    z2ui5_cl_layo_xml_builder=>xml_build_icon( i_client = client
-                                               i_layout = REF #( position )
+    view = z2ui5_cl_ui5_view_builder=>factory( ).
+
+
+    GET REFERENCE OF position INTO temp3.
+z2ui5_cl_layo_xml_builder=>xml_build_icon( i_client = client
+                                               i_layout = temp3
                                                i_xml    = view ).
 
-    DATA(xml) = view->stringify( ).
+
+    xml = view->stringify( ).
     cl_abap_unit_assert=>assert_char_cp( exp = `*src="{CWM/ICON/SRC}"*`
                                          act = xml ).
     cl_abap_unit_assert=>assert_char_cp( exp = `*size="{CWM/ICON/ICON_SIZE}"*`
@@ -188,54 +203,71 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
   METHOD cell_alpha_digit_type.
 
     " ALPHA on a CHAR column: the browser strips and pads the zeros
+    DATA temp4 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    CLEAR temp4.
+    temp4-fname = `VBELN`.
+    temp4-convexit = `ALPHA`.
+    temp4-digits = 10.
     cl_abap_unit_assert=>assert_equals(
         exp = `{path:'VBELN',type:'LayoDigitString',constraints:{isDigitSequence:true,maxLength:10}}`
-        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( VALUE #( fname    = `VBELN`
-                                                                         convexit = `ALPHA`
-                                                                         digits   = 10 ) ) ).
+        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( temp4 ) ).
 
   ENDMETHOD.
 
   METHOD cell_numc_namespaced.
 
+    DATA temp5 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    CLEAR temp5.
+    temp5-fname = `/CWM/NR`.
+    temp5-convexit = `NUMC`.
+    temp5-digits = 8.
     cl_abap_unit_assert=>assert_equals(
         exp = `{path:'CWM/NR',type:'LayoDigitString',constraints:{isDigitSequence:true,maxLength:8}}`
-        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( VALUE #( fname    = `/CWM/NR`
-                                                                         convexit = `NUMC`
-                                                                         digits   = 8 ) ) ).
+        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( temp5 ) ).
 
   ENDMETHOD.
 
   METHOD cell_conversion_switched_off.
 
     " the user switched the conversion off in the layout popup
+    DATA temp6 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    CLEAR temp6.
+    temp6-fname = `VBELN`.
+    temp6-convexit = `ALPHA`.
+    temp6-digits = 10.
+    temp6-no_convexit = abap_true.
     cl_abap_unit_assert=>assert_equals(
         exp = `{VBELN}`
-        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( VALUE #( fname       = `VBELN`
-                                                                         convexit    = `ALPHA`
-                                                                         digits      = 10
-                                                                         no_convexit = abap_true ) ) ).
+        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( temp6 ) ).
 
   ENDMETHOD.
 
   METHOD cell_other_exit_plain.
 
     " CUNIT, MATN1, ... stay a conversion in ABAP - a plain binding
+    DATA temp7 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    CLEAR temp7.
+    temp7-fname = `MATNR`.
+    temp7-convexit = `MATN1`.
     cl_abap_unit_assert=>assert_equals(
         exp = `{MATNR}`
-        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( VALUE #( fname    = `MATNR`
-                                                                         convexit = `MATN1` ) ) ).
+        act = z2ui5_cl_layo_xml_builder=>table_value_formatter( temp7 ) ).
 
   ENDMETHOD.
 
   METHOD require_on_control.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
-    DATA(table) = view->ele( `Table` ).
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA table TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA xml TYPE string.
+    view = z2ui5_cl_ui5_view_builder=>factory( ).
+
+    table = view->ele( `Table` ).
 
     z2ui5_cl_layo_xml_builder=>set_digit_type_require( table ).
 
-    DATA(xml) = view->stringify( ).
+
+    xml = view->stringify( ).
     cl_abap_unit_assert=>assert_char_cp( exp = `*xmlns:core="sap.ui.core"*`
                                          act = xml ).
     cl_abap_unit_assert=>assert_char_cp( exp = `*core:require="{LayoDigitString:*sap/ui/model/odata/type/String*}"*`
@@ -245,38 +277,143 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   METHOD require_only_with_digits.
 
-    DATA(layout) = NEW z2ui5_cl_layo_manager( ).
-    layout->ms_layout-t_layout = VALUE #( ( fname = `MATNR` convexit = `MATN1` )
-                                          ( fname = `VBELN` convexit = `ALPHA` digits = 10 no_convexit = abap_true ) ).
+    DATA layout TYPE REF TO z2ui5_cl_layo_manager.
+    DATA temp8 TYPE z2ui5_cl_layo_manager=>ty_t_positions.
+    DATA temp9 LIKE LINE OF temp8.
+    FIELD-SYMBOLS <temp10> LIKE LINE OF layout->ms_layout-t_layout.
+    DATA temp11 LIKE sy-tabix.
+    CREATE OBJECT layout TYPE z2ui5_cl_layo_manager.
+
+    CLEAR temp8.
+
+    CLEAR temp9.
+    temp9-fname = `MATNR`.
+    temp9-convexit = `MATN1`.
+    INSERT temp9 INTO TABLE temp8.
+    CLEAR temp9.
+    temp9-fname = `VBELN`.
+    temp9-convexit = `ALPHA`.
+    temp9-digits = 10.
+    temp9-no_convexit = abap_true.
+    INSERT temp9 INTO TABLE temp8.
+    layout->ms_layout-t_layout = temp8.
 
     cl_abap_unit_assert=>assert_false( z2ui5_cl_layo_xml_builder=>check_digit_type( layout ) ).
 
-    layout->ms_layout-t_layout[ 2 ]-no_convexit = abap_false.
+
+
+    temp11 = sy-tabix.
+    READ TABLE layout->ms_layout-t_layout INDEX 2 ASSIGNING <temp10>.
+    sy-tabix = temp11.
+    IF sy-subrc <> 0.
+      ASSERT 1 = 0.
+    ENDIF.
+    <temp10>-no_convexit = abap_false.
 
     cl_abap_unit_assert=>assert_true( z2ui5_cl_layo_xml_builder=>check_digit_type( layout ) ).
 
   ENDMETHOD.
 
   METHOD setup.
+    DATA temp12 LIKE mo_app->mt_data.
+    DATA temp13 LIKE LINE OF temp12.
+    DATA temp14 TYPE z2ui5_cl_layo_manager=>ty_t_positions.
+    DATA temp15 LIKE LINE OF temp14.
+    DATA temp1 TYPE z2ui5_cl_layo_manager=>ty_t_sub_columns.
+    DATA temp2 LIKE LINE OF temp1.
+    DATA temp3 TYPE z2ui5_cl_layo_manager=>ty_t_sub_columns.
+    DATA temp4 LIKE LINE OF temp3.
 
-    mo_app = NEW #( ).
-    mo_app->mt_data = VALUE #( ( vbeln = `4711` matnr = `M1` menge = 1 meins = `ST` ) ).
+    CREATE OBJECT mo_app.
 
-    mo_app->mo_layout = NEW #( ).
+    CLEAR temp12.
+
+    temp13-vbeln = `4711`.
+    temp13-matnr = `M1`.
+    temp13-menge = 1.
+    temp13-meins = `ST`.
+    INSERT temp13 INTO TABLE temp12.
+    mo_app->mt_data = temp12.
+
+    CREATE OBJECT mo_app->mo_layout.
     mo_app->mo_layout->ms_layout-s_head-guid = `GUID1`.
-    mo_app->mo_layout->ms_layout-t_layout = VALUE #(
-        ( fname = `VBELN` rollname = `VBELN` visible = abap_true tlabel = `Order` convexit = `ALPHA` digits = 10
-          t_sub_col = VALUE #( ( fname = `MATNR` ) ( fname = `MENGE` ) ( fname = `ICON` ) ) )
-        ( fname = `MATNR` rollname = `MATNR` visible = abap_true tlabel = `Material` )
-        ( fname = `MENGE` rollname = `MENGE` visible = abap_true tlabel = `Qty` reference_field = `MEINS` )
-        ( fname = `MEINS` rollname = `MEINS` tlabel = `Unit` )
-        ( fname = `ICON` rollname = `Z2UI5_XML_S_ICON` visible = abap_true tlabel = `Icon`
-          t_sub_col = VALUE #( ( fname = `MATNR` ) ) )
-        ( fname = `TAG` rollname = `Z2UI5_XML_S_GENERICTAG` tlabel = `Tag` )
-        ( fname = `PROGRESS` rollname = `Z2UI5_XML_S_PROGRESSIND` tlabel = `Progress` )
-        ( fname = `RADIAL` rollname = `Z2UI5_XML_S_RADIALCHART` tlabel = `Radial` )
-        ( fname = `STATUS` rollname = `Z2UI5_XML_S_STATUSIND` tlabel = `Status` )
-        ( fname = `SELKZ` rollname = `XSDBOOLEAN` tlabel = `Sel` ) ).
+
+    CLEAR temp14.
+
+    CLEAR temp15.
+    temp15-fname = `VBELN`.
+    temp15-rollname = `VBELN`.
+    temp15-visible = abap_true.
+    temp15-tlabel = `Order`.
+    temp15-convexit = `ALPHA`.
+    temp15-digits = 10.
+
+    CLEAR temp1.
+
+    temp2-fname = `MATNR`.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-fname = `MENGE`.
+    INSERT temp2 INTO TABLE temp1.
+    temp2-fname = `ICON`.
+    INSERT temp2 INTO TABLE temp1.
+    temp15-t_sub_col = temp1.
+    INSERT temp15 INTO TABLE temp14.
+    CLEAR temp15.
+    temp15-fname = `MATNR`.
+    temp15-rollname = `MATNR`.
+    temp15-visible = abap_true.
+    temp15-tlabel = `Material`.
+    INSERT temp15 INTO TABLE temp14.
+    CLEAR temp15.
+    temp15-fname = `MENGE`.
+    temp15-rollname = `MENGE`.
+    temp15-visible = abap_true.
+    temp15-tlabel = `Qty`.
+    temp15-reference_field = `MEINS`.
+    INSERT temp15 INTO TABLE temp14.
+    CLEAR temp15.
+    temp15-fname = `MEINS`.
+    temp15-rollname = `MEINS`.
+    temp15-tlabel = `Unit`.
+    INSERT temp15 INTO TABLE temp14.
+    CLEAR temp15.
+    temp15-fname = `ICON`.
+    temp15-rollname = `Z2UI5_XML_S_ICON`.
+    temp15-visible = abap_true.
+    temp15-tlabel = `Icon`.
+
+    CLEAR temp3.
+
+    temp4-fname = `MATNR`.
+    INSERT temp4 INTO TABLE temp3.
+    temp15-t_sub_col = temp3.
+    INSERT temp15 INTO TABLE temp14.
+    CLEAR temp15.
+    temp15-fname = `TAG`.
+    temp15-rollname = `Z2UI5_XML_S_GENERICTAG`.
+    temp15-tlabel = `Tag`.
+    INSERT temp15 INTO TABLE temp14.
+    CLEAR temp15.
+    temp15-fname = `PROGRESS`.
+    temp15-rollname = `Z2UI5_XML_S_PROGRESSIND`.
+    temp15-tlabel = `Progress`.
+    INSERT temp15 INTO TABLE temp14.
+    CLEAR temp15.
+    temp15-fname = `RADIAL`.
+    temp15-rollname = `Z2UI5_XML_S_RADIALCHART`.
+    temp15-tlabel = `Radial`.
+    INSERT temp15 INTO TABLE temp14.
+    CLEAR temp15.
+    temp15-fname = `STATUS`.
+    temp15-rollname = `Z2UI5_XML_S_STATUSIND`.
+    temp15-tlabel = `Status`.
+    INSERT temp15 INTO TABLE temp14.
+    CLEAR temp15.
+    temp15-fname = `SELKZ`.
+    temp15-rollname = `XSDBOOLEAN`.
+    temp15-tlabel = `Sel`.
+    INSERT temp15 INTO TABLE temp14.
+    mo_app->mo_layout->ms_layout-t_layout = temp14.
 
     client_for( mo_app ).
 
@@ -284,27 +421,39 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   METHOD client_for.
 
-    mo_action = NEW #( val = NEW z2ui5_cl_ui5_handler( val = `` ) ).
+    DATA temp5 TYPE REF TO z2ui5_cl_ui5_handler.
+    CREATE OBJECT temp5 TYPE z2ui5_cl_ui5_handler EXPORTING val = ``.
+    CREATE OBJECT mo_action EXPORTING val = temp5.
     mo_action->mo_app->mo_app = app.
-    mi_client = NEW z2ui5_cl_ui5_client( action = mo_action ).
+    CREATE OBJECT mi_client TYPE z2ui5_cl_ui5_client EXPORTING action = mo_action.
 
   ENDMETHOD.
 
   METHOD render_table.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+      DATA temp16 LIKE REF TO mo_app->mt_data.
+      DATA temp17 LIKE REF TO mo_app->mv_search.
+DATA temp6 LIKE REF TO mo_app->mt_data.
+    view = z2ui5_cl_ui5_view_builder=>factory( ).
 
     IF i_options = abap_false.
-      z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = REF #( mo_app->mt_data )
+
+      GET REFERENCE OF mo_app->mt_data INTO temp16.
+z2ui5_cl_layo_xml_builder=>xml_build_table( i_data   = temp16
                                                   i_xml    = view
                                                   i_client = mi_client
                                                   i_layout = mo_app->mo_layout ).
     ELSE.
-      z2ui5_cl_layo_xml_builder=>xml_build_table( i_data             = REF #( mo_app->mt_data )
+
+      GET REFERENCE OF mo_app->mv_search INTO temp17.
+
+GET REFERENCE OF mo_app->mt_data INTO temp6.
+z2ui5_cl_layo_xml_builder=>xml_build_table( i_data             = temp6
                                                   i_xml              = view
                                                   i_client           = mi_client
                                                   i_layout           = mo_app->mo_layout
-                                                  i_search_value     = REF #( mo_app->mv_search )
+                                                  i_search_value     = temp17
                                                   i_growingthreshold = `50`
                                                   i_headertext       = `Orders`
                                                   i_sel_mode         = `MultiSelect`
@@ -319,34 +468,105 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   METHOD render_cells.
 
-    DATA(app) = NEW ltcl_app_cells( ).
-    app->mt_data = VALUE #( ( matnr = `M1` ) ).
-    app->mo_layout = NEW #( ).
+    DATA app TYPE REF TO ltcl_app_cells.
+    DATA temp18 LIKE app->mt_data.
+    DATA temp19 LIKE LINE OF temp18.
+    DATA temp20 TYPE z2ui5_cl_layo_manager=>ty_t_positions.
+    DATA temp21 LIKE LINE OF temp20.
+    DATA temp7 TYPE z2ui5_cl_layo_manager=>ty_t_sub_columns.
+    DATA temp8 LIKE LINE OF temp7.
+    DATA temp9 TYPE z2ui5_cl_layo_manager=>ty_t_sub_columns.
+    DATA temp10 LIKE LINE OF temp9.
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp22 LIKE REF TO app->mt_data.
+DATA temp11 TYPE z2ui5_cl_layo_xml_builder=>ty_t_cell_control.
+DATA temp12 LIKE LINE OF temp11.
+    CREATE OBJECT app TYPE ltcl_app_cells.
+
+    CLEAR temp18.
+
+    temp19-matnr = `M1`.
+    INSERT temp19 INTO TABLE temp18.
+    app->mt_data = temp18.
+    CREATE OBJECT app->mo_layout.
     app->mo_layout->ms_layout-s_head-guid = `GUID2`.
-    app->mo_layout->ms_layout-t_layout = VALUE #(
-        ( fname = `MATNR` rollname = `MATNR` tlabel = `Material`
-          t_sub_col = VALUE #( ( fname = `SWITCH` ) ( fname = `ICON` ) ) )
-        ( fname = `SWITCH` rollname = `Z2UI5_XML_S_SWITCH` tlabel = `Switch` )
-        ( fname = `INPUT` rollname = `Z2UI5_XML_S_INPUT` tlabel = `Input` )
-        ( fname = `BUTTON` rollname = `Z2UI5_XML_S_BUTTON` tlabel = `Button`
-          t_sub_col = VALUE #( ( fname = `MATNR` ) ) )
-        ( fname = `OWN_ICON` rollname = `TY_S_OWN_ICON` tlabel = `Own icon` )
-        ( fname = `OWN_RADIAL` rollname = `TY_S_OWN_RADIAL` tlabel = `Own radial` )
-        ( fname = `ICON` rollname = `Z2UI5_XML_S_ICON` tlabel = `Icon` ) ).
+
+    CLEAR temp20.
+
+    CLEAR temp21.
+    temp21-fname = `MATNR`.
+    temp21-rollname = `MATNR`.
+    temp21-tlabel = `Material`.
+
+    CLEAR temp7.
+
+    temp8-fname = `SWITCH`.
+    INSERT temp8 INTO TABLE temp7.
+    temp8-fname = `ICON`.
+    INSERT temp8 INTO TABLE temp7.
+    temp21-t_sub_col = temp7.
+    INSERT temp21 INTO TABLE temp20.
+    CLEAR temp21.
+    temp21-fname = `SWITCH`.
+    temp21-rollname = `Z2UI5_XML_S_SWITCH`.
+    temp21-tlabel = `Switch`.
+    INSERT temp21 INTO TABLE temp20.
+    CLEAR temp21.
+    temp21-fname = `INPUT`.
+    temp21-rollname = `Z2UI5_XML_S_INPUT`.
+    temp21-tlabel = `Input`.
+    INSERT temp21 INTO TABLE temp20.
+    CLEAR temp21.
+    temp21-fname = `BUTTON`.
+    temp21-rollname = `Z2UI5_XML_S_BUTTON`.
+    temp21-tlabel = `Button`.
+
+    CLEAR temp9.
+
+    temp10-fname = `MATNR`.
+    INSERT temp10 INTO TABLE temp9.
+    temp21-t_sub_col = temp9.
+    INSERT temp21 INTO TABLE temp20.
+    CLEAR temp21.
+    temp21-fname = `OWN_ICON`.
+    temp21-rollname = `TY_S_OWN_ICON`.
+    temp21-tlabel = `Own icon`.
+    INSERT temp21 INTO TABLE temp20.
+    CLEAR temp21.
+    temp21-fname = `OWN_RADIAL`.
+    temp21-rollname = `TY_S_OWN_RADIAL`.
+    temp21-tlabel = `Own radial`.
+    INSERT temp21 INTO TABLE temp20.
+    CLEAR temp21.
+    temp21-fname = `ICON`.
+    temp21-rollname = `Z2UI5_XML_S_ICON`.
+    temp21-tlabel = `Icon`.
+    INSERT temp21 INTO TABLE temp20.
+    app->mo_layout->ms_layout-t_layout = temp20.
 
     client_for( app ).
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
 
-    z2ui5_cl_layo_xml_builder=>xml_build_table(
-        i_data             = REF #( app->mt_data )
+    view = z2ui5_cl_ui5_view_builder=>factory( ).
+
+
+    GET REFERENCE OF app->mt_data INTO temp22.
+
+CLEAR temp11.
+
+temp12-rollname = `TY_S_OWN_ICON`.
+temp12-control = z2ui5_cl_layo_xml_builder=>cs_cell_control-icon.
+INSERT temp12 INTO TABLE temp11.
+temp12-rollname = `TY_S_OWN_RAD*`.
+temp12-control = z2ui5_cl_layo_xml_builder=>cs_cell_control-radial_chart.
+INSERT temp12 INTO TABLE temp11.
+z2ui5_cl_layo_xml_builder=>xml_build_table(
+        i_data             = temp22
         i_xml              = view
         i_client           = mi_client
         i_layout           = app->mo_layout
         i_sub_col_controls = i_sub_col_controls
-        i_t_cell_control   = VALUE #(
-            ( rollname = `TY_S_OWN_ICON` control = z2ui5_cl_layo_xml_builder=>cs_cell_control-icon )
-            ( rollname = `TY_S_OWN_RAD*` control = z2ui5_cl_layo_xml_builder=>cs_cell_control-radial_chart ) ) ).
+        i_t_cell_control   = temp11 ).
 
     result = view->stringify( ).
 
@@ -367,6 +587,9 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD cell_control_by_rollname.
+    DATA temp23 TYPE z2ui5_cl_layo_xml_builder=>ty_t_cell_control.
+    DATA temp24 LIKE LINE OF temp23.
+    DATA t_cell_control LIKE temp23.
 
     " the built-in patterns
     cl_abap_unit_assert=>assert_equals( exp = z2ui5_cl_layo_xml_builder=>cs_cell_control-icon
@@ -378,9 +601,17 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
     " the app's entries first - a rollname of its own, a namespace, and a
     " built-in one drawn as text instead
-    DATA(t_cell_control) = VALUE z2ui5_cl_layo_xml_builder=>ty_t_cell_control(
-        ( rollname = `/ABC/S_SWITCH` control = z2ui5_cl_layo_xml_builder=>cs_cell_control-switch )
-        ( rollname = `Z2UI5_XML_S_ICON` control = z2ui5_cl_layo_xml_builder=>cs_cell_control-text ) ).
+
+    CLEAR temp23.
+
+    temp24-rollname = `/ABC/S_SWITCH`.
+    temp24-control = z2ui5_cl_layo_xml_builder=>cs_cell_control-switch.
+    INSERT temp24 INTO TABLE temp23.
+    temp24-rollname = `Z2UI5_XML_S_ICON`.
+    temp24-control = z2ui5_cl_layo_xml_builder=>cs_cell_control-text.
+    INSERT temp24 INTO TABLE temp23.
+
+    t_cell_control = temp23.
 
     cl_abap_unit_assert=>assert_equals( exp = z2ui5_cl_layo_xml_builder=>cs_cell_control-switch
                                         act = z2ui5_cl_layo_xml_builder=>cell_control(
@@ -395,14 +626,21 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   METHOD col_sort_header.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
-    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data           = REF #( mo_app->mt_data )
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp25 LIKE REF TO mo_app->mt_data.
+    DATA xml TYPE string.
+    DATA temp1 TYPE xsdboolean.
+    view = z2ui5_cl_ui5_view_builder=>factory( ).
+
+    GET REFERENCE OF mo_app->mt_data INTO temp25.
+z2ui5_cl_layo_xml_builder=>xml_build_table( i_data           = temp25
                                                 i_xml            = view
                                                 i_client         = mi_client
                                                 i_layout         = mo_app->mo_layout
                                                 i_col_sort       = abap_true
                                                 i_col_sort_class = `myColSort` ).
-    DATA(xml) = view->stringify( ).
+
+    xml = view->stringify( ).
 
     " the standard sort icon, bound to the sorting of the layout
     cl_abap_unit_assert=>assert_char_cp(
@@ -415,7 +653,9 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
     cl_abap_unit_assert=>assert_char_cp( exp = `*<Link text="Qty" *`
                                          act = xml ).
     " no plain header is left
-    cl_abap_unit_assert=>assert_false( xsdbool( xml CS `<Text text="Order"/>` ) ).
+
+    temp1 = boolc( xml CS `<Text text="Order"/>` ).
+    cl_abap_unit_assert=>assert_false( temp1 ).
 
   ENDMETHOD.
 
@@ -424,49 +664,121 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
     " the order of the rows is sort( )'s business - and the transpiled
     " runtime drops its dynamic SORT BY (sortorder): checked here is what
     " the event does to the layout
-    mo_app->mo_layout->ms_layout-t_layout[ fname = `VBELN` ]-sorting = `ASCENDING`.
+    FIELD-SYMBOLS <temp26> LIKE LINE OF mo_app->mo_layout->ms_layout-t_layout.
+    DATA temp27 LIKE sy-tabix.
+    DATA temp28 TYPE string_table.
+    DATA temp30 LIKE REF TO mo_app->mt_data.
+    FIELD-SYMBOLS <temp31> LIKE LINE OF mo_app->mo_layout->ms_layout-t_layout.
+    DATA temp32 LIKE sy-tabix.
+    FIELD-SYMBOLS <temp33> LIKE LINE OF mo_app->mo_layout->ms_layout-t_layout.
+    DATA temp34 LIKE sy-tabix.
+    DATA temp35 LIKE REF TO mo_app->mt_data.
+    FIELD-SYMBOLS <temp36> LIKE LINE OF mo_app->mo_layout->ms_layout-t_layout.
+    DATA temp37 LIKE sy-tabix.
+    DATA temp38 LIKE REF TO mo_app->mt_data.
+    FIELD-SYMBOLS <temp39> LIKE LINE OF mo_app->mo_layout->ms_layout-t_layout.
+    DATA temp40 LIKE sy-tabix.
+    temp27 = sy-tabix.
+    READ TABLE mo_app->mo_layout->ms_layout-t_layout WITH KEY fname = `VBELN` ASSIGNING <temp26>.
+    sy-tabix = temp27.
+    IF sy-subrc <> 0.
+      ASSERT 1 = 0.
+    ENDIF.
+    <temp26>-sorting = `ASCENDING`.
 
     mo_action->ms_actual-event       = z2ui5_cl_layo_xml_builder=>cv_event_column_sort.
-    mo_action->ms_actual-t_event_arg = VALUE #( ( `GUID1` ) ( `MATNR` ) ).
+
+    CLEAR temp28.
+    INSERT `GUID1` INTO TABLE temp28.
+    INSERT `MATNR` INTO TABLE temp28.
+    mo_action->ms_actual-t_event_arg = temp28.
 
     " the popup's event handler takes it as well - and opens no popup
-    z2ui5_cl_layo_pop=>on_event_layout( client = mi_client
-                                        layout = mo_app->mo_layout
-                                        data   = REF #( mo_app->mt_data ) ).
 
+    GET REFERENCE OF mo_app->mt_data INTO temp30.
+z2ui5_cl_layo_pop=>on_event_layout( client = mi_client
+                                        layout = mo_app->mo_layout
+                                        data   = temp30 ).
+
+
+
+    temp32 = sy-tabix.
+    READ TABLE mo_app->mo_layout->ms_layout-t_layout WITH KEY fname = `MATNR` ASSIGNING <temp31>.
+    sy-tabix = temp32.
+    IF sy-subrc <> 0.
+      ASSERT 1 = 0.
+    ENDIF.
     cl_abap_unit_assert=>assert_equals( exp = `ASCENDING`
-                                        act = mo_app->mo_layout->ms_layout-t_layout[ fname = `MATNR` ]-sorting ).
+                                        act = <temp31>-sorting ).
     " sorted by the column clicked last only
-    cl_abap_unit_assert=>assert_initial( mo_app->mo_layout->ms_layout-t_layout[ fname = `VBELN` ]-sorting ).
+
+
+    temp34 = sy-tabix.
+    READ TABLE mo_app->mo_layout->ms_layout-t_layout WITH KEY fname = `VBELN` ASSIGNING <temp33>.
+    sy-tabix = temp34.
+    IF sy-subrc <> 0.
+      ASSERT 1 = 0.
+    ENDIF.
+    cl_abap_unit_assert=>assert_initial( <temp33>-sorting ).
     cl_abap_unit_assert=>assert_initial( mo_action->ms_next-o_app_call ).
 
     " the second click: descending
-    cl_abap_unit_assert=>assert_true( z2ui5_cl_layo_xml_builder=>on_event_column_sort(
+
+    GET REFERENCE OF mo_app->mt_data INTO temp35.
+cl_abap_unit_assert=>assert_true( z2ui5_cl_layo_xml_builder=>on_event_column_sort(
                                           client = mi_client
                                           layout = mo_app->mo_layout
-                                          data   = REF #( mo_app->mt_data ) ) ).
+                                          data   = temp35 ) ).
+
+
+    temp37 = sy-tabix.
+    READ TABLE mo_app->mo_layout->ms_layout-t_layout WITH KEY fname = `MATNR` ASSIGNING <temp36>.
+    sy-tabix = temp37.
+    IF sy-subrc <> 0.
+      ASSERT 1 = 0.
+    ENDIF.
     cl_abap_unit_assert=>assert_equals( exp = `DESCENDING`
-                                        act = mo_app->mo_layout->ms_layout-t_layout[ fname = `MATNR` ]-sorting ).
+                                        act = <temp36>-sorting ).
 
     " the third: no sorting
-    z2ui5_cl_layo_xml_builder=>on_event_column_sort( client = mi_client
+
+    GET REFERENCE OF mo_app->mt_data INTO temp38.
+z2ui5_cl_layo_xml_builder=>on_event_column_sort( client = mi_client
                                                      layout = mo_app->mo_layout
-                                                     data   = REF #( mo_app->mt_data ) ).
-    cl_abap_unit_assert=>assert_initial( mo_app->mo_layout->ms_layout-t_layout[ fname = `MATNR` ]-sorting ).
+                                                     data   = temp38 ).
+
+
+    temp40 = sy-tabix.
+    READ TABLE mo_app->mo_layout->ms_layout-t_layout WITH KEY fname = `MATNR` ASSIGNING <temp39>.
+    sy-tabix = temp40.
+    IF sy-subrc <> 0.
+      ASSERT 1 = 0.
+    ENDIF.
+    cl_abap_unit_assert=>assert_initial( <temp39>-sorting ).
 
   ENDMETHOD.
 
   METHOD col_sort_other_layout.
+    DATA temp41 TYPE string_table.
+    DATA temp43 TYPE string_table.
 
     " the column sort of another table, and an unknown column
     mo_action->ms_actual-event       = z2ui5_cl_layo_xml_builder=>cv_event_column_sort.
-    mo_action->ms_actual-t_event_arg = VALUE #( ( `GUID2` ) ( `MATNR` ) ).
+
+    CLEAR temp41.
+    INSERT `GUID2` INTO TABLE temp41.
+    INSERT `MATNR` INTO TABLE temp41.
+    mo_action->ms_actual-t_event_arg = temp41.
 
     cl_abap_unit_assert=>assert_false( z2ui5_cl_layo_xml_builder=>on_event_column_sort(
                                            client = mi_client
                                            layout = mo_app->mo_layout ) ).
 
-    mo_action->ms_actual-t_event_arg = VALUE #( ( `GUID1` ) ( `NOPE` ) ).
+
+    CLEAR temp43.
+    INSERT `GUID1` INTO TABLE temp43.
+    INSERT `NOPE` INTO TABLE temp43.
+    mo_action->ms_actual-t_event_arg = temp43.
 
     cl_abap_unit_assert=>assert_false( z2ui5_cl_layo_xml_builder=>on_event_column_sort(
                                            client = mi_client
@@ -477,8 +789,12 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   METHOD row_color.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
-    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data      = REF #( mo_app->mt_data )
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp45 LIKE REF TO mo_app->mt_data.
+    view = z2ui5_cl_ui5_view_builder=>factory( ).
+
+    GET REFERENCE OF mo_app->mt_data INTO temp45.
+z2ui5_cl_layo_xml_builder=>xml_build_table( i_data      = temp45
                                                 i_xml       = view
                                                 i_client    = mi_client
                                                 i_layout    = mo_app->mo_layout
@@ -502,8 +818,12 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   METHOD sel_event.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
-    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data      = REF #( mo_app->mt_data )
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp46 LIKE REF TO mo_app->mt_data.
+    view = z2ui5_cl_ui5_view_builder=>factory( ).
+
+    GET REFERENCE OF mo_app->mt_data INTO temp46.
+z2ui5_cl_layo_xml_builder=>xml_build_table( i_data      = temp46
                                                 i_xml       = view
                                                 i_client    = mi_client
                                                 i_layout    = mo_app->mo_layout
@@ -516,7 +836,9 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   METHOD switch_input_button.
 
-    DATA(xml) = render_cells( ).
+    DATA xml TYPE string.
+    DATA temp2 TYPE xsdboolean.
+    xml = render_cells( ).
 
     cl_abap_unit_assert=>assert_char_cp(
         exp = `*<Switch state="{SWITCH/STATE}" customTextOn="{SWITCH/CUSTOMTEXTON}" customTextOff="{SWITCH/CUSTOMTEXTOFF}" enabled="{SWITCH/ENABLED}" type="{= ${SWITCH/TYPE} || 'Default' }" change=".eB([${SWITCH/CHANGE}], ${SWITCH/CHANGE_VALUE})"/>*`
@@ -528,7 +850,9 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
         exp = `*<Button text="{BUTTON/TEXT}" icon="{BUTTON/ICON}" type="{= ${BUTTON/TYPE} || 'Default' }" press=".eB([${BUTTON/PRESS}], ${BUTTON/PRESS_VALUE})"/>*`
         act = xml ).
     " without i_sub_col_controls a control column shows the control only
-    cl_abap_unit_assert=>assert_false( xsdbool( xml CS `<VBox` ) ).
+
+    temp2 = boolc( xml CS `<VBox` ).
+    cl_abap_unit_assert=>assert_false( temp2 ).
 
   ENDMETHOD.
 
@@ -536,13 +860,23 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
     " a value span the reference field takes up completely is still a span
     " of 1 - XL0 or S0 is none the grid takes
-    DATA(position) = VALUE z2ui5_cl_layo_manager=>ty_s_positions( reference_field = `WAERS`
-                                                                  grid_value_xl   = `1`
-                                                                  grid_value_l    = `4`
-                                                                  grid_value_m    = `1`
-                                                                  grid_value_s    = `2` ).
+    DATA temp47 TYPE z2ui5_cl_layo_manager=>ty_s_positions.
+    DATA position LIKE temp47.
+    DATA temp48 LIKE REF TO position.
+DATA grid_layout TYPE z2ui5_cl_layo_xml_builder=>ty_s_grid_layout.
+    CLEAR temp47.
+    temp47-reference_field = `WAERS`.
+    temp47-grid_value_xl = `1`.
+    temp47-grid_value_l = `4`.
+    temp47-grid_value_m = `1`.
+    temp47-grid_value_s = `2`.
 
-    DATA(grid_layout) = z2ui5_cl_layo_xml_builder=>get_grid_layout( REF #( position ) ).
+    position = temp47.
+
+
+    GET REFERENCE OF position INTO temp48.
+
+grid_layout = z2ui5_cl_layo_xml_builder=>get_grid_layout( temp48 ).
 
     cl_abap_unit_assert=>assert_equals( exp = `XL1 L3 M1 S1`
                                         act = grid_layout-value ).
@@ -553,7 +887,8 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   METHOD own_structures.
 
-    DATA(xml) = render_cells( ).
+    DATA xml TYPE string.
+    xml = render_cells( ).
 
     " SIZE instead of ICON_SIZE, and COLOR and PRESS because the structure has them
     cl_abap_unit_assert=>assert_char_cp(
@@ -569,7 +904,9 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
 
   METHOD sub_col_controls.
 
-    DATA(xml) = render_cells( abap_true ).
+    DATA xml TYPE string.
+    DATA temp3 TYPE xsdboolean.
+    xml = render_cells( abap_true ).
 
     " a text column with control subcolumns: its value, then the controls
     cl_abap_unit_assert=>assert_char_cp(
@@ -580,24 +917,35 @@ CLASS ltcl_xml_builder IMPLEMENTATION.
         exp = `*<VBox><Button *"/><ObjectIdentifier text="Material: {MATNR}"/></VBox>*`
         act = xml ).
     " the text of the subcolumns leaves the controls out
-    cl_abap_unit_assert=>assert_false( xsdbool( xml CS `Switch: ` ) ).
+
+    temp3 = boolc( xml CS `Switch: ` ).
+    cl_abap_unit_assert=>assert_false( temp3 ).
 
   ENDMETHOD.
 
   METHOD table_without_toolbar.
 
-    DATA(view) = z2ui5_cl_ui5_view_builder=>factory( ).
-    z2ui5_cl_layo_xml_builder=>xml_build_table( i_data         = REF #( mo_app->mt_data )
+    DATA view TYPE REF TO z2ui5_cl_ui5_view_builder.
+    DATA temp49 LIKE REF TO mo_app->mv_search.
+DATA temp13 LIKE REF TO mo_app->mt_data.
+    DATA exp TYPE string.
+    view = z2ui5_cl_ui5_view_builder=>factory( ).
+
+    GET REFERENCE OF mo_app->mv_search INTO temp49.
+
+GET REFERENCE OF mo_app->mt_data INTO temp13.
+z2ui5_cl_layo_xml_builder=>xml_build_table( i_data         = temp13
                                                 i_xml          = view
                                                 i_client       = mi_client
                                                 i_layout       = mo_app->mo_layout
-                                                i_search_value = REF #( mo_app->mv_search )
+                                                i_search_value = temp49
                                                 i_headertext   = `Orders`
                                                 i_toolbar      = abap_false ).
 
     " the default table without its toolbar - no title, no search field, no
     " settings button - and the header text on the table itself
-    DATA(exp) = replace( val  = golden_default( )
+
+    exp = replace( val  = golden_default( )
                          sub  = `<headerToolbar><OverflowToolbar><ToolbarSpacer/><Button icon="sap-icon://action-settings" press=".eB(['GUID1'])"/></OverflowToolbar></headerToolbar>`
                          with = `` ).
     exp = replace( val  = exp
