@@ -280,6 +280,104 @@ CLASS z2ui5_cl_layo_context DEFINITION
       RETURNING
         VALUE(result) TYPE abap_bool.
 
+    TYPES:
+      BEGIN OF ty_s_token,
+        key      TYPE string,
+        text     TYPE string,
+        visible  TYPE abap_bool,
+        selkz    TYPE abap_bool,
+        editable TYPE abap_bool,
+      END OF ty_s_token.
+
+    TYPES ty_t_token TYPE STANDARD TABLE OF ty_s_token WITH EMPTY KEY.
+
+    TYPES:
+      BEGIN OF ty_s_range,
+        sign   TYPE c LENGTH 1,
+        option TYPE c LENGTH 2,
+        low    TYPE string,
+        high   TYPE string,
+      END OF ty_s_range.
+
+    TYPES ty_t_range TYPE STANDARD TABLE OF ty_s_range WITH EMPTY KEY.
+
+    TYPES:
+      BEGIN OF ty_s_filter_multi,
+        name            TYPE string,
+        t_range         TYPE ty_t_range,
+        t_token         TYPE ty_t_token,
+        t_token_added   TYPE ty_t_token,
+        t_token_removed TYPE ty_t_token,
+      END OF ty_s_filter_multi.
+
+    TYPES ty_t_filter_multi TYPE STANDARD TABLE OF ty_s_filter_multi WITH EMPTY KEY.
+
+    CLASS-METHODS filter_itab
+      IMPORTING
+        filter TYPE ty_t_filter_multi
+      CHANGING
+        val    TYPE STANDARD TABLE.
+
+    CLASS-METHODS filter_get_multi_by_data
+      IMPORTING
+        val           TYPE data
+      RETURNING
+        VALUE(result) TYPE ty_t_filter_multi.
+
+    CLASS-METHODS filter_get_sql_where
+      IMPORTING
+        val           TYPE ty_t_filter_multi
+      RETURNING
+        VALUE(result) TYPE string.
+
+    CLASS-METHODS xml_parse
+      IMPORTING
+        !xml TYPE clike
+      EXPORTING
+        !any TYPE any.
+
+    CLASS-METHODS xml_stringify
+      IMPORTING
+        !any          TYPE any
+      RETURNING
+        VALUE(result) TYPE string
+      RAISING
+        cx_xslt_serialization_error.
+
+    CLASS-METHODS rtti_get_t_attri_by_table_name
+      IMPORTING
+        table_name    TYPE any
+      RETURNING
+        VALUE(result) TYPE cl_abap_structdescr=>component_table.
+
+    CLASS-METHODS rtti_create_tab_by_name
+      IMPORTING
+        val           TYPE clike
+      RETURNING
+        VALUE(result) TYPE REF TO data.
+
+    CLASS-METHODS filter_get_token_t_by_range_t
+      IMPORTING
+        val           TYPE ANY TABLE
+      RETURNING
+        VALUE(result) TYPE ty_t_token ##NEEDED.
+
+    CLASS-METHODS filter_get_token_range_mapping
+      RETURNING
+        VALUE(result) TYPE ty_t_name_value.
+
+    CLASS-METHODS itab_corresponding
+      IMPORTING
+        val  TYPE STANDARD TABLE
+      CHANGING
+        !tab TYPE STANDARD TABLE.
+
+    CLASS-METHODS itab_filter_by_t_range
+      IMPORTING
+        val  TYPE ty_t_filter_multi
+      CHANGING
+        !tab TYPE STANDARD TABLE.
+
   PROTECTED SECTION.
 
     CLASS-METHODS rtti_get_class_descr_on_cloud
@@ -401,6 +499,13 @@ CLASS z2ui5_cl_layo_context DEFINITION
       RETURNING
         VALUE(result) TYPE i.
 
+    "! Any elementary value as its text, and never an exception.
+    CLASS-METHODS data_get_string
+      IMPORTING
+        val           TYPE any
+      RETURNING
+        VALUE(result) TYPE string.
+
   PRIVATE SECTION.
 
     " whether a type kind is a number: i, int1, int2, int8, p, f,
@@ -489,6 +594,31 @@ CLASS z2ui5_cl_layo_context DEFINITION
     " RAISE z2ui5_cx_layo_error -> ... see uuid_get_c32.
     CLASS-DATA gv_uuid_failed TYPE abap_bool.
 
+    CLASS-METHODS filter_get_sql_cond_by_range
+      IMPORTING
+        fieldname     TYPE clike
+        range         TYPE ty_s_range
+      RETURNING
+        VALUE(result) TYPE string.
+
+    " a token template of filter_get_token_range_mapping with {LOW} and
+    " {HIGH} filled in as written
+    CLASS-METHODS filter_token_fill
+      IMPORTING
+        template      TYPE string
+        low           TYPE string
+        high          TYPE string
+      RETURNING
+        VALUE(result) TYPE string.
+
+    " The option that selects the complement: EQ <-> NE, LT <-> GE, LE <-> GT,
+    " CP <-> NP, BT <-> NB. Any other option comes back as it is.
+    CLASS-METHODS filter_option_negate
+      IMPORTING
+        val           TYPE clike
+      RETURNING
+        VALUE(result) TYPE string.
+
 ENDCLASS.
 
 CLASS z2ui5_cl_layo_context IMPLEMENTATION.
@@ -556,6 +686,118 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
         EXIT.
       ENDIF.
     ENDDO.
+
+  ENDMETHOD.
+
+  METHOD filter_itab.
+
+    " the same filter as itab_filter_by_t_range - a field whose range is
+    " empty keeps every row there too
+    itab_filter_by_t_range( EXPORTING val = filter
+                            CHANGING  tab = val ).
+
+  ENDMETHOD.
+
+  METHOD filter_get_multi_by_data.
+
+    LOOP AT rtti_get_t_attri_by_any( val ) REFERENCE INTO DATA(lr_comp).
+      INSERT VALUE #( name = lr_comp->name ) INTO TABLE result.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD filter_get_token_range_mapping.
+
+    result = VALUE #( (   n = `EQ`      v = `={LOW}` )
+                      (   n = `LT`      v = `<{LOW}` )
+                      (   n = `LE`      v = `<={LOW}` )
+                      (   n = `GT`      v = `>{LOW}` )
+                      (   n = `GE`      v = `>={LOW}` )
+                      (   n = `CP`      v = `*{LOW}*` )
+                      (   n = `BT`      v = `{LOW}...{HIGH}` )
+                      (   n = `NB`      v = `!({LOW}...{HIGH})` )
+                      (   n = `NE`      v = `!(={LOW})` )
+                      (   n = `NP`      v = `!(*{LOW}*)` )
+                      (   n = `!<leer>` v = `!(<leer>)` )
+                      (   n = `<leer>`  v = `<leer>` ) ).
+
+  ENDMETHOD.
+
+  METHOD filter_get_token_t_by_range_t.
+
+    DATA(lt_mapping) = filter_get_token_range_mapping( ).
+
+    DATA lt_tab TYPE ty_t_range.
+
+    itab_corresponding( EXPORTING val = val
+                        CHANGING  tab = lt_tab ).
+
+    " LOW / HIGH again from the source row, through data_get_string: the
+    " move into the string fields above wrote a number the way a MOVE does
+    " - sign behind it and padded (`5- `), so a select-option on an integer
+    " field showed `=42 ` and `5-...10 `
+    " UNASSIGN + IS ASSIGNED, not sy-subrc, in the loop (#1937)
+    FIELD-SYMBOLS <lt_source> TYPE ANY TABLE.
+    FIELD-SYMBOLS <ls_range>  TYPE ty_s_range.
+    FIELD-SYMBOLS <lv_part>   TYPE any.
+    ASSIGN val TO <lt_source>.
+    IF <lt_source> IS ASSIGNED.
+      DATA(lv_index) = 0.
+      LOOP AT <lt_source> ASSIGNING FIELD-SYMBOL(<ls_source>).
+        lv_index = lv_index + 1.
+        UNASSIGN <ls_range>.
+        ASSIGN lt_tab[ lv_index ] TO <ls_range>.
+        IF <ls_range> IS NOT ASSIGNED.
+          EXIT.
+        ENDIF.
+        UNASSIGN <lv_part>.
+        ASSIGN COMPONENT `LOW` OF STRUCTURE <ls_source> TO <lv_part>.
+        IF <lv_part> IS ASSIGNED.
+          <ls_range>-low = data_get_string( <lv_part> ).
+        ENDIF.
+        UNASSIGN <lv_part>.
+        ASSIGN COMPONENT `HIGH` OF STRUCTURE <ls_source> TO <lv_part>.
+        IF <lv_part> IS ASSIGNED.
+          <ls_range>-high = data_get_string( <lv_part> ).
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+
+    LOOP AT lt_tab REFERENCE INTO DATA(lr_row).
+
+      " an option the mapping does not know - initial (a row appended with
+      " sign and low only) or lower-case - used to raise a raw
+      " CX_SY_ITAB_LINE_NOT_FOUND out of the whole call; it renders as the
+      " equality token, which is what a range row without an option means
+      DATA lv_option TYPE string.
+      DATA lv_value  TYPE string.
+      lv_option = to_upper( lr_row->option ).
+      lv_value = VALUE #( lt_mapping[ n = lv_option ]-v OPTIONAL ). "#EC CI_SORTSEQ
+      IF lv_value IS INITIAL.
+        lv_value = lt_mapping[ n = `EQ` ]-v.            "#EC CI_SORTSEQ
+      ENDIF.
+      IF ( lv_option = `CP` OR lv_option = `NP` ) AND lr_row->low CA `*`.
+        " LOW is a pattern already - wrapping it in the template's asterisks
+        " would turn `abc*` into `*abc**`
+        lv_value = COND #( WHEN lv_option = `CP` THEN lr_row->low
+                           ELSE |!({ lr_row->low })| ).
+      ELSE.
+        lv_value = filter_token_fill( template = lv_value
+                                      low      = lr_row->low
+                                      high     = lr_row->high ).
+      ENDIF.
+
+      " an excluding row must not render like its including twin - negate the
+      " token so the MultiInput shows the filter's real meaning
+      IF lr_row->sign = `E`.
+        lv_value = |!({ lv_value })|.
+      ENDIF.
+
+      INSERT VALUE #( key      = lv_value
+                      text     = lv_value
+                      visible  = abap_true
+                      editable = abap_true ) INTO TABLE result.
+    ENDLOOP.
 
   ENDMETHOD.
 
@@ -917,6 +1159,250 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD xml_parse.
+
+    IF xml IS INITIAL.
+      CLEAR any.
+      RETURN.
+    ENDIF.
+
+    " a broken document, or one written for a type that has changed since,
+    " raises a static transformation error - out of a method without RAISING
+    " it reached the caller as CX_SY_NO_HANDLER, which no CATCH of this
+    " repository's one exception class sees
+    TRY.
+        CALL TRANSFORMATION id
+             SOURCE XML xml
+             RESULT data = any.
+      CATCH cx_transformation_error INTO DATA(x).
+        RAISE EXCEPTION TYPE z2ui5_cx_layo_error
+          EXPORTING val      = `XML_PARSE_ERROR - the XML does not fit the target`
+                    previous = x.
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD xml_stringify.
+
+    CALL TRANSFORMATION id
+         SOURCE data = any
+         RESULT XML result
+         OPTIONS data_refs = `heap-or-create`.
+
+  ENDMETHOD.
+
+  METHOD rtti_get_t_attri_by_table_name.
+
+    DATA lo_obj    TYPE REF TO cl_abap_typedescr.
+    DATA lo_struct TYPE REF TO cl_abap_structdescr.
+
+    IF table_name IS INITIAL.
+      RAISE EXCEPTION TYPE z2ui5_cx_layo_error
+        EXPORTING
+          val = `TABLE_NAME_INITIAL_ERROR`.
+    ENDIF.
+
+    cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = table_name
+                                         RECEIVING  p_descr_ref    = lo_obj
+                                         EXCEPTIONS type_not_found = 1
+                                                    OTHERS         = 2 ).
+    IF sy-subrc <> 0.
+      " an unknown name has no columns - the result stays empty, as it always
+      " did (the former TABLE_NOT_FOUND raise sat inside its own CATCH cx_root)
+      RETURN.
+    ENDIF.
+
+    " one describe: a structure (DDIC table, structure, view) or a table
+    " type, whose line type is the structure. Anything else has no columns
+    TRY.
+        CASE lo_obj->kind.
+          WHEN cl_abap_typedescr=>kind_struct.
+            lo_struct = CAST #( lo_obj ).
+          WHEN cl_abap_typedescr=>kind_table.
+            lo_struct = CAST #( CAST cl_abap_tabledescr( lo_obj )->get_table_line_type( ) ).
+          WHEN OTHERS.
+            RETURN.
+        ENDCASE.
+      CATCH cx_sy_move_cast_error.
+        RETURN.
+    ENDTRY.
+
+    " expand_components also applies the RENAMING WITH SUFFIX of an include
+    result = expand_components( lo_struct->get_components( ) ).
+
+  ENDMETHOD.
+
+  METHOD itab_corresponding.
+
+    FIELD-SYMBOLS <row_in>  TYPE any.
+    FIELD-SYMBOLS <row_out> TYPE any.
+
+    LOOP AT val ASSIGNING <row_in>.
+      INSERT INITIAL LINE INTO TABLE tab ASSIGNING <row_out>.
+      MOVE-CORRESPONDING <row_in> TO <row_out>.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD itab_filter_by_t_range.
+
+    DATA ref TYPE REF TO data.
+
+    LOOP AT tab REFERENCE INTO ref.
+      LOOP AT val INTO DATA(ls_filter).
+
+        IF ls_filter-t_range IS INITIAL.
+          CONTINUE.
+        ENDIF.
+
+        ASSIGN ref->(ls_filter-name) TO FIELD-SYMBOL(<field>).
+        IF sy-subrc <> 0.
+          CONTINUE.
+        ENDIF.
+        IF <field> NOT IN ls_filter-t_range.
+          DELETE tab.
+          EXIT.
+        ENDIF.
+
+      ENDLOOP.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD filter_get_sql_where.
+
+    LOOP AT val INTO DATA(ls_filter).
+
+      IF ls_filter-t_range IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      " the select-options are bound to the view, so the name comes back from
+      " the browser - only a plain field name goes into the WHERE clause, never
+      " a condition or a subquery on another table
+      " a character set instead of a regex: PCRE is not on 7.02, POSIX not
+      " on ABAP Cloud
+      IF ls_filter-name IS INITIAL
+          OR ls_filter-name CN `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_/`.
+        CONTINUE.
+      ENDIF.
+
+      " select-option semantics: a row matches one of the including ranges
+      " and none of the excluding ones. An excluding range arrives here
+      " already negated (filter_get_sql_cond_by_range), so the includes are
+      " joined with OR and the excludes with AND - OR-ing them too let
+      " every row through that missed a single exclude
+      DATA(lv_include) = ``.
+      DATA(lv_exclude) = ``.
+      LOOP AT ls_filter-t_range INTO DATA(ls_range).
+        DATA(lv_cond) = filter_get_sql_cond_by_range( fieldname = ls_filter-name
+                                                      range     = ls_range ).
+        IF lv_cond IS INITIAL.
+          CONTINUE.
+        ENDIF.
+        IF ls_range-sign = `E`.
+          lv_exclude = COND #( WHEN lv_exclude IS INITIAL THEN lv_cond
+                               ELSE |{ lv_exclude } AND { lv_cond }| ).
+        ELSE.
+          lv_include = COND #( WHEN lv_include IS INITIAL THEN lv_cond
+                               ELSE |{ lv_include } OR { lv_cond }| ).
+        ENDIF.
+      ENDLOOP.
+
+      DATA(lv_field_where) = COND string(
+        WHEN lv_include IS NOT INITIAL AND lv_exclude IS NOT INITIAL
+        THEN |( { lv_include } ) AND { lv_exclude }|
+        WHEN lv_include IS NOT INITIAL
+        THEN lv_include
+        ELSE lv_exclude ).
+
+      IF lv_field_where IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      IF result IS INITIAL.
+        result = |( { lv_field_where } )|.
+      ELSE.
+        result = |{ result } AND ( { lv_field_where } )|.
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD filter_get_sql_cond_by_range.
+
+    DATA(lv_low) = replace( val  = range-low
+                            sub  = `'`
+                            with = `''`
+                            occ  = 0 ).
+    DATA(lv_high) = replace( val  = range-high
+                             sub  = `'`
+                             with = `''`
+                             occ  = 0 ).
+    DATA(lv_option) = range-option.
+
+    IF range-sign = `E`.
+      lv_option = filter_option_negate( lv_option ).
+    ENDIF.
+
+    " CP: * and + are the wildcards and # makes the next character a plain
+    " one (`#*` is a star), as in an IN range. A _ or % the user typed is a
+    " plain character, so it is escaped for LIKE
+    DATA(lv_like) = ``.
+    DATA(lv_pos) = 0.
+    DATA(lv_len) = strlen( lv_low ).
+    WHILE lv_pos < lv_len.
+      DATA(lv_char) = substring( val = lv_low
+                                 off = lv_pos
+                                 len = 1 ).
+      IF lv_char = `#` AND lv_pos + 1 < lv_len.
+        lv_pos = lv_pos + 1.
+        lv_char = substring( val = lv_low
+                             off = lv_pos
+                             len = 1 ).
+        IF lv_char CA `#%_`.
+          lv_like = lv_like && `#` && lv_char.
+        ELSE.
+          lv_like = lv_like && lv_char.
+        ENDIF.
+      ELSEIF lv_char = `*`.
+        lv_like = lv_like && `%`.
+      ELSEIF lv_char = `+`.
+        lv_like = lv_like && `_`.
+      ELSEIF lv_char CA `#%_`.
+        lv_like = lv_like && `#` && lv_char.
+      ELSE.
+        lv_like = lv_like && lv_char.
+      ENDIF.
+      lv_pos = lv_pos + 1.
+    ENDWHILE.
+
+    CASE lv_option.
+      WHEN `EQ`.
+        result = |{ fieldname } = '{ lv_low }'|.
+      WHEN `NE`.
+        result = |{ fieldname } <> '{ lv_low }'|.
+      WHEN `LT`.
+        result = |{ fieldname } < '{ lv_low }'|.
+      WHEN `LE`.
+        result = |{ fieldname } <= '{ lv_low }'|.
+      WHEN `GT`.
+        result = |{ fieldname } > '{ lv_low }'|.
+      WHEN `GE`.
+        result = |{ fieldname } >= '{ lv_low }'|.
+      WHEN `CP`.
+        result = |{ fieldname } LIKE '{ lv_like }' ESCAPE '#'|.
+      WHEN `NP`.
+        result = |{ fieldname } NOT LIKE '{ lv_like }' ESCAPE '#'|.
+      WHEN `BT`.
+        result = |{ fieldname } BETWEEN '{ lv_low }' AND '{ lv_high }'|.
+      WHEN `NB`.
+        result = |{ fieldname } NOT BETWEEN '{ lv_low }' AND '{ lv_high }'|.
+    ENDCASE.
+
+  ENDMETHOD.
+
   METHOD msg_get_t.
 
     result = msg_get_internal( val ).
@@ -1058,6 +1544,30 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD rtti_create_tab_by_name.
+
+    " type_not_found is a classic exception: called functionally, an unknown
+    " name ends in a short dump no CATCH stops - so it is handled here and
+    " the caller gets an unbound reference instead
+    DATA lo_type TYPE REF TO cl_abap_typedescr.
+    cl_abap_typedescr=>describe_by_name( EXPORTING  p_name         = val
+                                         RECEIVING  p_descr_ref    = lo_type
+                                         EXCEPTIONS type_not_found = 1
+                                                    OTHERS         = 2 ).
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+    " a class or an interface of that name is no data type - the kind, not
+    " IS INSTANCE OF, which the 7.02 downport cannot express
+    IF lo_type->kind = cl_abap_typedescr=>kind_class OR lo_type->kind = cl_abap_typedescr=>kind_intf.
+      RETURN.
+    ENDIF.
+    DATA(data_desc) = CAST cl_abap_datadescr( lo_type ).
+    DATA(gr_dyntable_typ) = cl_abap_tabledescr=>create( data_desc ).
+    CREATE DATA result TYPE HANDLE gr_dyntable_typ.
+
+  ENDMETHOD.
+
   METHOD rtti_check_typekind_number.
 
     CASE val.
@@ -1071,6 +1581,29 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
           OR `8`.
         result = abap_true.
     ENDCASE.
+
+  ENDMETHOD.
+
+  METHOD data_get_string.
+
+    " the plain assignment is what turns an elementary value into its text
+    " - the same trick get_comp_str( ) uses. A value the runtime refuses to
+    " convert must not be the reason a box does not appear
+    TRY.
+        " a number through a string template: the assignment puts the sign
+        " BEHIND it - -5 came out as `5-`, a packed -12.50 as `12.50-`
+        IF rtti_check_typekind_number( rtti_get_type_kind( val ) ) = abap_true.
+          result = |{ val }|.
+        ELSE.
+          result = val.
+        ENDIF.
+      CATCH cx_root ##NO_HANDLER.
+    ENDTRY.
+
+    " a number reaches a character target right-aligned in the length its
+    " type needs (` 12` for an i on some runtimes), and a CHAR field brings
+    " its padding along - neither is what the value says
+    result = c_trim( result ).
 
   ENDMETHOD.
 
@@ -2098,6 +2631,36 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD filter_token_fill.
+
+    " built by concatenation, not REPLACE ... WITH: LOW and HIGH are data,
+    " and the transpiled runtime reads a WITH text like a regex replacement
+    " ( `$&`, `$$`, `\{` change - backlog item runtime-replace-with-literal ).
+    " HIGH first: a LOW that spells `{HIGH}` is then never substituted a
+    " second time ( {LOW} stands before {HIGH} in every template )
+    DATA lv_off  TYPE i.
+    DATA lv_rest TYPE i.
+
+    result = template.
+    lv_off = find( val = result
+                   sub = `{HIGH}` ).
+    IF lv_off >= 0.
+      lv_rest = lv_off + 6.
+      result = substring( val = result
+                          len = lv_off ) && high && substring( val = result
+                                                               off = lv_rest ).
+    ENDIF.
+    lv_off = find( val = result
+                   sub = `{LOW}` ).
+    IF lv_off >= 0.
+      lv_rest = lv_off + 5.
+      result = substring( val = result
+                          len = lv_off ) && low && substring( val = result
+                                                              off = lv_rest ).
+    ENDIF.
+
+  ENDMETHOD.
+
   METHOD itab_filter_check_field.
 
     " a table, a deep structure or a reference cannot go into a string
@@ -2176,6 +2739,34 @@ CLASS z2ui5_cl_layo_context IMPLEMENTATION.
                                           iv_check_rap = abap_false ) INTO TABLE result.
       ENDIF.
     ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD filter_option_negate.
+
+    result = val.
+    CASE result.
+      WHEN `EQ`.
+        result = `NE`.
+      WHEN `NE`.
+        result = `EQ`.
+      WHEN `LT`.
+        result = `GE`.
+      WHEN `LE`.
+        result = `GT`.
+      WHEN `GT`.
+        result = `LE`.
+      WHEN `GE`.
+        result = `LT`.
+      WHEN `CP`.
+        result = `NP`.
+      WHEN `NP`.
+        result = `CP`.
+      WHEN `BT`.
+        result = `NB`.
+      WHEN `NB`.
+        result = `BT`.
+    ENDCASE.
 
   ENDMETHOD.
 

@@ -12,7 +12,8 @@
  *   2. npm ci in the abap2UI5 checkout (skipped while its lock is unchanged)
  *   3. CONFIG.packages copied into its src/ as extra packages
  *   4. npm run downport && npm run auto_transpile there
- *   5. the generated tests of the classes starting with CONFIG.prefix - all
+ *   5. the generated tests of the classes starting with one of
+ *      CONFIG.prefixes - all
  *      risk levels, nothing else of abap2UI5's suite - each one reported,
  *      exit code 1 on any failure or when no test ran at all
  *
@@ -40,8 +41,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 const WORK = path.resolve(ROOT, process.env.UNIT_DIR || ".unit");
 
 const CONFIG = {
-  // the test classes of this repository
-  prefix: "Z2UI5_CL_LAYO",
+  // the test classes of this repository: the layouts and the select-options
+  // with their variants
+  prefixes: ["Z2UI5_CL_LAYO", "Z2UI5_CL_SEL"],
   // checkouts under WORK; the first one is the abap2UI5 tree everything is
   // built in, the others are what this repository builds on
   repos: [
@@ -135,7 +137,8 @@ const cut = index.indexOf("async function run");
 if (cut < 0) fail("node/output/index.mjs has no 'async function run' - the transpiler's runner changed");
 
 const runner = `
-const PREFIX = ${JSON.stringify(CONFIG.prefix)};
+const PREFIXES = ${JSON.stringify(CONFIG.prefixes)};
+const NAMES = PREFIXES.map((prefix) => prefix + "*").join(", ");
 const FILTER = ${JSON.stringify(process.env.UNIT_FILTER || "")};
 
 function describe(e) {
@@ -152,7 +155,7 @@ async function run() {
   const tally = { passed: 0, failed: 0, skipped: 0 };
   const risks = {};
   for (const st of getData()) {
-    if (!st.objectName.startsWith(PREFIX)) continue;
+    if (!PREFIXES.some((prefix) => st.objectName.startsWith(prefix))) continue;
     const methods = st.methods.filter((m) => !FILTER || (st.objectName + ": " + st.localClass + "->" + m.name).includes(FILTER));
     if (methods.length === 0) continue;
     const imported = await import(st.filename);
@@ -210,9 +213,9 @@ async function run() {
     }
   }
   const byRisk = Object.entries(risks).map(([k, v]) => k + " " + v).join(", ");
-  console.log("\\n" + PREFIX + "*: " + tally.passed + " passed, " + tally.failed + " failed, " + tally.skipped + " skipped" + (byRisk ? " (passed by risk level: " + byRisk + ")" : ""));
+  console.log("\\n" + NAMES + ": " + tally.passed + " passed, " + tally.failed + " failed, " + tally.skipped + " skipped" + (byRisk ? " (passed by risk level: " + byRisk + ")" : ""));
   if (tally.passed + tally.failed === 0) {
-    console.log("::error::no test of " + PREFIX + "* ran" + (FILTER ? " for UNIT_FILTER=" + FILTER : ""));
+    console.log("::error::no test of " + NAMES + " ran" + (FILTER ? " for UNIT_FILTER=" + FILTER : ""));
     return 1;
   }
   return tally.failed ? 1 : 0;
@@ -226,6 +229,6 @@ run().then((code) => process.exit(code)).catch((err) => {
 
 const file = path.join(output, "unit-addon.mjs");
 fs.writeFileSync(file, index.slice(0, cut) + runner);
-console.log(`\n== ABAP Unit: ${CONFIG.prefix}*${process.env.UNIT_FILTER ? ` matching "${process.env.UNIT_FILTER}"` : ""}`);
+console.log(`\n== ABAP Unit: ${CONFIG.prefixes.map((prefix) => `${prefix}*`).join(", ")}${process.env.UNIT_FILTER ? ` matching "${process.env.UNIT_FILTER}"` : ""}`);
 const r = spawnSync(process.execPath, [file], { cwd: output, stdio: "inherit" });
 process.exit(r.status ?? 1);

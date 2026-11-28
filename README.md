@@ -15,8 +15,10 @@ You hand over an internal table or a structure; layout-management renders it
 as a table or a simple form with a settings button. There the user picks the
 visible columns or fields, their order, labels and sorting, and saves the
 result as a layout variant in the database - the default variant is loaded
-automatically the next time the app starts. For developers of abap2UI5 apps
-who want ALV-like layouts without building them.
+automatically the next time the app starts. The same for what the user
+selects: select-options for every field of a table, with the selection saved
+as a variant. For developers of abap2UI5 apps who want ALV-like layouts and
+selection variants without building them.
 
 > Part of [abap2UI5-addons](https://github.com/abap2UI5-addons) - addons and apps for [abap2UI5](https://github.com/abap2UI5/abap2UI5), installed with [abapGit](https://abapgit.org). Documentation: [abap2ui5-addons.github.io/layout-management](https://abap2ui5-addons.github.io/layout-management/).
 
@@ -35,6 +37,14 @@ the value and search helps of
 browser [abap2UI5-addons/se16n](https://github.com/abap2UI5-addons/se16n) and
 [abap2UI5-addons/table-maintenance](https://github.com/abap2UI5-addons/table-maintenance).
 
+The selection is the other half of what a report gets for free in SAP GUI:
+`SELECT-OPTIONS` and their variants. The select-options here
+(`z2ui5_cl_sel_*`) are built from a table name or your data, render inline in
+your page or as a filter popup, and keep their variants in the table
+`z2ui5_t_13`. They were the addon
+[range-filter](https://github.com/abap2UI5-addons/range-filter) until 2026-11
+- see [Coming from range-filter](#coming-from-range-filter).
+
 ## Installation
 
 **Requirements**
@@ -52,8 +62,9 @@ collides - and can drop it once no other code of its own uses it.
 **Steps** - with [abapGit](https://abapgit.org), in this order:
 
 1. [abap2UI5](https://github.com/abap2UI5/abap2UI5)
-2. this repository, from the branch that fits your system - classes and the
-   two tables `z2ui5_t_11` / `z2ui5_t_12` for the layout variants:
+2. this repository, from the branch that fits your system - classes, the
+   two tables `z2ui5_t_11` / `z2ui5_t_12` for the layout variants and the
+   table `z2ui5_t_13` for the selection variants:
 
 | System | Branch to pull |
 |---|---|
@@ -63,6 +74,29 @@ collides - and can drop it once no other code of its own uses it.
 **Start** - run a sample like any abap2UI5 app, e.g.
 `?app_start=z2ui5_cl_layo_sample_01` for a table with icons, charts and
 indicators. All samples are listed under [Samples](#samples).
+
+### Coming from range-filter
+
+The select-options of
+[abap2UI5-addons/range-filter](https://github.com/abap2UI5-addons/range-filter)
+live here now. The classes `z2ui5_cl_sel_multisel`, `z2ui5_cl_sel_multisel_pop`,
+`z2ui5_cl_sel_range_pop`, `z2ui5_cl_sel_var_db`, `z2ui5_cl_sel_var_pop_read`,
+`z2ui5_cl_sel_var_pop_save`, the two samples and the table `z2ui5_t_13` keep
+their names, so the saved variants stay and code that uses these classes
+needs no change. Two things do change:
+
+- **The utility class.** range-filter's copy `z2ui5_cl_sel_context` and its
+  exception `z2ui5_cx_sel_error` are gone - this addon has one copy for both
+  halves. `z2ui5_cl_sel_context=>filter_get_sql_where( )`, `filter_itab( )`
+  and `rtti_get_t_attri_by_table_name( )` are the same methods of
+  `z2ui5_cl_layo_context`; catch `z2ui5_cx_layo_error`.
+- **The package.** The objects belong to this repository: `z2ui5_cl_sel_*`
+  and `z2ui5_t_13` to the package of `src/02`, the samples to the one of
+  `src/01`. In a system that has range-filter installed, remove the
+  range-filter repository from abapGit **without uninstalling it** - an
+  uninstall deletes `z2ui5_t_13` and the variants in it -, move the objects
+  to these packages, pull this repository, and delete `z2ui5_cl_sel_context`
+  and `z2ui5_cx_sel_error` once nothing of your own uses them.
 
 ### Parallel installation (namespace rename)
 
@@ -401,6 +435,105 @@ z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( FOR h IN heads
 - The heads come as saved, ordered by guid - without the screen format
   fallback and the default demotion of `select_layouts( )`.
 
+### Select-options with variants
+
+Select-options for every field of a database table, inline in your page
+(condensed from `z2ui5_cl_sel_sample_01`):
+
+```abap
+" DATA mo_multiselect TYPE REF TO z2ui5_cl_sel_multisel.
+
+METHOD z2ui5_if_app~main.
+
+  IF client->check_on_init( ).
+    mo_multiselect = z2ui5_cl_sel_multisel=>factory_by_name( val       = `T100`
+                                                             s_variant = VALUE #( handle01 = `ZMY_APP` ) ).
+    view_display( ).    " calls mo_multiselect->set_output( client = client view = lo_panel )
+    RETURN.
+  ENDIF.
+
+  " range popups, Clear, Load and Save variant are handled here
+  IF mo_multiselect->main( client ).
+    RETURN.
+  ENDIF.
+
+  " a restored draft or a return from another app: show the view again
+  IF client->check_on_navigated( ).
+    view_display( ).
+    RETURN.
+  ENDIF.
+
+  IF client->check_on_event( `GO` ).
+    read_data( ).
+  ENDIF.
+
+ENDMETHOD.
+
+METHOD read_data.
+
+  " only a field of the table goes into the WHERE clause
+  DATA lt_filter LIKE mo_multiselect->ms_result-t_filter.
+  DATA(lt_comp) = z2ui5_cl_layo_context=>rtti_get_t_attri_by_table_name( `T100` ).
+  LOOP AT mo_multiselect->ms_result-t_filter INTO DATA(ls_filter).
+    IF line_exists( lt_comp[ name = ls_filter-name ] ).
+      INSERT ls_filter INTO TABLE lt_filter.
+    ENDIF.
+  ENDLOOP.
+
+  DATA(lv_where) = z2ui5_cl_layo_context=>filter_get_sql_where( lt_filter ).
+  SELECT FROM t100 FIELDS * WHERE (lv_where) INTO TABLE @mt_t100 UP TO 100 ROWS.
+
+ENDMETHOD.
+```
+
+The select-options are bound to the view, so `ms_result-t_filter` - field
+names included - comes back from the browser. Keep only the names that are
+fields of your table before they go into the dynamic `WHERE`, as above and as
+`z2ui5_cl_sel_sample_01` does. `filter_get_sql_where` itself already drops
+every name that is not a plain identifier, so a forged name cannot add a
+condition or a subquery; but a name that is no column of your table makes the
+`SELECT` raise a `CX_SY_DYNAMIC_OSQL_*` exception - a short dump unless you
+catch it - and any other column of the table could be filtered on, not only
+the ones you offer.
+
+As a filter popup over an internal table (condensed from
+`z2ui5_cl_sel_sample_02`):
+
+```abap
+" on init
+mo_variant = z2ui5_cl_sel_multisel_pop=>factory_by_data( data        = mt_table
+                                                         var_handle1 = `ZMY_APP` ).
+" on the Filter button
+client->nav_app_call( mo_variant ).
+
+" back in your app - check_on_nav_back( ) is true only on the return from
+" the popup; on a restored draft (check_on_navigated( ) alone) show the view
+IF client->check_on_nav_back( ).
+  DATA(lo_filter) = CAST z2ui5_cl_sel_multisel_pop( client->get_app_prev( ) ).
+  IF lo_filter->result( )-check_confirmed = abap_true.
+    z2ui5_cl_layo_context=>filter_itab( EXPORTING filter = lo_filter->result( )-t_filter
+                                        CHANGING  val    = mt_table ).
+  ENDIF.
+ENDIF.
+```
+
+| Class | Purpose |
+|---|---|
+| `z2ui5_cl_sel_multisel` | select-options for a table name (`factory_by_name`), for data (`factory_by_data`) or for a filter (`factory_by_filter`); renders into your view with `set_output( )`, handles its events in `main( )` |
+| `z2ui5_cl_sel_multisel_pop` | the same as a popup app; returns the filter with `result( )` |
+| `z2ui5_cl_sel_range_pop` | the popup that edits the ranges of one field (opened by the two above) |
+| `z2ui5_cl_sel_var_pop_read`, `z2ui5_cl_sel_var_pop_save` | popups to load (and delete) and save a variant |
+| `z2ui5_cl_sel_var_db` | variant persistence in table `z2ui5_t_13` |
+| `z2ui5_cl_layo_context` | the helpers: `filter_get_sql_where( )`, `filter_itab( )`, RTTI |
+
+The select-options are a building block for an app you build yourself. For
+an app that works like a classic report - a selection screen with
+`PARAMETERS`, `SELECT-OPTIONS`, radio buttons and event blocks, then a list
+or an ALV - use
+[abap2UI5-addons/abap-cloud-gui](https://github.com/abap2UI5-addons/abap-cloud-gui);
+[Select-options or abap-cloud-gui?](https://abap2ui5-addons.github.io/layout-management/which)
+compares the two.
+
 ## Features
 
 * **Generic Output** - Universal table and form rendering
@@ -413,6 +546,8 @@ z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( FOR h IN heads
 * **Auto-Loading** - Load default layouts automatically at startup
 * **Select and Copy** - Read layouts by ranges, also of every user, and copy them under other handles
 * **Authorization Hook** - Shared layouts and deletions can be restricted with `z2ui5_if_layo_auth`; by default every user may save and delete shared layouts
+* **Select-Options** - For every field of a database table or an internal table, with the ranges entered in a popup - inline in your page or as a filter popup
+* **Selection Variants** - Saved, loaded and deleted per app, optionally per user, with a default; saving over an existing variant asks first, and only the user's own variants can be deleted
 
 ## Samples
 
@@ -425,6 +560,8 @@ z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( FOR h IN heads
 | `z2ui5_cl_layo_sample_05` | Table and form with two layouts on one page |
 | `z2ui5_cl_layo_sample_06` | Generic mode: a page with a panel of inputs, a toolbar and a list, personalized by control id |
 | `z2ui5_cl_layo_sample_07` | Popup to select several rows of a table, with a layout the user arranges and saves |
+| `z2ui5_cl_sel_sample_01` | Select-options for table `T100` inline in the page, result read with a dynamic `WHERE` |
+| `z2ui5_cl_sel_sample_02` | Filter popup over an internal table |
 
 ## Demo
 
@@ -442,6 +579,11 @@ z2ui5_cl_layo_manager=>copy_layouts( t_copy     = VALUE #( FOR h IN heads
 
 ### Persistence
 <img width="700" alt="Popup for saving and selecting persisted layout variants" src="https://github.com/user-attachments/assets/d7f39663-d864-4737-89e4-8e925e54bc2d">
+
+### Select-options
+<img width="600" alt="Select-options of a database table inline in the page" src="https://github.com/user-attachments/assets/47eb179e-c563-402d-907f-58ac77b43941" />
+<img width="600" alt="Filter popup with the select-options of an internal table" src="https://github.com/user-attachments/assets/f5c76993-9ad4-46a0-81df-2586ec2c21cf" />
+<img width="600" alt="Range popup of one select-option" src="https://github.com/user-attachments/assets/84c4fa61-a95a-4232-b7c1-0f9d3105e20d" />
 
 ## Commits
 
@@ -559,6 +701,11 @@ ENDCLASS.
 
 Shared layouts written before an implementation existed, or by another tool,
 stay in table `z2ui5_t_11` (positions in `z2ui5_t_12`).
+
+The selection variants (`z2ui5_t_13`) are not covered by `z2ui5_if_layo_auth`.
+Every user may save a variant, user specific or shared; a user deletes only
+variants of their own, and a shared one cannot be deleted in the popup at
+all - the table does not say who saved it.
 
 ## Development
 

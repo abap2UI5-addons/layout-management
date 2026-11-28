@@ -25,11 +25,12 @@ features:
   - title: "Layout variants persisted in z2ui5_t_11 and z2ui5_t_12 per app (handle01 to handle04)"
   - title: "Default layout loaded automatically at startup"
   - title: "Authorization hook z2ui5_if_layo_auth for shared layouts and deletions"
+  - title: "Select-options for every field of a table, inline or as a filter popup, with selection variants in z2ui5_t_13"
 ---
 
 ## What it does
 
-layout-management renders an internal table or a structure as a table or a simple form with a settings button. In the layout popup the user picks the visible columns or fields, their order, labels and sorting, and saves the result as a layout variant in the tables z2ui5_t_11 and z2ui5_t_12; the default variant is loaded automatically at the next start. A generic mode personalizes the controls of any view built with the view builder. Use it when you want ALV-like layouts in abap2UI5 apps without building them; other addons such as popups build on it.
+layout-management renders an internal table or a structure as a table or a simple form with a settings button. In the layout popup the user picks the visible columns or fields, their order, labels and sorting, and saves the result as a layout variant in the tables z2ui5_t_11 and z2ui5_t_12; the default variant is loaded automatically at the next start. A generic mode personalizes the controls of any view built with the view builder. The select-options (`z2ui5_cl_sel_*`, formerly the addon range-filter) do the same for the selection: one select-option per field of a table name or your data, the ranges entered in a popup, the selection saved as a variant in z2ui5_t_13. Use it when you want ALV-like layouts and selection variants in abap2UI5 apps without building them; other addons such as popups build on it.
 
 ## Requirements
 
@@ -43,7 +44,7 @@ With [abapGit](https://abapgit.org), from [the repository](https://github.com/ab
 
 - Install with abapGit in this order: 1. abap2UI5, 2. this repository from the branch that fits your system
 - Branch main for ABAP Cloud, S/4HANA and NetWeaver 7.50 or higher; branch 702 for NetWeaver 7.02 - 7.40
-- Contains classes and the tables z2ui5_t_11 and z2ui5_t_12 for the layout variants
+- Contains classes, the tables z2ui5_t_11 and z2ui5_t_12 for the layout variants and z2ui5_t_13 for the selection variants
 - Start a sample like any abap2UI5 app, e.g. ?app_start=z2ui5_cl_layo_sample_01
 
 The [Guide](/guide) has every step.

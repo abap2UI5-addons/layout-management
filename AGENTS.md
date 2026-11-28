@@ -10,6 +10,12 @@ Customizable table and form layouts with persistent variant management for
 variants are persisted to this addon's own database tables (`z2ui5_t_11`,
 `z2ui5_t_12`).
 
+Since 2026-11 also the select-options with their selection variants
+(`z2ui5_cl_sel_*`, table `z2ui5_t_13`), moved here from
+[range-filter](https://github.com/abap2UI5-addons/range-filter) with their
+object names unchanged - an installation keeps its saved variants, so do not
+rename them.
+
 **Language:** English — all code, comments, commit messages, PRs, issues and
 documentation must be in English.
 
@@ -17,8 +23,8 @@ documentation must be in English.
 
 | Package | Content |
 |---|---|
-| `src/01/` | Samples (`z2ui5_cl_layo_sample_*`) |
-| `src/02/` | Variant management - an empty package for now |
+| `src/01/` | Samples (`z2ui5_cl_layo_sample_*`, `z2ui5_cl_sel_sample_*`) |
+| `src/02/` | Select-options and their variants (`z2ui5_cl_sel_*`) and the variant table `z2ui5_t_13` |
 | `src/03/` | Layout classes (`z2ui5_cl_layo_*`), the authorization hook `z2ui5_if_layo_auth`, the variant tables `z2ui5_t_11` / `z2ui5_t_12` and the vendored utility copies `z2ui5_cl_layo_context` / `z2ui5_cx_layo_error` (see "Utility Access") |
 
 ## Utility Access
@@ -28,10 +34,13 @@ from the [abap-util](https://github.com/abap-util/abap-util) master catalog,
 **trimmed to the methods this addon uses** plus the private helpers, types
 and class data those need; `z2ui5_cx_layo_error` is
 `zabaputil_cx_util_error`, renamed and copied as-is. It is the convention of
-the other addons (popups' `z2ui5_cl_popup_context`, range-filter's
-`z2ui5_cl_sel_context`) and of the core (`z2ui5_cl_ui5_util_context`):
-abapGit has no dependency management, so utilities are vendored, not
-referenced.
+the other addons (popups' `z2ui5_cl_popup_context`) and of the core
+(`z2ui5_cl_ui5_util_context`): abapGit has no dependency management, so
+utilities are vendored, not referenced. The select-options of `src/02` use
+the same copy - range-filter's own `z2ui5_cl_sel_context` /
+`z2ui5_cx_sel_error` were merged into it, and its filter methods
+(`filter_get_sql_where( )`, `filter_itab( )`, ...) are public API that the
+README documents.
 
 1. **Never the legacy `z2ui5_cl_util*` / `z2ui5_cx_util_error`.** They left
    the core with its `src/99/01` for
@@ -99,7 +108,8 @@ pinned by commit in the `uses:` lines and moved by `bump-deps`):
   way abap2UI5 tests itself: `npm run unit` (`.github/scripts/unit.mjs`)
   copies the packages into a checkout of abap2UI5 at the release pin (`main`
   in the weekly canary), downports, transpiles and runs the tests of this
-  repository's classes - `rename`, the namespace-rename check (`npm run
+  repository's classes (`CONFIG.prefixes`: `Z2UI5_CL_LAYO*` and
+  `Z2UI5_CL_SEL*`) - `rename`, the namespace-rename check (`npm run
   rename`, `.github/scripts/rename.mjs`), and `npm run check:702`, the 7.02
   gate of a pull request: `.github/scripts/check-702.sh` downports a scratch
   copy of `src/` in `build/702` and lints it with
