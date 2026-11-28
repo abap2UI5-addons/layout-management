@@ -93,12 +93,10 @@ METHOD z2ui5_if_app~main.
     render( client ).
 
   ELSEIF client->check_on_navigated( ).
-    " back from the layout popup - take over the chosen layout
-    TRY.
-        mo_layout = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) )->mo_layout.
-        render( client ).
-      CATCH cx_root.
-    ENDTRY.
+    " back from the layout popup - take over the chosen layout (on any other
+    " navigation, e.g. a restored draft, take_over( ) does nothing)
+    z2ui5_cl_layo_pop=>take_over( client = client layout = mo_layout ).
+    render( client ).
 
   ELSE.
     z2ui5_cl_layo_pop=>on_event_layout( client = client
@@ -122,6 +120,13 @@ ENDMETHOD.
   `z2ui5_cl_layo_xml_builder=>xml_build_simple_form( )`.
 - `handle01` to `handle04` are the keys the variants are saved under - e.g.
   the app class and the table name.
+- `z2ui5_cl_layo_pop=>take_over( )` copies the layout back from the popup
+  when it is the layout passed (same control and handles), so an app with a
+  form and a table layout calls it for both. It returns `abap_true` when the
+  view has to be rendered again: the popup changed what the view is built
+  from (subcolumns), or the roundtrip is no return from the popup at all (a
+  restored draft); otherwise the changed model alone shows the change
+  (samples 02 to 05).
 
 The samples below are complete apps, `z2ui5_cl_layo_sample_03` is the table
 above with the namespaces of the view.
@@ -319,11 +324,15 @@ client->nav_app_call( z2ui5_cl_layo_pop_w_sel=>factory( i_tab         = mt_tab
                                                         i_title       = `Select Products`
                                                         i_multiselect = abap_true ) ).
 
-" back in check_on_navigated( )
-DATA(result) = CAST z2ui5_cl_layo_pop_w_sel( client->get_app_prev( ) )->result( ).
-IF result-check_confirmed = abap_true.
-  ASSIGN result-table->* TO <selected>.   " a table of the type of mt_tab
-ENDIF.
+" back in check_on_navigated( ) - catch only the cast: on a restored draft
+" get_app_prev( ) is the app itself
+TRY.
+    DATA(result) = CAST z2ui5_cl_layo_pop_w_sel( client->get_app_prev( ) )->result( ).
+    IF result-check_confirmed = abap_true.
+      ASSIGN result-table->* TO <selected>.   " a table of the type of mt_tab
+    ENDIF.
+  CATCH cx_sy_move_cast_error.
+ENDTRY.
 ```
 
 - `result-table` holds the selected rows in the order of `i_tab`,

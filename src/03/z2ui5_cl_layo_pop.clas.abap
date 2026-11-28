@@ -60,6 +60,31 @@ CLASS z2ui5_cl_layo_pop DEFINITION
         !layout TYPE REF TO z2ui5_cl_layo_manager
         !data   TYPE REF TO data OPTIONAL.
 
+    "! Back in the app from the layout popup: takes over into layout the
+    "! layout the user arranged or chose there, when it is that layout - the
+    "! same control and handles (z2ui5_cl_layo_manager=&gt;is_same_layout( )).
+    "! Call it for every layout of the app on the roundtrip on which
+    "! check_on_navigated( ) is true:
+    "!
+    "!     ELSEIF client-&gt;check_on_navigated( ).
+    "!       IF z2ui5_cl_layo_pop=&gt;take_over( client = client layout = mo_layout ) = abap_true.
+    "!         render_main( ).
+    "!       ENDIF.
+    "!
+    "! result: abap_true when the app has to render its view again - the
+    "! roundtrip is no return from the layout popup (a first start, a
+    "! restored draft, a return from another app), or the popup changed
+    "! what the view is built from (subcolumns, ...); abap_false on the
+    "! return from the layout popup when the changed model alone shows the
+    "! change, or when the popup was opened for another layout of the app.
+    "! Always abap_false when check_on_navigated( ) is not true
+    CLASS-METHODS take_over
+      IMPORTING
+        !client       TYPE REF TO z2ui5_if_client
+        !layout       TYPE REF TO z2ui5_cl_layo_manager
+      RETURNING
+        VALUE(result) TYPE abap_bool.
+
     CLASS-METHODS render_layout_function
       IMPORTING
         !xml          TYPE REF TO z2ui5_cl_ui5_view_builder
@@ -68,6 +93,9 @@ CLASS z2ui5_cl_layo_pop DEFINITION
       RETURNING
         VALUE(result) TYPE REF TO z2ui5_cl_ui5_view_builder.
 
+    "! @parameter open_layout | abap_true: the popup starts on the Select tab
+    "! @parameter delete_layout | abap_true: the popup starts on the Delete
+    "!   tab; without either it starts on Edit
     CLASS-METHODS factory
       IMPORTING
         !layout       TYPE REF TO z2ui5_cl_layo_manager
@@ -107,9 +135,20 @@ CLASS z2ui5_cl_layo_pop DEFINITION
 
     METHODS render_open.
 
+    "! the layout selected in mt_head - read again from the layouts the list
+    "! offers (select_layouts( ) for this layout's control, handles and
+    "! screen format), since mt_head is bound to the browser and a GUID in
+    "! it is only what the browser sent; initial when nothing is selected or
+    "! the selected layout is not offered (any more)
     METHODS get_selected_layout
       RETURNING
         VALUE(result) TYPE ty_s_layo.
+
+    "! the layouts the Select and Delete tabs offer - the user's own and the
+    "! shared ones of this layout's control, handles and screen format
+    METHODS select_offered_layouts
+      RETURNING
+        VALUE(result) TYPE ty_t_layo.
 
     METHODS delete_selected_layout
       IMPORTING
@@ -117,9 +156,13 @@ CLASS z2ui5_cl_layo_pop DEFINITION
       RETURNING
         VALUE(result) TYPE abap_bool.
 
+    "! result: abap_false when the layout was deleted meanwhile - the
+    "! current one stays
     METHODS set_selected_layout
       IMPORTING
-        head TYPE ty_s_layo.
+        head          TYPE ty_s_layo
+      RETURNING
+        VALUE(result) TYPE abap_bool.
 
     METHODS check_width_unit
       IMPORTING
@@ -141,6 +184,15 @@ CLASS z2ui5_cl_layo_pop DEFINITION
     METHODS edit_okay.
     METHODS search.
 
+    "! one span of the grid layout popup: a combo box of 1 to 12 bound to
+    "! bind, after a label when one is given
+    METHODS render_grid_span
+      IMPORTING
+        !form TYPE REF TO z2ui5_cl_ui5_view_builder
+        label TYPE string OPTIONAL
+        bind  TYPE string
+        !text TYPE string.
+
 ENDCLASS.
 
 
@@ -153,7 +205,15 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     IF client->check_on_init( ).
       on_init( ).
       init_edit( ).
-      render_edit( ).
+      IF mv_open = abap_true.
+        get_layouts( ).
+        render_open( ).
+      ELSEIF mv_delete = abap_true.
+        get_layouts( ).
+        render_delete( ).
+      ELSE.
+        render_edit( ).
+      ENDIF.
     ELSEIF client->check_on_navigated( ).
       " a restored draft - nothing of the popup is on screen any more
       init_edit( ).
@@ -321,7 +381,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
           cells->tag( `Switch`
               )->a( n = `type` v = `AcceptReject`
-              )->a( n = `state` v = |\{{ comp-name }\}| ).
+              )->a( n = `state` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}| ).
 
         WHEN 'NO_CONVEXIT'.
 
@@ -330,19 +390,19 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
               )->tag( `Switch`
               )->a( n = `customTextOn` v = |\{CONVEXIT\}|
               )->a( n = `customTextOff` v = |\{CONVEXIT\}|
-              )->a( n = `state` v = |\{{ comp-name }\}| ).
+              )->a( n = `state` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}| ).
 
         WHEN 'WIDTH'.
 
           cells->tag( `Input`
-              )->a( n = `value` v = |\{{ comp-name }\}|
+              )->a( n = `value` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `maxLength` v = `6`
               )->a( n = `width` v = `4rem` ).
 
         WHEN 'SEQUENCE'.
 
           cells->tag( `Input`
-              )->a( n = `value` v = |\{{ comp-name }\}|
+              )->a( n = `value` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `maxLength` v = `3`
               )->a( n = `width` v = `3rem`
               )->a( n = `type` v = `Number` ).
@@ -350,12 +410,12 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         WHEN 'ALTERNATIVE_TEXT'.
 
           cells->tag( `Input`
-              )->a( n = `value` v = |\{{ comp-name }\}| ).
+              )->a( n = `value` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}| ).
 
         WHEN 'SUBCOLUMN'.
 
           cells->tag( `Button`
-              )->a( n = `text` v = |\{{ comp-name }\}|
+              )->a( n = `text` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `icon` v = `sap-icon://add`
               )->a( n = `width` v = `100%`
               )->a( n = `press` v = client->_event( val = 'CALL_SUBCOLUMN'
@@ -364,7 +424,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         WHEN 'SORTING'.
 
           cells->ele( `ComboBox`
-              )->a( n = `selectedKey` v = |\{{ comp-name }\}|
+              )->a( n = `selectedKey` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `items` v = client->_bind( mt_sorting )
               )->a( n = `width` v = `5rem`
               )->tag( n = `Item` ns = `core`
@@ -374,7 +434,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         WHEN 'REFERENCE_FIELD'.
 
           cells->ele( `ComboBox`
-              )->a( n = `selectedKey` v = |\{{ comp-name }\}|
+              )->a( n = `selectedKey` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `items` v = client->_bind( mo_layout->ms_layout-t_layout )
               )->a( n = `width` v = `10rem`
               )->tag( n = `Item` ns = `core`
@@ -384,7 +444,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         WHEN 'GRID_LAYOUT'.
 
           cells->tag( `Button`
-              )->a( n = `text` v = |\{{ comp-name }\}|
+              )->a( n = `text` v = |\{{ z2ui5_cl_ui5_view_builder=>component_path( comp-name ) }\}|
               )->a( n = `icon` v = `sap-icon://grid`
               )->a( n = `width` v = `5rem`
               )->a( n = `press` v = client->_event( val = 'CALL_GRIDLAYOUT'
@@ -473,17 +533,30 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         " layout without head - no control, no handles, nothing to save to
         DATA(selected) = get_selected_layout( ).
         IF selected-guid IS INITIAL.
-          client->message_toast_display( 'No layout selected.' ).
+          IF line_exists( mt_head[ selkz = abap_true ] ).
+            " a row is selected, but the list does not offer it (any more):
+            " deleted meanwhile in another session - or a GUID the browser
+            " made up. The list again, as it is now
+            client->message_toast_display( 'Layout no longer exists.' ).
+            get_layouts( ).
+            render_open( ).
+          ELSE.
+            client->message_toast_display( 'No layout selected.' ).
+          ENDIF.
           RETURN.
         ENDIF.
 
-        set_selected_layout( selected ).
+        IF set_selected_layout( selected ) = abap_false.
+          get_layouts( ).
+          render_open( ).
+          RETURN.
+        ENDIF.
 
         mv_rerender = abap_true.
 
         client->popup_destroy( ).
 
-        client->nav_app_leave( ).
+        client->nav_app_leave( keep_messages = abap_true ).
 
       WHEN 'DELETE_SELECT'.
 
@@ -538,7 +611,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     client->popup_destroy( ).
 
-    client->nav_app_leave( ).
+    " keep_messages: the toast of save_layout( ) - `Data saved.` - is shown
+    " in the app; without it the leave drops everything this app queued
+    client->nav_app_leave( keep_messages = abap_true ).
 
   ENDMETHOD.
 
@@ -696,9 +771,10 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                                    uname         = user ).
 
     " A shared layout (no user) is offered to, and loaded as default by,
-    " every user of the app: saving one needs an authorization the addon
-    " cannot decide itself - z2ui5_if_layo_auth does, and without an
-    " implementation in the system the shipped default denies it
+    " every user of the app: whether a user may save one is
+    " z2ui5_if_layo_auth's decision. The shipped default allows it, as
+    " before the hook existed; a system that wants to restrict shared
+    " layouts implements the interface with its own authorization object
     DATA(action) = COND string( WHEN head-uname IS INITIAL
                                 THEN z2ui5_if_layo_auth=>cs_action-save_shared
                                 ELSE z2ui5_if_layo_auth=>cs_action-save_own ).
@@ -1004,7 +1080,28 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD get_selected_layout.
 
-    result = VALUE #( mt_head[ selkz = abap_true ] OPTIONAL ).
+    ASSIGN mt_head[ selkz = abap_true ] TO FIELD-SYMBOL(<selected>).
+    IF <selected> IS NOT ASSIGNED OR <selected>-guid IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    DATA(lt_offered) = select_offered_layouts( ).
+    ASSIGN lt_offered[ guid = <selected>-guid ] TO FIELD-SYMBOL(<offered>).
+    IF <offered> IS ASSIGNED.
+      result = <offered>.
+      result-selkz = abap_true.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD select_offered_layouts.
+
+    result = z2ui5_cl_layo_manager=>select_layouts( control  = mo_layout->ms_layout-s_head-control
+                                                    handle01 = mo_layout->ms_layout-s_head-handle01
+                                                    handle02 = mo_layout->ms_layout-s_head-handle02
+                                                    handle03 = mo_layout->ms_layout-s_head-handle03
+                                                    handle04 = mo_layout->ms_layout-s_head-handle04
+                                                    format   = mo_layout->ms_layout-s_head-screen_format ).
 
   ENDMETHOD.
 
@@ -1022,6 +1119,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
       client->message_toast_display( 'Layout no longer exists.' ).
       RETURN.
     ENDIF.
+    result = abap_true.
 
     " the layout opened is the app's layout from now on - it sorts, converts
     " and selects the same table, which factory_by_guid( ) does not know
@@ -1035,12 +1133,7 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   METHOD get_layouts.
 
-    mt_head = z2ui5_cl_layo_manager=>select_layouts( control  = mo_layout->ms_layout-s_head-control
-                                                     handle01 = mo_layout->ms_layout-s_head-handle01
-                                                     handle02 = mo_layout->ms_layout-s_head-handle02
-                                                     handle03 = mo_layout->ms_layout-s_head-handle03
-                                                     handle04 = mo_layout->ms_layout-s_head-handle04
-                                                     format   = mo_layout->ms_layout-s_head-screen_format ).
+    mt_head = select_offered_layouts( ).
 
     IF mt_head IS INITIAL.
       RETURN.
@@ -1103,6 +1196,33 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD take_over.
+
+    DATA lo_popup TYPE REF TO z2ui5_cl_layo_pop.
+
+    IF layout IS NOT BOUND OR client->check_on_navigated( ) = abap_false.
+      RETURN.
+    ENDIF.
+
+    " no return from the layout popup: on a first start or a restored draft
+    " get_app_prev( ) is the app itself, after another app that app
+    TRY.
+        lo_popup ?= client->get_app_prev( ).
+      CATCH cx_sy_move_cast_error.
+        result = abap_true.
+        RETURN.
+    ENDTRY.
+
+    " the popup was opened for another layout of the app
+    IF layout->is_same_layout( lo_popup->mo_layout ) = abap_false.
+      RETURN.
+    ENDIF.
+
+    layout->ms_layout = lo_popup->mo_layout->ms_layout.
+    result = lo_popup->mv_rerender.
+
+  ENDMETHOD.
+
   METHOD delete_selected_layout.
 
     " Nothing selected - guid initial would delete unrelated blank-guid rows.
@@ -1114,8 +1234,9 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
     " The head - owner and handles - comes from the database, not from the
     " bound list the browser sends back. Whether the user may delete it is
     " z2ui5_if_layo_auth's decision: the shipped default allows a user to
-    " delete his own layouts and nothing else; an implementation in the
-    " system may let an administrator remove shared layouts as well
+    " delete his own layouts and the shared ones, never another user's
+    " personal layout; an implementation in the system may restrict the
+    " shared ones to an administrator
     SELECT SINGLE * FROM z2ui5_t_11
       WHERE guid = @head-guid
       INTO @DATA(head_db).
@@ -1356,15 +1477,15 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
 
     CLEAR mv_rerender.
 
-    " Sequence and SubCols need rerendering
+    " Sequence and SubCols need rerendering. A row is found by its
+    " component, not by its guid: saving as a new layout gives every
+    " position the guid of the new head, and no row matched any more
     LOOP AT mo_layout->ms_layout-t_layout INTO DATA(layout).
 
-      IF NOT line_exists( mo_layout->ms_layout_tmp-t_layout[ guid     = layout-guid
-                                                             pos_guid = layout-pos_guid ] ).
+      IF NOT line_exists( mo_layout->ms_layout_tmp-t_layout[ fname = layout-fname ] ).
         CONTINUE.
       ENDIF.
-      DATA(layout_tmp) = mo_layout->ms_layout_tmp-t_layout[ guid     = layout-guid
-                                                            pos_guid = layout-pos_guid ].
+      DATA(layout_tmp) = mo_layout->ms_layout_tmp-t_layout[ fname = layout-fname ].
 
       IF layout-alternative_text <> layout_tmp-alternative_text.
         mv_rerender = abap_true.
@@ -1521,77 +1642,37 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
                      )->a( n = `title` v = `Define Label and Value Span`
                      )->ele( n = `content` ns = `form` ).
 
-    form->tag( `Label`
-        )->a( n = `text` v = `XL`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_xl_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
+    render_grid_span( form  = form
+                      label = `XL`
+                      bind  = client->_bind( mv_xl_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_xl_value )
+                      text = `Value Span` ).
 
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_xl_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
+    render_grid_span( form  = form
+                      label = `L`
+                      bind  = client->_bind( mv_l_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_l_value )
+                      text = `Value Span` ).
 
-    form->tag( `Label`
-        )->a( n = `text` v = `L`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_l_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
+    render_grid_span( form  = form
+                      label = `M`
+                      bind  = client->_bind( mv_m_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_m_value )
+                      text = `Value Span` ).
 
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_l_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
-
-    form->tag( `Label`
-        )->a( n = `text` v = `M`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_m_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
-
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_m_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
-
-    form->tag( `Label`
-        )->a( n = `text` v = `S`
-        )->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_s_label )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Label Span` ).
-
-    form->ele( `ComboBox`
-        )->a( n = `selectedKey` v = client->_bind( mv_s_value )
-        )->a( n = `width` v = `7rem`
-        )->a( n = `items` v = client->_bind( t_col  )
-        )->tag( n = `Item` ns = `core`
-        )->a( n = `key` v = `{COL}`
-        )->a( n = `text` v = `{COL} Value Span` ).
+    render_grid_span( form  = form
+                      label = `S`
+                      bind  = client->_bind( mv_s_label )
+                      text  = `Label Span` ).
+    render_grid_span( form = form
+                      bind = client->_bind( mv_s_value )
+                      text = `Value Span` ).
 
     lo_popup->ele( `buttons`
         )->tag( `Button`
@@ -1603,6 +1684,23 @@ CLASS z2ui5_cl_layo_pop IMPLEMENTATION.
         )->a( n = `type` v = `Emphasized` ).
 
     client->popup_display( lo_popup->stringify( ) ).
+
+  ENDMETHOD.
+
+  METHOD render_grid_span.
+
+    IF label IS NOT INITIAL.
+      form->tag( `Label`
+          )->a( n = `text` v = label ).
+    ENDIF.
+
+    form->ele( `ComboBox`
+        )->a( n = `selectedKey` v = bind
+        )->a( n = `width` v = `7rem`
+        )->a( n = `items` v = client->_bind( t_col )
+        )->tag( n = `Item` ns = `core`
+        )->a( n = `key` v = `{COL}`
+        )->a( n = `text` v = |\{COL\} { text }| ).
 
   ENDMETHOD.
 

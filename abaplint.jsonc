@@ -10,11 +10,14 @@
     },
     {
       "url": "https://github.com/abap2UI5/abap2UI5",
-      // abap2UI5 main - the client lifecycle and navigation API of 1.151.0
-      // (no _bind_edit( ), no *_model_update( )); move to the tag 1.151.0
-      // once it is cut. Without src/03 - the installation package (ICF
-      // handler, BSP), which nothing here uses
-      "branch": "main",
+      // A release tag, not main: users install a release next to this addon
+      // (abap2UI5 CONVENTIONS §9) - its client lifecycle and navigation API
+      // (no _bind_edit( ), no *_model_update( )). scripts/core-pin.mjs reads
+      // and moves it in every config and in the unit runner at once, bump-deps
+      // moves it monthly, the weekly canary run lints once against main.
+      // Without src/03 - the installation package (ICF handler, BSP), which
+      // nothing here uses
+      "branch": "1.151.0",
       "folder": "/abap2UI5",
       "files": "/src/0[0-2]/**/*.*"
     }
@@ -385,7 +388,12 @@
     "static_call_via_instance": {
       "allowInTestclassIncludes": false
     },
-    "subrc_after_assign": true,
+    // the vendored z2ui5_cl_layo_context stays as abap-util ships it
+    "subrc_after_assign": {
+      "exclude": [
+        "/src/03/z2ui5_cl_layo_context\\."
+      ]
+    },
     "unnecessary_chaining": true,
     "unnecessary_return": true,
     "unused_variables": {
@@ -559,9 +567,11 @@
     },
     // the XML parser and builder (parse, get_grid_layout, xml_build_table, ...),
     // save_layout / the popup view and data_conversion / copy_layouts / set_selkz:
-    // splitting them is a refactoring, not a lint fix
+    // splitting them is a refactoring, not a lint fix. The vendored
+    // z2ui5_cl_layo_context stays as abap-util ships it (itab_filter_by_val)
     "cyclomatic_complexity": {
       "exclude": [
+        "/src/03/z2ui5_cl_layo_context\\.",
         "/src/03/z2ui5_cl_layo_xml_tree\\.",
         "/src/03/z2ui5_cl_layo_xml_builder\\.",
         "/src/03/z2ui5_cl_layo_pop\\.",
@@ -572,6 +582,7 @@
     "method_length": {
       "checkFunctionModules": true,
       "exclude": [
+        "/src/03/z2ui5_cl_layo_context\\.",
         "/src/03/z2ui5_cl_layo_xml_tree\\.",
         "/src/03/z2ui5_cl_layo_xml_builder\\.",
         "/src/03/z2ui5_cl_layo_pop\\.",

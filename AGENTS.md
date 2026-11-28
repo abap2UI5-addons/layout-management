@@ -47,12 +47,34 @@ referenced.
    has `WITH EMPTY KEY` (as in the core's copy), because abaplint's
    `avoid_use` refuses `DEFAULT KEY`.
 
+`.github/abap-util.json` names the copies and their masters for abap-util's
+`sync-check`: with abap-util checked out next to this repository,
+`node ../abap-util/.github/scripts/sync-check.mjs --consumer . --report`
+lists every method whose body or declaration differs from the master and
+every method only this copy has. `commit` is the abap-util commit the copies
+match: run the script without `--report` at that commit and it fails on any
+difference that is not named under `settled` or `own`. After a refresh, set
+`commit` to the commit the copies were taken from.
+
 ## Dependencies
 
 Installed alongside via abapGit; declared in the abaplint configs:
 
 * [abap2UI5](https://github.com/abap2UI5/abap2UI5) — nothing else; the
-  utilities are vendored, see "Utility Access"
+  utilities are vendored, see "Utility Access". **Pinned to a release tag**
+  (the `"branch"` key of the core dependency, abap2UI5 CONVENTIONS §9): users
+  install a release next to this addon, so the checks run against that
+  release and not against the framework's `main`. The abaplint configs
+  (`abaplint.jsonc`, `.github/abaplint/abap_cloud.jsonc` and the downported
+  `<tag>-702` form in `.github/abaplint/abap_702.jsonc`; the namespace rename
+  clones the core at the pin of `abaplint.jsonc`) and the unit runner
+  (`.github/scripts/unit.mjs`) carry the pin; read and move it only with
+  `scripts/core-pin.mjs` (`get` fails when they disagree). `bump-deps.yaml`
+  moves it monthly to the newest release, in its one pull request whose
+  checks run against it (`bump-core.yaml` does it alone, by hand), and the
+  scheduled run of `ci` checks once against the core's `main` as the canary
+  (`core-pin.mjs set main`, never committed). Do not drop the key: abaplint
+  then clones `main` silently.
 
 ## Coding Style
 
@@ -75,13 +97,18 @@ pinned by commit in the `uses:` lines and moved by `bump-deps`):
   `abap2ui5lint` (the app classes and their views, `abap2ui5lint.jsonc`),
   `unit` - the ABAP Unit tests on abap2UI5's transpiled Node runtime, the
   way abap2UI5 tests itself: `npm run unit` (`.github/scripts/unit.mjs`)
-  copies the packages into a checkout of abap2UI5 (`DEV` on this branch DEV), downports,
-  transpiles and runs the tests of this repository's classes - and `rename`,
-  the namespace-rename check (`npm run rename`, `.github/scripts/rename.mjs`)
+  copies the packages into a checkout of abap2UI5 at the release pin (`main`
+  in the weekly canary), downports, transpiles and runs the tests of this
+  repository's classes - `rename`, the namespace-rename check (`npm run
+  rename`, `.github/scripts/rename.mjs`), and `npm run check:702`, the 7.02
+  gate of a pull request: `.github/scripts/check-702.sh` downports a scratch
+  copy of `src/` in `build/702` and lints it with
+  `.github/abaplint/abap_702.jsonc` (`src/` itself is never rewritten)
 * `ci-702` — writes the downported `702` branch on every push to `main`
   (`npm run auto_downport`: `abaplint --fix` against
   `.github/abaplint/abap_702.jsonc`) and lints it
 * `build-rename`, `deploy-pages`, `bump-deps` — calls of the template
+* `bump-core` — moves the abap2UI5 release pin, see Dependencies
 
 Several addons pin this repository by commit in their `.github/deps.json`;
 their monthly `bump-deps` moves the pin, and their weekly `ci` run checks

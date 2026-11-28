@@ -10,7 +10,7 @@
     },
     {
       "url": "https://github.com/abap2UI5/abap2UI5",
-      "branch": "702",
+      "branch": "1.151.0-702",
       "folder": "/abap2UI5",
       "files": "/src/**/*.*"
     }

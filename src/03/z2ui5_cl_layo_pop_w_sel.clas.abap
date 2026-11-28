@@ -17,6 +17,9 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
+    "! the caller's table - until the popup has started: it is cleared once
+    "! mr_out and mr_out_tmp are built from it, since every attribute is
+    "! written to the draft on every roundtrip and nothing reads it later
     DATA mr_tab          TYPE REF TO data.
     "! the rows on screen: those of mr_tab with ZZROW_ID and ZZSELKZ in front,
     "! filtered by the search and sorted by the layout
@@ -26,7 +29,6 @@ CLASS z2ui5_cl_layo_pop_w_sel DEFINITION
     DATA mr_out_tmp      TYPE REF TO data.
 
     DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
-    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder binds it, handed over as REF #( mv_search_value )
     DATA mv_search_value TYPE string.
 
     TYPES:
@@ -324,7 +326,9 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
 
     IF client->check_on_init( ).
       set_output_table( ).
+      " after this the layout sorts mr_out - mr_tab is read by nothing more
       sort_output_table( ).
+      CLEAR mr_tab.
       render_main( ).
     ELSEIF client->check_on_navigated( ).
       on_after_layout( ).
@@ -569,6 +573,24 @@ CLASS z2ui5_cl_layo_pop_w_sel IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD sort_output_table.
+
+    FIELD-SYMBOLS <tab> TYPE STANDARD TABLE.
+
+    " the order the caller asked for (i_sort_field, i_descending) - the
+    " sorting of the layout, when it has one, decides over it
+    IF sort_field IS NOT INITIAL.
+      ASSIGN mr_out->* TO <tab>.
+      DATA(lv_name) = to_upper( sort_field ).
+      TRY.
+          IF descending = abap_true.
+            SORT <tab> BY (lv_name) DESCENDING.
+          ELSE.
+            SORT <tab> BY (lv_name) ASCENDING.
+          ENDIF.
+        CATCH cx_root ##NO_HANDLER.
+          " no column of that name: the caller's order stays
+      ENDTRY.
+    ENDIF.
 
     " the sorting of the layout - point it at the table again first: the
     " draft restores the layout's own reference as one to a copy

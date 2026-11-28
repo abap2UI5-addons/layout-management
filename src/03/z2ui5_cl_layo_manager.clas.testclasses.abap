@@ -510,6 +510,7 @@ CLASS ltcl_conv DEFINITION FINAL FOR TESTING
     METHODS conversion_default FOR TESTING.
     METHODS conversion_alpha_in_browser FOR TESTING.
     METHODS opened_layout_keeps_type FOR TESTING.
+    METHODS opened_layout_own_sub_cols FOR TESTING.
 
     METHODS layout
       RETURNING
@@ -680,11 +681,123 @@ CLASS ltcl_conv IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD opened_layout_own_sub_cols.
+
+    DATA head      TYPE z2ui5_t_11.
+    DATA positions TYPE STANDARD TABLE OF z2ui5_t_12 WITH EMPTY KEY.
+
+    cleanup( ).
+
+    head = VALUE #( guid     = c_guid
+                    layout   = `LTCL`
+                    control  = z2ui5_cl_layo_manager=>m_table
+                    handle03 = `LTCL_CONV` ).
+    INSERT z2ui5_t_11 FROM @head ##SUBRC_OK.
+    positions = VALUE #( ( guid = c_guid pos_guid = 'LTCLCONVPOS000000000000000000001' fname = `ID` visible = abap_true )
+                         ( guid = c_guid pos_guid = 'LTCLCONVPOS000000000000000000002' fname = `NR` visible = abap_true
+                           subcolumn = `LANGU` ) ).
+    INSERT z2ui5_t_12 FROM TABLE @positions ##SUBRC_OK.
+
+    " the layout shown before has subcolumns on ID, the opened one on NR only
+    DATA(before) = layout( )->ms_layout-t_layout.
+    ASSIGN before[ fname = `ID` ] TO FIELD-SYMBOL(<id>).
+    <id>-subcolumn = `NR`.
+    <id>-t_sub_col = VALUE #( ( fname = `NR` ) ).
+
+    DATA(opened) = z2ui5_cl_layo_manager=>factory_by_guid( layout_guid = c_guid
+                                                           t_comps     = before ).
+
+    cleanup( ).
+
+    cl_abap_unit_assert=>assert_initial( opened->ms_layout-t_layout[ fname = `ID` ]-t_sub_col ).
+    DATA(nr_sub_col) = opened->ms_layout-t_layout[ fname = `NR` ]-t_sub_col.
+    cl_abap_unit_assert=>assert_equals( exp = 1
+                                        act = lines( nr_sub_col ) ).
+    cl_abap_unit_assert=>assert_equals( exp = `LANGU`
+                                        act = nr_sub_col[ 1 ]-fname ).
+
+  ENDMETHOD.
+
   METHOD cleanup.
 
     DELETE FROM z2ui5_t_11 WHERE guid = @c_guid ##SUBRC_OK.
     DELETE FROM z2ui5_t_12 WHERE guid = @c_guid ##SUBRC_OK.
     COMMIT WORK.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+CLASS ltcl_same_layout DEFINITION FINAL FOR TESTING
+  DURATION SHORT
+  RISK LEVEL HARMLESS.
+
+  PRIVATE SECTION.
+    METHODS same_control_and_handles FOR TESTING.
+    METHODS other_handle FOR TESTING.
+    METHODS other_control FOR TESTING.
+    METHODS unbound FOR TESTING.
+
+    "! a manager with the head the layout popup compares
+    METHODS layout
+      IMPORTING
+        !control      TYPE clike
+        handle04      TYPE clike
+      RETURNING
+        VALUE(result) TYPE REF TO z2ui5_cl_layo_manager.
+ENDCLASS.
+
+
+CLASS ltcl_same_layout IMPLEMENTATION.
+
+  METHOD layout.
+
+    result = NEW #( ).
+    result->ms_layout-s_head-control  = control.
+    result->ms_layout-s_head-handle01 = `APP`.
+    result->ms_layout-s_head-handle02 = `TABLE`.
+    result->ms_layout-s_head-handle03 = `X`.
+    result->ms_layout-s_head-handle04 = handle04.
+
+  ENDMETHOD.
+
+  METHOD same_control_and_handles.
+
+    " the guid differs - another variant of the same table is the same layout
+    DATA(lo_other) = layout( control  = z2ui5_cl_layo_manager=>m_table
+                             handle04 = `4` ).
+    lo_other->ms_layout-s_head-guid = `OTHER`.
+
+    cl_abap_unit_assert=>assert_true( layout( control  = z2ui5_cl_layo_manager=>m_table
+                                              handle04 = `4` )->is_same_layout( lo_other ) ).
+
+  ENDMETHOD.
+
+  METHOD other_handle.
+
+    cl_abap_unit_assert=>assert_false( layout( control  = z2ui5_cl_layo_manager=>m_table
+                                               handle04 = `4` )->is_same_layout(
+                                         layout( control  = z2ui5_cl_layo_manager=>m_table
+                                                 handle04 = `5` ) ) ).
+
+  ENDMETHOD.
+
+  METHOD other_control.
+
+    cl_abap_unit_assert=>assert_false( layout( control  = z2ui5_cl_layo_manager=>m_table
+                                               handle04 = `4` )->is_same_layout(
+                                         layout( control  = z2ui5_cl_layo_manager=>ui_simpleform
+                                                 handle04 = `4` ) ) ).
+
+  ENDMETHOD.
+
+  METHOD unbound.
+
+    DATA lo_none TYPE REF TO z2ui5_cl_layo_manager.
+
+    cl_abap_unit_assert=>assert_false( layout( control  = z2ui5_cl_layo_manager=>m_table
+                                               handle04 = `4` )->is_same_layout( lo_none ) ).
 
   ENDMETHOD.
 

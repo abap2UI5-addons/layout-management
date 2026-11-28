@@ -11,9 +11,7 @@ CLASS z2ui5_cl_layo_sample_05 DEFINITION
     TYPES END OF ty_s_data.
     TYPES ty_t_data TYPE STANDARD TABLE OF ty_s_data WITH EMPTY KEY.
 
-    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_table( ) binds it, handed over as REF #( mt_table )
     DATA mt_table        TYPE ty_t_data.
-    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_simple_form( ) binds it, handed over as REF #( ms_struc )
     DATA ms_struc        TYPE ty_s_data.
     DATA mo_layout       TYPE REF TO z2ui5_cl_layo_manager.
     DATA mo_table_layout TYPE REF TO z2ui5_cl_layo_manager.
@@ -153,38 +151,20 @@ CLASS z2ui5_cl_layo_sample_05 IMPLEMENTATION.
 
   METHOD on_after_navigation.
 
-    TRY.
+    " back from the layout popup: each layout takes over the one chosen
+    " there when it is its own - the form's or the table's. Render again
+    " only when the popup changed what the view is built from (e.g.
+    " subcolumns) - for all other changes the changed model is enough, the
+    " framework sends it by itself. Not back from the layout popup (e.g. a
+    " restored draft): take_over( ) asks for the view to be displayed too
+    DATA(lv_rerender) = z2ui5_cl_layo_pop=>take_over( client = client layout = mo_layout ).
+    IF z2ui5_cl_layo_pop=>take_over( client = client layout = mo_table_layout ) = abap_true.
+      lv_rerender = abap_true.
+    ENDIF.
 
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
-
-        IF     mo_layout->ms_layout-s_head-control  = app->mo_layout->ms_layout-s_head-control
-           AND mo_layout->ms_layout-s_head-handle01 = app->mo_layout->ms_layout-s_head-handle01
-           AND mo_layout->ms_layout-s_head-handle02 = app->mo_layout->ms_layout-s_head-handle02
-           AND mo_layout->ms_layout-s_head-handle03 = app->mo_layout->ms_layout-s_head-handle03
-           AND mo_layout->ms_layout-s_head-handle04 = app->mo_layout->ms_layout-s_head-handle04.
-
-          mo_layout->ms_layout = app->mo_layout->ms_layout.
-        ENDIF.
-
-        IF     mo_table_layout->ms_layout-s_head-control  = app->mo_layout->ms_layout-s_head-control
-           AND mo_table_layout->ms_layout-s_head-handle01 = app->mo_layout->ms_layout-s_head-handle01
-           AND mo_table_layout->ms_layout-s_head-handle02 = app->mo_layout->ms_layout-s_head-handle02
-           AND mo_table_layout->ms_layout-s_head-handle03 = app->mo_layout->ms_layout-s_head-handle03
-           AND mo_table_layout->ms_layout-s_head-handle04 = app->mo_layout->ms_layout-s_head-handle04.
-          mo_table_layout->ms_layout = app->mo_layout->ms_layout.
-        ENDIF.
-
-        IF app->mv_rerender = abap_true.
-          " e.g. subcolumns need rerendering to work ..
-          render_main( ).
-        ENDIF.
-        " for all other changes the changed model is enough - the framework
-        " sends it by itself
-      CATCH cx_root.
-        " not back from the layout popup (e.g. a restored draft) - the
-        " view still has to be displayed
-        render_main( ).
-    ENDTRY.
+    IF lv_rerender = abap_true.
+      render_main( ).
+    ENDIF.
 
   ENDMETHOD.
 

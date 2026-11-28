@@ -5,7 +5,6 @@ CLASS z2ui5_cl_layo_sample_04 DEFINITION
   PUBLIC SECTION.
     INTERFACES z2ui5_if_app.
 
-    " abap2ui5lint-disable-next-line unbound-public-attribute -- z2ui5_cl_layo_xml_builder=>xml_build_simple_form( ) binds it, handed over as REF #( ms_data )
     DATA ms_data   TYPE z2ui5_t_11.
     DATA mo_layout TYPE REF TO z2ui5_cl_layo_manager.
 
@@ -120,22 +119,14 @@ CLASS z2ui5_cl_layo_sample_04 IMPLEMENTATION.
 
   METHOD on_after_navigation.
 
-    TRY.
-
-        DATA(app) = CAST z2ui5_cl_layo_pop( client->get_app_prev( ) ).
-        mo_layout = app->mo_layout.
-
-        IF app->mv_rerender = abap_true.
-          " subcolumns need rerendering to work ..
-          render_main( ).
-        ENDIF.
-        " for all other changes the changed model is enough - the framework
-        " sends it by itself
-      CATCH cx_root.
-        " not back from the layout popup (e.g. a restored draft) - the
-        " view still has to be displayed
-        render_main( ).
-    ENDTRY.
+    " back from the layout popup: take over the layout chosen there. Render
+    " again only when the popup changed what the view is built from (e.g.
+    " subcolumns) - for all other changes the changed model is enough, the
+    " framework sends it by itself. Not back from the layout popup (e.g. a
+    " restored draft): take_over( ) asks for the view to be displayed too
+    IF z2ui5_cl_layo_pop=>take_over( client = client layout = mo_layout ) = abap_true.
+      render_main( ).
+    ENDIF.
 
   ENDMETHOD.
 

@@ -23,6 +23,8 @@
  *   UNIT_DIR        the work folder (default .unit)
  *   UNIT_FILTER     run only the tests whose "OBJECT: class->method" contains it
  *   UNIT_NO_FETCH=1 use the checkouts under UNIT_DIR as they are
+ *   DEPS_TIP=1      abap2UI5 at main instead of its release pin - the
+ *                   scheduled canary
  *
  * Never commit the work folder. A green transpiled run is not a substitute
  * for a run on a system (abap2UI5's abap-check skill lists what the
@@ -43,13 +45,18 @@ const CONFIG = {
   // checkouts under WORK; the first one is the abap2UI5 tree everything is
   // built in, the others are what this repository builds on
   repos: [
-    { name: "abap2UI5", url: "https://github.com/abap2UI5/abap2UI5", ref: "main" }, // the client API of abap2UI5 1.151.0
+    // the release the abaplint configs pin, moved with them by
+    // scripts/core-pin.mjs (abap2UI5 CONVENTIONS §9)
+    { name: "abap2UI5", url: "https://github.com/abap2UI5/abap2UI5", ref: "1.151.0" },
   ],
   // copied into <abap2UI5>/src/<into>/: entries relative to <from>/src
   packages: [
     { into: "zz_layout_management", from: ROOT, entries: ["."] },
   ],
 };
+
+// the scheduled canary (DEPS_TIP=1) runs against the core's main
+if (process.env.DEPS_TIP === "1") CONFIG.repos[0].ref = "main";
 
 const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
 
